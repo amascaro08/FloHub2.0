@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'wouter';
-import { FloHubLogoImage } from '@/assets/FloHubLogoImage';
+import flohubCircleLogo from '../assets/images/flohub-circle-logo.png';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -10,7 +10,11 @@ const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-2">
-            <FloHubLogoImage className="h-8 w-auto" />
+            <img 
+              src={flohubCircleLogo} 
+              alt="FloHub Logo" 
+              className="h-16 w-auto" 
+            />
             <p className="mt-4 text-base text-gray-400">
               Making workflow management simple and efficient for teams around the world.
             </p>
