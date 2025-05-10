@@ -5,6 +5,11 @@ import { insertRegistrationSchema } from "@shared/schema";
 import { ZodError } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint
+  app.get('/', (_req: Request, res: Response) => {
+    res.status(200).send('OK');
+  });
+
   // Registration endpoints
   app.post("/api/register", async (req: Request, res: Response) => {
     try {
