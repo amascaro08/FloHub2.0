@@ -23,7 +23,7 @@ const HomeHero: React.FC = () => {
             <div className="mt-8 sm:max-w-lg sm:mx-auto sm:text-center lg:text-left lg:mx-0">
               <div className="flex flex-col sm:flex-row sm:justify-center lg:justify-start gap-4">
                 <Button asChild size="lg" className="px-8">
-                  <a href={dashboardUrl}>Get started</a>
+                  <a href="/register">Register Your Interest</a>
                 </Button>
                 <Button asChild variant="outline" size="lg" className="group px-8">
                   <a href="#features" className="flex items-center">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import dashboardImg from '../assets/images/IMG_0015.png';
+import floCatPeekingSideImg from '../assets/images/flocat-peeking-side.png';
 
 const HomeDashboard: React.FC = () => {
   return (
@@ -32,6 +33,20 @@ const HomeDashboard: React.FC = () => {
               src={dashboardImg} 
               alt="FloHub Dashboard Interface" 
               className="w-full mx-auto shadow-lg"
+            />
+            <motion.img 
+              src={floCatPeekingSideImg} 
+              alt="FloCat Peeking" 
+              className="absolute -right-1 bottom-0 h-36 md:h-48 lg:h-56 z-10"
+              initial={{ x: 100, opacity: 0 }}
+              whileInView={{ x: 0, opacity: 1 }}
+              transition={{ 
+                duration: 0.8,
+                delay: 0.6,
+                type: "spring",
+                stiffness: 100
+              }}
+              viewport={{ once: true }}
             />
           </div>
         </motion.div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import floCatPeekingTopImg from '../assets/images/flocat-peeking-top.png';
 
 // Features based on actual FloHub dashboard
 const featuresData = [
@@ -100,7 +101,20 @@ const HomeFeatures: React.FC = () => {
   return (
     <section id="features" className="py-16 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
+        <div className="text-center relative">
+          <motion.div 
+            className="absolute -top-24 left-1/2 transform -translate-x-1/2"
+            initial={{ y: -100, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8, type: "spring", stiffness: 50 }}
+            viewport={{ once: true }}
+          >
+            <img 
+              src={floCatPeekingTopImg} 
+              alt="FloCat Peeking" 
+              className="h-32 md:h-40"
+            />
+          </motion.div>
           <motion.h2 
             className="text-base font-semibold text-primary uppercase tracking-wide"
             initial={{ opacity: 0, y: -10 }}
