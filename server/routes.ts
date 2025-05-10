@@ -1,3 +1,6 @@
+
+import path from "path";
+
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
@@ -5,9 +8,13 @@ import { insertRegistrationSchema } from "@shared/schema";
 import { ZodError } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Root endpoint for deployment health checks
+  // Root endpoint for deployment health checks and serving the client app
   app.get('/', (_req: Request, res: Response) => {
-    res.status(200).send('OK');
+    if (app.get('env') === 'production') {
+      res.sendFile(path.resolve(import.meta.dirname, "..", "dist", "public", "index.html"));
+    } else {
+      res.status(200).send('OK');
+    }
   });
 
   // Health check endpoint (accessible at /health)
