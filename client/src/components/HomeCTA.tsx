@@ -1,12 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { FloCatImage } from '@/assets/FloCatImage';
+import RegisterInterestModal from './RegisterInterestModal';
 
 const HomeCTA: React.FC = () => {
   const dashboardUrl = "https://flow-hubdev.vercel.app/dashboard";
+  const [modalOpen, setModalOpen] = useState(false);
   
   return (
     <section className="py-16 bg-primary">
+      <RegisterInterestModal 
+        open={modalOpen} 
+        onOpenChange={setModalOpen} 
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="lg:grid lg:grid-cols-2 lg:gap-8 lg:items-center">
           <motion.div
@@ -21,11 +28,19 @@ const HomeCTA: React.FC = () => {
             <p className="mt-4 text-lg text-primary-foreground/80">
               Start your free 14-day trial today. No credit card required. Cancel anytime.
             </p>
-            <div className="mt-8">
+            <div className="mt-8 flex flex-col sm:flex-row gap-4">
               <Button asChild variant="secondary" size="lg">
                 <a href={dashboardUrl}>
-                  Get started now
+                  Log in to Dashboard
                 </a>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="bg-white text-primary hover:bg-white/90"
+                onClick={() => setModalOpen(true)}
+              >
+                Register Interest
               </Button>
             </div>
           </motion.div>

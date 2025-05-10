@@ -1,37 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { CheckIcon } from 'lucide-react';
+import RegisterInterestModal from './RegisterInterestModal';
 
+// Using TBC (To Be Confirmed) pricing as requested
 const pricingPlans = [
   {
-    name: "Starter",
-    price: "$12",
-    description: "Perfect for small teams just getting started.",
+    name: "Basic",
+    price: "TBC",
+    description: "For individuals and small teams.",
     features: [
-      "Up to 5 team members",
-      "10 projects",
-      "Basic reporting",
-      "Community support"
+      "Core features",
+      "Basic workflows",
+      "Community access",
+      "Email support"
     ],
-    buttonText: "Start your trial",
+    buttonText: "Register Interest",
     buttonVariant: "default",
     highlight: false,
     accentColor: "bg-primary/10 text-primary",
     buttonColor: "bg-primary hover:bg-primary/90"
   },
   {
-    name: "Pro",
-    price: "$32",
-    description: "The ideal package for growing teams.",
+    name: "Professional",
+    price: "TBC",
+    description: "For medium-sized teams and organizations.",
     features: [
-      "Up to 20 team members",
-      "Unlimited projects",
-      "Advanced analytics",
+      "All Basic features",
+      "Advanced workflows",
       "Priority support",
+      "API access",
       "Custom integrations"
     ],
-    buttonText: "Start your trial",
+    buttonText: "Register Interest",
     buttonVariant: "default",
     highlight: true,
     accentColor: "bg-primary/10 text-primary",
@@ -40,16 +42,16 @@ const pricingPlans = [
   },
   {
     name: "Enterprise",
-    price: "$89",
-    description: "Advanced features for larger organizations.",
+    price: "TBC",
+    description: "For large organizations with complex needs.",
     features: [
-      "Unlimited team members",
-      "Unlimited projects",
-      "Advanced security",
+      "All Professional features",
       "Dedicated support",
-      "Custom branding"
+      "Custom deployment",
+      "Advanced security",
+      "Tailored solutions"
     ],
-    buttonText: "Contact us",
+    buttonText: "Register Interest",
     buttonVariant: "accent",
     highlight: false,
     accentColor: "bg-accent/10 text-accent",
@@ -58,7 +60,13 @@ const pricingPlans = [
 ];
 
 const HomePricing: React.FC = () => {
-  const dashboardUrl = "https://flow-hubdev.vercel.app/dashboard";
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | undefined>(undefined);
+  
+  const handleRegisterInterest = (planName: string) => {
+    setSelectedPlan(planName);
+    setModalOpen(true);
+  };
   
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -83,6 +91,11 @@ const HomePricing: React.FC = () => {
 
   return (
     <section id="pricing" className="py-16 bg-gray-50">
+      <RegisterInterestModal 
+        open={modalOpen} 
+        onOpenChange={setModalOpen} 
+        plan={selectedPlan} 
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div 
           className="text-center"
@@ -137,10 +150,11 @@ const HomePricing: React.FC = () => {
                   ))}
                 </div>
                 <div className="mt-8">
-                  <Button asChild className={`w-full ${plan.buttonColor}`}>
-                    <a href={dashboardUrl}>
-                      {plan.buttonText}
-                    </a>
+                  <Button 
+                    className={`w-full ${plan.buttonColor}`}
+                    onClick={() => handleRegisterInterest(plan.name)}
+                  >
+                    {plan.buttonText}
                   </Button>
                 </div>
               </div>
