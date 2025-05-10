@@ -18,7 +18,7 @@ const Navbar: React.FC = () => {
         <nav className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0">
-              <FloHubLogoImage className="h-8 w-auto" />
+              <FloHubLogoImage className="h-12 w-auto" />
             </Link>
           </div>
           
@@ -26,12 +26,9 @@ const Navbar: React.FC = () => {
             <a href="#features" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors">
               Features
             </a>
-            <a href="#pricing" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors">
-              Pricing
-            </a>
-            <a href="#testimonials" className="text-sm font-medium text-gray-600 hover:text-primary transition-colors">
-              Testimonials
-            </a>
+            <Button asChild variant="ghost" className="text-sm font-medium text-gray-600 hover:text-primary">
+              <a href="/register">Register for Testing</a>
+            </Button>
             <Button asChild variant="default">
               <a href={dashboardUrl}>Log in</a>
             </Button>
@@ -64,18 +61,11 @@ const Navbar: React.FC = () => {
             Features
           </a>
           <a 
-            href="#pricing" 
+            href="/register" 
             className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-primary"
             onClick={() => setMobileMenuOpen(false)}
           >
-            Pricing
-          </a>
-          <a 
-            href="#testimonials" 
-            className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-primary"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Testimonials
+            Register for Testing
           </a>
           <a 
             href={dashboardUrl}

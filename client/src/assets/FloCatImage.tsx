@@ -1,5 +1,5 @@
 import React from 'react';
-import floCatImg from './images/D5EE21D3-A261-4A85-A439-17CE55AA1A7B.png';
+import floCatImg from './images/flocat_transparent.png';
 
 interface FloCatImageProps {
   className?: string;
