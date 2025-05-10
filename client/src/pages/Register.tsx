@@ -20,11 +20,20 @@ import { FloCatImage } from '@/assets/FloCatImage';
 import { motion } from 'framer-motion';
 
 const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
+  firstName: z.string().min(2, {
+    message: "First name must be at least 2 characters.",
   }),
   email: z.string().email({
     message: "Please enter a valid email address.",
+  }),
+  gmailAccount: z.string().email({
+    message: "Please enter a valid Gmail address.",
+  }).refine(email => email.endsWith('@gmail.com'), {
+    message: "Please enter a valid Gmail address ending with @gmail.com",
+  }).optional().or(z.literal('')),
+  hasGmail: z.boolean().default(false),
+  devices: z.array(z.string()).min(1, {
+    message: "Please select at least one device.",
   }),
   role: z.string().min(2, {
     message: "Please tell us your role or profession.",
@@ -40,8 +49,11 @@ const Register: React.FC = () => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
+      firstName: "",
       email: "",
+      gmailAccount: "",
+      hasGmail: false,
+      devices: [],
       role: "",
       why: "",
     },
@@ -91,12 +103,12 @@ const Register: React.FC = () => {
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <FormField
                       control={form.control}
-                      name="name"
+                      name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Name</FormLabel>
+                          <FormLabel>Preferred First Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="Your name" {...field} />
+                            <Input placeholder="Your preferred first name" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -108,10 +120,96 @@ const Register: React.FC = () => {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>Email Address</FormLabel>
                           <FormControl>
                             <Input placeholder="you@example.com" type="email" {...field} />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="hasGmail"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 mt-1 accent-primary"
+                              checked={field.value}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>I have a Gmail account</FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {form.watch("hasGmail") && (
+                      <FormField
+                        control={form.control}
+                        name="gmailAccount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Gmail Address</FormLabel>
+                            <FormControl>
+                              <Input placeholder="yourname@gmail.com" type="email" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                    
+                    <FormField
+                      control={form.control}
+                      name="devices"
+                      render={() => (
+                        <FormItem>
+                          <div className="mb-2">
+                            <FormLabel>Devices You'll Use for Testing</FormLabel>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {["iPhone", "Android Phone", "iPad/Tablet", "Mac", "Windows PC", "Linux"].map((device) => (
+                              <FormField
+                                key={device}
+                                control={form.control}
+                                name="devices"
+                                render={({ field }) => {
+                                  return (
+                                    <FormItem
+                                      key={device}
+                                      className="flex flex-row items-start space-x-3 space-y-0"
+                                    >
+                                      <FormControl>
+                                        <input
+                                          type="checkbox"
+                                          className="h-4 w-4 mt-1 accent-primary"
+                                          checked={field.value?.includes(device)}
+                                          onChange={(e) => {
+                                            return e.target.checked
+                                              ? field.onChange([...field.value, device])
+                                              : field.onChange(
+                                                  field.value?.filter(
+                                                    (value) => value !== device
+                                                  )
+                                                )
+                                          }}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="text-sm font-normal">
+                                        {device}
+                                      </FormLabel>
+                                    </FormItem>
+                                  )
+                                }}
+                              />
+                            ))}
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
