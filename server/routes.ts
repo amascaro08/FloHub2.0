@@ -13,14 +13,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).send('OK');
   });
 
-  // API routes should be registered before static file handling
-  app.post("/api/register", async (req: Request, res: Response) => {
-
-  // Health check endpoint (accessible at /health)
-  app.get('/health', (_req: Request, res: Response) => {
-    res.status(200).send('OK');
-  });
-
   // Registration endpoints
   app.post("/api/register", async (req: Request, res: Response) => {
     try {
@@ -60,6 +52,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
-
   return httpServer;
 }
