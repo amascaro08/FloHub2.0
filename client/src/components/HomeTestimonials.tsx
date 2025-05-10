@@ -2,30 +2,31 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 
+// Using testimonial placeholders as the product is launching soon
 const testimonials = [
   {
-    name: "Alex Chen",
-    role: "Project Manager, Acme Inc.",
-    content: "FloHub has completely transformed how our team manages projects. The interface is intuitive, and automation features save us hours every week.",
-    initials: "AC",
+    name: "Placeholder",
+    role: "Early Access Tester",
+    content: "We're excited to share user testimonials here once FloHub launches. Register your interest to be among our first users and provide feedback.",
+    initials: "FH",
     bgColor: "bg-primary/20",
     textColor: "text-primary",
     rating: 5
   },
   {
-    name: "Sarah Johnson",
-    role: "Lead Developer, TechStart",
-    content: "As a developer, I appreciate how FloHub integrates with our existing tools. The API is robust, and the customization options let us adapt it to our workflow perfectly.",
-    initials: "SJ",
+    name: "Coming Soon",
+    role: "Beta Participant",
+    content: "User feedback will appear in this section after our initial launch. We're committed to building a platform that addresses real workflow needs.",
+    initials: "CS",
     bgColor: "bg-accent/20",
     textColor: "text-accent",
     rating: 5
   },
   {
-    name: "Mike Rodriguez",
-    role: "CEO, DreamWorks Studio",
-    content: "After trying multiple project management tools, we finally found FloHub. It's the perfect balance of power and simplicity that helps our creative team stay organized.",
-    initials: "MR",
+    name: "Your Feedback",
+    role: "Future User",
+    content: "Your experience and testimonial could be featured here. We value input from all users to continuously improve the FloHub experience.",
+    initials: "YF",
     bgColor: "bg-primary/20",
     textColor: "text-primary",
     rating: 5
@@ -65,9 +66,9 @@ const HomeTestimonials: React.FC = () => {
           viewport={{ once: true }}
         >
           <h2 className="text-base font-semibold text-primary uppercase tracking-wide">Testimonials</h2>
-          <p className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl">Loved by teams worldwide</p>
+          <p className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl">Join our early users</p>
           <p className="mt-4 max-w-2xl text-xl text-gray-500 mx-auto">
-            Here's what our customers have to say about how FloHub has transformed their workflow.
+            We're building FloHub with user feedback at the core. Register your interest to help shape the platform.
           </p>
         </motion.div>
 

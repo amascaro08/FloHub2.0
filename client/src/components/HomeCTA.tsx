@@ -26,7 +26,7 @@ const HomeCTA: React.FC = () => {
               Ready to transform your workflow?
             </h2>
             <p className="mt-4 text-lg text-primary-foreground/80">
-              Start your free 14-day trial today. No credit card required. Cancel anytime.
+              Our platform is coming soon. Register your interest to stay updated on our progress or log in to the existing dashboard.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4">
               <Button asChild variant="secondary" size="lg">
@@ -51,11 +51,7 @@ const HomeCTA: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             viewport={{ once: true }}
           >
-            <img 
-              src="https://i.imgur.com/X4sR1Ib.png" 
-              alt="FloHub Mascot" 
-              className="max-h-52 lg:max-h-64" 
-            />
+            <FloCatImage className="max-h-52 lg:max-h-64" />
           </motion.div>
         </div>
       </div>

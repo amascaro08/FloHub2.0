@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
+// Focusing on planned features without making specific claims
 const featuresData = [
   {
     icon: (
@@ -8,8 +9,8 @@ const featuresData = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
       </svg>
     ),
-    title: "Powerful Project Management",
-    description: "Create and manage tasks with ease. Organize them into projects, set deadlines, and track progress in real-time.",
+    title: "Workflow Management",
+    description: "Organize and visualize your workflows with an intuitive interface designed for productivity and clarity.",
     iconBg: "bg-primary"
   },
   {
@@ -18,8 +19,8 @@ const featuresData = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
       </svg>
     ),
-    title: "Automated Workflows",
-    description: "Automate repetitive tasks and processes. Build custom workflows that fit your team's unique needs.",
+    title: "Process Automation",
+    description: "Streamline repetitive tasks with automation capabilities designed to save time and reduce errors.",
     iconBg: "bg-accent"
   },
   {
@@ -28,8 +29,8 @@ const featuresData = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
       </svg>
     ),
-    title: "Team Collaboration",
-    description: "Share tasks, files, and feedback in real-time. Keep everyone on the same page with team dashboards.",
+    title: "Team Coordination",
+    description: "Facilitate better team communication and coordination with shared workspaces and collaborative tools.",
     iconBg: "bg-primary"
   },
   {
@@ -38,8 +39,8 @@ const featuresData = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
       </svg>
     ),
-    title: "Advanced Analytics",
-    description: "Track your team's performance with beautiful charts and reports. Make data-driven decisions to improve productivity.",
+    title: "Progress Tracking",
+    description: "Monitor progress and performance with visual indicators that help identify bottlenecks and opportunities.",
     iconBg: "bg-accent"
   },
   {
@@ -48,8 +49,8 @@ const featuresData = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
       </svg>
     ),
-    title: "Custom Dashboards",
-    description: "Create personalized dashboards to monitor what matters most to you. Stay on top of projects with at-a-glance views.",
+    title: "Customizable Interface",
+    description: "Adapt the platform to your team's specific needs with flexible layouts and personalization options.",
     iconBg: "bg-primary"
   },
   {
@@ -58,8 +59,8 @@ const featuresData = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
       </svg>
     ),
-    title: "Seamless Integrations",
-    description: "Connect with your favorite tools like Slack, Google Drive, and GitHub. Keep your tech stack working together.",
+    title: "External Connectivity",
+    description: "Designed with the capability to connect with external tools and services to enhance functionality.",
     iconBg: "bg-accent"
   }
 ];
