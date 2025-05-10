@@ -19,14 +19,14 @@ const getRegistrationConfirmationEmail = (registration: Registration) => {
         <div style="text-align: center; margin-bottom: 20px;">
           <h1 style="color: #16A34A;">FloHub</h1>
         </div>
-        <h2>Thanks for Registering Your Interest, ${registration.name}!</h2>
+        <h2>Thanks for Registering Your Interest, ${registration.firstName}!</h2>
         <p>We're excited to have you join our community of early testers. Here's what happens next:</p>
         <ul>
           <li>We're currently preparing for our July 2025 beta release</li>
           <li>We'll keep you updated on our progress</li>
           <li>You'll be among the first to get access when we launch</li>
         </ul>
-        <p>We've noted your preference for the <strong>${registration.plan}</strong> plan and that you primarily use <strong>${registration.device}</strong> devices.</p>
+        <p>We've noted your role as <strong>${registration.role}</strong> and your preferred devices: <strong>${registration.devices?.join(', ') || 'Not specified'}</strong>.</p>
         <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
           <p style="margin: 0;">If you have any questions or feedback, feel free to reply to this email. We'd love to hear from you!</p>
         </div>
@@ -48,10 +48,13 @@ const getAdminNotificationEmail = (registration: Registration) => {
         <h2>New User Registration</h2>
         <p>A new user has registered interest in FloHub:</p>
         <ul>
-          <li><strong>Name:</strong> ${registration.name}</li>
+          <li><strong>Name:</strong> ${registration.firstName}</li>
           <li><strong>Email:</strong> ${registration.email}</li>
-          <li><strong>Plan:</strong> ${registration.plan}</li>
-          <li><strong>Device:</strong> ${registration.device}</li>
+          <li><strong>Role:</strong> ${registration.role}</li>
+          <li><strong>Devices:</strong> ${registration.devices?.join(', ') || 'Not specified'}</li>
+          <li><strong>Has Gmail:</strong> ${registration.hasGmail ? 'Yes' : 'No'}</li>
+          ${registration.gmailAccount ? `<li><strong>Gmail Account:</strong> ${registration.gmailAccount}</li>` : ''}
+          <li><strong>Why interested:</strong> ${registration.why}</li>
           <li><strong>Date:</strong> ${new Date(registration.createdAt).toLocaleString()}</li>
         </ul>
         <p>You can view all registrations in the admin dashboard.</p>

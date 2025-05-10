@@ -28,6 +28,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const newRegistration = await storage.createRegistration(registration);
+      
+      // Send confirmation email to user
+      try {
+        await sendRegistrationConfirmation(newRegistration);
+        console.log(`Registration confirmation email sent to ${newRegistration.email}`);
+      } catch (emailError) {
+        console.error('Error sending confirmation email:', emailError);
+        // Continue with the registration process even if email fails
+      }
+      
+      // Send notification to admin
+      try {
+        await sendAdminNotification(newRegistration);
+        console.log('Admin notification email sent');
+      } catch (adminEmailError) {
+        console.error('Error sending admin notification email:', adminEmailError);
+      }
+      
       return res.status(201).json(newRegistration);
     } catch (error) {
       if (error instanceof ZodError) {
