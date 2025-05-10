@@ -28,7 +28,7 @@ const HomeDashboard: React.FC = () => {
         >
           <div className="relative mx-auto rounded-xl shadow-2xl overflow-hidden bg-white">
             <img 
-              src="/client/public/assets/IMG_0015.png" 
+              src="/images/IMG_0015.png" 
               alt="FloHub Dashboard Interface" 
               className="w-full mx-auto shadow-lg"
             />
