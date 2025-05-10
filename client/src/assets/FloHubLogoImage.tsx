@@ -7,7 +7,7 @@ interface FloHubLogoImageProps {
 export const FloHubLogoImage: React.FC<FloHubLogoImageProps> = ({ className = "h-8 w-auto" }) => {
   return (
     <img 
-      src="/assets/F5056AE2-59CA-4826-880F-838F1E2C4E5A.png" 
+      src="/client/public/assets/F5056AE2-59CA-4826-880F-838F1E2C4E5A.png" 
       alt="FloHub Logo" 
       className={className}
     />

@@ -18,7 +18,7 @@ const HomeHero: React.FC = () => {
               <span className="block text-primary">workflow with FloHub</span>
             </h1>
             <p className="mt-3 text-base text-gray-500 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
-              The all-in-one platform that helps teams manage projects, track progress, and automate workflows with powerful integrations.
+              Your all-in-one purrfect LifeOS.
             </p>
             <div className="mt-8 sm:max-w-lg sm:mx-auto sm:text-center lg:text-left lg:mx-0">
               <div className="flex flex-col sm:flex-row sm:justify-center lg:justify-start gap-4">
