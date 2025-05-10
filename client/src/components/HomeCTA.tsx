@@ -1,19 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { FloCatImage } from '@/assets/FloCatImage';
-import RegisterInterestModal from './RegisterInterestModal';
+import { Link } from 'wouter';
 
 const HomeCTA: React.FC = () => {
   const dashboardUrl = "https://flow-hubdev.vercel.app/dashboard";
-  const [modalOpen, setModalOpen] = useState(false);
   
   return (
     <section className="py-16 bg-primary">
-      <RegisterInterestModal 
-        open={modalOpen} 
-        onOpenChange={setModalOpen} 
-      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="lg:grid lg:grid-cols-2 lg:gap-8 lg:items-center">
           <motion.div
@@ -23,10 +18,10 @@ const HomeCTA: React.FC = () => {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
-              Ready to transform your workflow?
+              Ready to transform your productivity?
             </h2>
             <p className="mt-4 text-lg text-primary-foreground/80">
-              Our platform is coming soon. Register your interest to stay updated on our progress or log in to the existing dashboard.
+              FloHub is currently in testing. Register your interest today to join our exclusive beta program and be among the first to experience this AI-powered productivity tool.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4">
               <Button asChild variant="secondary" size="lg">
@@ -35,12 +30,14 @@ const HomeCTA: React.FC = () => {
                 </a>
               </Button>
               <Button 
+                asChild
                 variant="outline" 
                 size="lg" 
                 className="bg-white text-primary hover:bg-white/90"
-                onClick={() => setModalOpen(true)}
               >
-                Register Interest
+                <Link href="/register">
+                  Register for Testing
+                </Link>
               </Button>
             </div>
           </motion.div>
