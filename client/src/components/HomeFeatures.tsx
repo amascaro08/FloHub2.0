@@ -99,10 +99,10 @@ const HomeFeatures: React.FC = () => {
   };
 
   return (
-    <section id="features" className="pt-24 pb-16 bg-white">
-      <div className="relative flex justify-center">
+    <section id="features" className="pt-32 pb-16 bg-white">
+      <div className="relative flex justify-center mb-8">
         <motion.div 
-          className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 z-10"
+          className="absolute top-full left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
           initial={{ y: -50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, type: "spring", stiffness: 50 }}
@@ -111,12 +111,12 @@ const HomeFeatures: React.FC = () => {
           <img 
             src={floCatPeekingTopImg} 
             alt="FloCat Peeking" 
-            className="h-40 md:h-48"
+            className="h-40 md:h-40"
           />
         </motion.div>
       </div>
       
-      <div className="bg-gray-50 pt-24 pb-16">
+      <div className="bg-gray-50 pt-20 pb-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <motion.p 
