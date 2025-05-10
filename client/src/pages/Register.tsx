@@ -70,26 +70,17 @@ const Register: React.FC = () => {
         data.gmailAccount = "";
       }
       
-      const response = await apiRequest({
-        url: '/api/register',
-        method: 'POST',
-        data,
-      });
+      await apiRequest(
+        'POST',
+        '/api/register',
+        data
+      );
       
-      if (response.ok) {
-        toast({
-          title: "Registration successful!",
-          description: "Thank you for your interest in testing FloHub. We'll be in touch soon!",
-        });
-        form.reset();
-      } else {
-        const errorData = await response.json();
-        toast({
-          title: "Registration failed",
-          description: errorData.error || "Something went wrong. Please try again.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Registration successful!",
+        description: "Thank you for your interest in testing FloHub. We'll be in touch soon!",
+      });
+      form.reset();
     } catch (error) {
       console.error('Registration error:', error);
       toast({
