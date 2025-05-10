@@ -103,8 +103,8 @@ const HomeFeatures: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center relative">
           <motion.div 
-            className="absolute -top-16 left-1/2 transform -translate-x-1/2 z-10"
-            initial={{ y: -100, opacity: 0 }}
+            className="absolute top-8 left-1/2 transform -translate-x-1/2 z-10"
+            initial={{ y: -50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, type: "spring", stiffness: 50 }}
             viewport={{ once: true }}
@@ -115,7 +115,7 @@ const HomeFeatures: React.FC = () => {
                 alt="FloCat Peeking" 
                 className="h-32 md:h-40"
               />
-              <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 text-primary font-medium">
+              <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 text-primary font-medium text-sm">
                 FEATURES
               </div>
             </div>

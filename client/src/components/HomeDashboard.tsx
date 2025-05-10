@@ -34,10 +34,8 @@ const HomeDashboard: React.FC = () => {
               alt="FloHub Dashboard Interface" 
               className="w-full mx-auto shadow-lg"
             />
-            <motion.img 
-              src={floCatPeekingSideImg} 
-              alt="FloCat Peeking" 
-              className="absolute -right-0 bottom-0 h-36 md:h-52 lg:h-64 z-10"
+            <motion.div
+              className="absolute right-0 bottom-0 z-10 overflow-hidden"
               initial={{ x: 100, opacity: 0 }}
               whileInView={{ x: 0, opacity: 1 }}
               transition={{ 
@@ -47,7 +45,13 @@ const HomeDashboard: React.FC = () => {
                 stiffness: 100
               }}
               viewport={{ once: true }}
-            />
+            >
+              <img 
+                src={floCatPeekingSideImg} 
+                alt="FloCat Peeking" 
+                className="h-36 md:h-48 lg:h-60 transform translate-x-4"
+              />
+            </motion.div>
           </div>
         </motion.div>
       </div>
