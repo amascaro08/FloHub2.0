@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import dashboardImg from '../assets/images/IMG_0015.png';
 
 const HomeDashboard: React.FC = () => {
   return (
@@ -12,10 +13,10 @@ const HomeDashboard: React.FC = () => {
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-base font-semibold text-primary uppercase tracking-wide">Dashboard</h2>
-          <p className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl">Intuitive workflow management</p>
+          <h2 className="text-base font-semibold text-primary uppercase tracking-wide">Unified Dashboard</h2>
+          <p className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl">Everything in one place</p>
           <p className="mt-4 max-w-2xl text-xl text-gray-500 mx-auto">
-            Our clean, modern dashboard provides a clear view of your day, calendar, tasks, and habit tracking in one organized interface.
+            Combine multiple apps into one with our customizable, drag-and-drop interface featuring daily summaries, calendar, tasks, notes, and habit tracking — all enhanced by FloCat's intelligent assistance.
           </p>
         </motion.div>
         
@@ -28,7 +29,7 @@ const HomeDashboard: React.FC = () => {
         >
           <div className="relative mx-auto rounded-xl shadow-2xl overflow-hidden bg-white">
             <img 
-              src="/images/IMG_0015.png" 
+              src={dashboardImg} 
               alt="FloHub Dashboard Interface" 
               className="w-full mx-auto shadow-lg"
             />

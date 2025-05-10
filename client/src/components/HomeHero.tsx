@@ -14,11 +14,11 @@ const HomeHero: React.FC = () => {
         <div className="lg:grid lg:grid-cols-12 lg:gap-8">
           <div className="sm:text-center md:max-w-2xl md:mx-auto lg:col-span-6 lg:text-left lg:flex lg:flex-col lg:justify-center">
             <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
-              <span className="block">Streamline your</span>
-              <span className="block text-primary">workflow with FloHub</span>
+              <span className="block">Meet your digital</span>
+              <span className="block text-primary">work OS with personality</span>
             </h1>
             <p className="mt-3 text-base text-gray-500 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
-              Your all-in-one purrfect LifeOS.
+              Your all-in-one purrfect LifeOS. Combine tasks, calendar, notes, and habits in one customizable AI-powered dashboard with FloCat as your friendly assistant.
             </p>
             <div className="mt-8 sm:max-w-lg sm:mx-auto sm:text-center lg:text-left lg:mx-0">
               <div className="flex flex-col sm:flex-row sm:justify-center lg:justify-start gap-4">

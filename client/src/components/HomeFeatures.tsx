@@ -116,7 +116,7 @@ const HomeFeatures: React.FC = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             viewport={{ once: true }}
           >
-            FloHub brings together all the tools your team needs to stay in sync, hit deadlines, and reach your goals.
+            FloHub combines multiple productivity tools into one cross-platform dashboard, reducing friction and helping you structure your day with FloCat's friendly AI assistance.
           </motion.p>
         </div>
 

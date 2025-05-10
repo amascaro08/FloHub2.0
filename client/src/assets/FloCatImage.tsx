@@ -1,4 +1,5 @@
 import React from 'react';
+import floCatImg from './images/D5EE21D3-A261-4A85-A439-17CE55AA1A7B.png';
 
 interface FloCatImageProps {
   className?: string;
@@ -7,7 +8,7 @@ interface FloCatImageProps {
 export const FloCatImage: React.FC<FloCatImageProps> = ({ className = "h-40 w-auto" }) => {
   return (
     <img 
-      src="/images/D5EE21D3-A261-4A85-A439-17CE55AA1A7B.png" 
+      src={floCatImg} 
       alt="FloCat Mascot" 
       className={className}
     />
