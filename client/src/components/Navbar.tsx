@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { FloHubLogo } from '@/assets/FloHubLogo';
+import { FloHubLogoImage } from '@/assets/FloHubLogoImage';
 
 const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -18,7 +18,7 @@ const Navbar: React.FC = () => {
         <nav className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0">
-              <FloHubLogo className="h-8 w-auto" />
+              <FloHubLogoImage className="h-8 w-auto" />
             </Link>
           </div>
           

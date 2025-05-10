@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useMotionValue, motion, useTransform } from 'framer-motion';
+import { FloCatImage } from '@/assets/FloCatImage';
 
 const HomeHero: React.FC = () => {
   const dashboardUrl = "https://flow-hubdev.vercel.app/dashboard";
@@ -56,11 +57,7 @@ const HomeHero: React.FC = () => {
                 ease: "easeInOut" 
               }}
             >
-              <img 
-                src="https://i.imgur.com/X4sR1Ib.png" 
-                alt="FloHub Mascot - FloKit" 
-                className="max-h-80 lg:max-h-96" 
-              />
+              <FloCatImage className="max-h-80 lg:max-h-96" />
             </motion.div>
           </div>
         </div>

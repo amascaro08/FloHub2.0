@@ -1,5 +1,5 @@
 import React from 'react';
-import { FloHubLogo } from '@/assets/FloHubLogo';
+import { FloHubLogoImage } from '@/assets/FloHubLogoImage';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -9,7 +9,7 @@ const Footer: React.FC = () => {
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-1">
-            <FloHubLogo className="h-8 w-auto" />
+            <FloHubLogoImage className="h-8 w-auto" />
             <p className="mt-4 text-base text-gray-400">
               Making workflow management simple and efficient for teams around the world.
             </p>
