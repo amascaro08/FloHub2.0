@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,6 +18,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { FloCatImage } from '@/assets/FloCatImage';
 import { motion } from 'framer-motion';
+import { apiRequest } from '@/lib/queryClient';
 
 const formSchema = z.object({
   firstName: z.string().min(2, {
@@ -46,6 +47,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const Register: React.FC = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -59,14 +61,45 @@ const Register: React.FC = () => {
     },
   });
 
-  const onSubmit = (data: FormValues) => {
-    // In a real app, this would send the data to a backend
-    console.log(data);
-    toast({
-      title: "Registration received!",
-      description: "Thank you for your interest in testing FloHub. We'll be in touch soon!",
-    });
-    form.reset();
+  const onSubmit = async (data: FormValues) => {
+    try {
+      setIsSubmitting(true);
+      
+      // If hasGmail is false, make sure gmailAccount is empty
+      if (!data.hasGmail) {
+        data.gmailAccount = "";
+      }
+      
+      const response = await apiRequest({
+        url: '/api/register',
+        method: 'POST',
+        data,
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Registration successful!",
+          description: "Thank you for your interest in testing FloHub. We'll be in touch soon!",
+        });
+        form.reset();
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Registration failed",
+          description: errorData.error || "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast({
+        title: "Registration failed",
+        description: "There was an error submitting your registration. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -247,7 +280,13 @@ const Register: React.FC = () => {
                       )}
                     />
                     
-                    <Button type="submit" className="w-full">Submit Registration</Button>
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Submitting..." : "Submit Registration"}
+                    </Button>
                   </form>
                 </Form>
               </div>
