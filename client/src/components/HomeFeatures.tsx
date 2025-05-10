@@ -99,33 +99,36 @@ const HomeFeatures: React.FC = () => {
   };
 
   return (
-    <section id="features" className="relative bg-white">
-      {/* White space above the cat */}
-      <div className="pt-28 pb-4"></div>
-      
+    <section id="features">
       <div className="relative">
-        {/* The cat image positioned at the transition */}
-        <motion.div 
-          className="absolute top-full left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
-          initial={{ y: -50, opacity: 0 }}
-          whileInView={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, type: "spring", stiffness: 50 }}
-          viewport={{ once: true }}
-        >
-          <div className="relative">
-            <img 
-              src={floCatPeekingTopImg} 
-              alt="FloCat Peeking" 
-              className="h-32"
-            />
-            <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 text-primary font-medium text-sm">
+        <div className="bg-white h-40"></div>
+        
+        <div className="relative">
+          <div className="absolute left-1/2 top-0 transform -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center">
+            <motion.div
+              initial={{ y: -50, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8, type: "spring", stiffness: 50 }}
+              viewport={{ once: true }}
+            >
+              <img 
+                src={floCatPeekingTopImg} 
+                alt="FloCat Peeking" 
+                className="h-36"
+              />
+            </motion.div>
+            <motion.p
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="text-primary font-medium text-sm mt-1"
+            >
               FEATURES
-            </div>
+            </motion.p>
           </div>
-        </motion.div>
-      
-        {/* Gray background features section */}
-        <div className="bg-gray-50 pt-16 pb-16 px-4">
+        </div>
+        
+        <div className="bg-gray-50 pt-20 pb-16 px-4">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
               <motion.p 
