@@ -6,6 +6,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertRegistrationSchema } from "@shared/schema";
 import { ZodError } from "zod";
+import { sendRegistrationConfirmation, sendAdminNotification } from "./utils/emailService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
