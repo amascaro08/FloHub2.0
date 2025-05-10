@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import DashboardConcept from '@/assets/dashboard-concept';
 
 const HomeDashboard: React.FC = () => {
   return (
@@ -16,7 +15,7 @@ const HomeDashboard: React.FC = () => {
           <h2 className="text-base font-semibold text-primary uppercase tracking-wide">Dashboard</h2>
           <p className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl">Intuitive workflow management</p>
           <p className="mt-4 max-w-2xl text-xl text-gray-500 mx-auto">
-            Our dashboard will provide a clear, organized view of your projects and tasks. (Interface shown is a design concept)
+            Our clean, modern dashboard provides a clear view of your day, calendar, tasks, and habit tracking in one organized interface.
           </p>
         </motion.div>
         
@@ -27,8 +26,12 @@ const HomeDashboard: React.FC = () => {
           transition={{ duration: 0.8, delay: 0.2 }}
           viewport={{ once: true, margin: "-100px" }}
         >
-          <div className="relative mx-auto rounded-xl shadow-2xl overflow-hidden">
-            <DashboardConcept className="w-full h-[600px] overflow-hidden" />
+          <div className="relative mx-auto rounded-xl shadow-2xl overflow-hidden bg-white">
+            <img 
+              src="/assets/IMG_0015.png" 
+              alt="FloHub Dashboard Interface" 
+              className="w-full mx-auto shadow-lg"
+            />
           </div>
         </motion.div>
       </div>
