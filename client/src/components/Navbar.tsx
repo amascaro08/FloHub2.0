@@ -27,7 +27,7 @@ const Navbar: React.FC = () => {
               Features
             </a>
             <Button asChild variant="ghost" className="text-sm font-medium text-gray-600 hover:text-primary">
-              <a href="/register">Register for Testing</a>
+              <Link href="/register">Register for Testing</Link>
             </Button>
             <Button asChild variant="default">
               <a href={dashboardUrl}>Log in</a>
@@ -60,13 +60,13 @@ const Navbar: React.FC = () => {
           >
             Features
           </a>
-          <a 
+          <Link 
             href="/register" 
             className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 hover:text-primary"
             onClick={() => setMobileMenuOpen(false)}
           >
             Register for Testing
-          </a>
+          </Link>
           <a 
             href={dashboardUrl}
             className="block px-3 py-2 rounded-md text-base font-medium text-white bg-primary hover:bg-primary/90"
