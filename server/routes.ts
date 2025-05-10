@@ -8,14 +8,13 @@ import { insertRegistrationSchema } from "@shared/schema";
 import { ZodError } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Root endpoint for deployment health checks and serving the client app
-  app.get('/', (_req: Request, res: Response) => {
-    if (app.get('env') === 'production') {
-      res.sendFile(path.resolve(import.meta.dirname, "..", "dist", "public", "index.html"));
-    } else {
-      res.status(200).send('OK');
-    }
+  // Health check endpoint
+  app.get('/health', (_req: Request, res: Response) => {
+    res.status(200).send('OK');
   });
+
+  // API routes should be registered before static file handling
+  app.post("/api/register", async (req: Request, res: Response) => {
 
   // Health check endpoint (accessible at /health)
   app.get('/health', (_req: Request, res: Response) => {
