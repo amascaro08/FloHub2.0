@@ -36,7 +36,7 @@ const HomeDashboard: React.FC = () => {
             />
             <motion.div
               className="absolute right-0 bottom-0 z-10 overflow-hidden"
-              initial={{ x: 100, opacity: 0 }}
+              initial={{ x: 80, opacity: 0 }}
               whileInView={{ x: 0, opacity: 1 }}
               transition={{ 
                 duration: 0.8,
@@ -49,7 +49,7 @@ const HomeDashboard: React.FC = () => {
               <img 
                 src={floCatPeekingSideImg} 
                 alt="FloCat Peeking" 
-                className="h-36 md:h-48 lg:h-60 transform translate-x-4"
+                className="h-32 md:h-40 lg:h-52 transform translate-x-8"
               />
             </motion.div>
           </div>
