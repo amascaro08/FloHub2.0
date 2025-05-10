@@ -1,14 +1,19 @@
 import nodemailer from 'nodemailer';
 import { Registration } from '@shared/schema';
 
-// Create a transporter object using SMTP transport
-const transporter = nodemailer.createTransport({
-  service: 'gmail', // Using Gmail as the email service
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// For development, we'll use a console-based "transport"
+// that just logs emails instead of sending them
+const consoleTransport = {
+  sendMail: async (mailOptions: any) => {
+    console.log('\n-------- EMAIL WOULD HAVE BEEN SENT --------');
+    console.log('From:', mailOptions.from);
+    console.log('To:', mailOptions.to);
+    console.log('Subject:', mailOptions.subject);
+    console.log('HTML Content Summary:', mailOptions.html.substring(0, 150) + '...');
+    console.log('----------------------------------------\n');
+    return { messageId: 'mock-id-' + Date.now() };
+  }
+};
 
 // Email template for registration confirmation
 const getRegistrationConfirmationEmail = (registration: Registration) => {
@@ -68,14 +73,14 @@ export const sendRegistrationConfirmation = async (registration: Registration): 
   try {
     const emailContent = getRegistrationConfirmationEmail(registration);
     
-    await transporter.sendMail({
-      from: `"FloHub Team" <${process.env.EMAIL_USER}>`,
+    await consoleTransport.sendMail({
+      from: '"FloHub Team" <flohub@example.com>',
       to: registration.email,
       subject: emailContent.subject,
       html: emailContent.html,
     });
     
-    console.log(`Confirmation email sent to ${registration.email}`);
+    console.log(`Simulated confirmation email sent to ${registration.email}`);
     return true;
   } catch (error) {
     console.error('Error sending confirmation email:', error);
@@ -88,14 +93,14 @@ export const sendAdminNotification = async (registration: Registration): Promise
   try {
     const emailContent = getAdminNotificationEmail(registration);
     
-    await transporter.sendMail({
-      from: `"FloHub System" <${process.env.EMAIL_USER}>`,
-      to: process.env.EMAIL_USER, // Send to admin email (same as sender for now)
+    await consoleTransport.sendMail({
+      from: '"FloHub System" <flohub-system@example.com>',
+      to: 'admin@flohub.com', // This would be replaced with a real admin email in production
       subject: emailContent.subject,
       html: emailContent.html,
     });
     
-    console.log('Admin notification email sent');
+    console.log('Simulated admin notification email sent');
     return true;
   } catch (error) {
     console.error('Error sending admin notification email:', error);
