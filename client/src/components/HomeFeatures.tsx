@@ -99,67 +99,77 @@ const HomeFeatures: React.FC = () => {
   };
 
   return (
-    <section id="features" className="pt-36 pb-8 relative bg-white">
-      <div className="relative flex justify-center">
+    <section id="features" className="relative bg-white">
+      {/* White space above the cat */}
+      <div className="pt-28 pb-4"></div>
+      
+      <div className="relative">
+        {/* The cat image positioned at the transition */}
         <motion.div 
-          className="absolute bottom-0 left-1/2 transform -translate-x-1/2 z-10"
+          className="absolute top-full left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
           initial={{ y: -50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, type: "spring", stiffness: 50 }}
           viewport={{ once: true }}
         >
-          <img 
-            src={floCatPeekingTopImg} 
-            alt="FloCat Peeking" 
-            className="h-40 translate-y-20"
-          />
-        </motion.div>
-      </div>
-      
-      <div className="bg-gray-50 pt-16 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <motion.p 
-              className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl"
-              initial={{ opacity: 0, y: -10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              viewport={{ once: true }}
-            >
-              Everything you need to streamline your workflow
-            </motion.p>
-            <motion.p 
-              className="mt-4 max-w-2xl text-xl text-gray-500 mx-auto"
-              initial={{ opacity: 0, y: -10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              viewport={{ once: true }}
-            >
-              FloHub combines multiple productivity tools into one cross-platform dashboard, reducing friction and helping you structure your day with FloCat's friendly AI assistance.
-            </motion.p>
+          <div className="relative">
+            <img 
+              src={floCatPeekingTopImg} 
+              alt="FloCat Peeking" 
+              className="h-32"
+            />
+            <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 text-primary font-medium text-sm">
+              FEATURES
+            </div>
           </div>
-
-          <motion.div 
-            className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3"
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-          >
-            {featuresData.map((feature, index) => (
-              <motion.div 
-                key={index}
-                className="relative bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md hover:-translate-y-1"
-                variants={itemVariants}
+        </motion.div>
+      
+        {/* Gray background features section */}
+        <div className="bg-gray-50 pt-16 pb-16 px-4">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <motion.p 
+                className="mt-2 text-3xl font-extrabold text-gray-900 sm:text-4xl"
+                initial={{ opacity: 0, y: -10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                viewport={{ once: true }}
               >
-                <div className={`flex items-center justify-center h-12 w-12 rounded-md ${feature.iconBg} text-white mb-5`}>
-                  {feature.icon}
-                </div>
-                <h3 className="text-lg font-medium text-gray-900">{feature.title}</h3>
-                <p className="mt-2 text-base text-gray-500">{feature.description}</p>
-              </motion.div>
-            ))}
-          </motion.div>
+                Everything you need to streamline your workflow
+              </motion.p>
+              <motion.p 
+                className="mt-4 max-w-2xl text-xl text-gray-500 mx-auto"
+                initial={{ opacity: 0, y: -10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                viewport={{ once: true }}
+              >
+                FloHub combines multiple productivity tools into one cross-platform dashboard, reducing friction and helping you structure your day with FloCat's friendly AI assistance.
+              </motion.p>
+            </div>
+
+            <motion.div 
+              className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3"
+              variants={containerVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-100px" }}
+            >
+              {featuresData.map((feature, index) => (
+                <motion.div 
+                  key={index}
+                  className="relative bg-white p-6 rounded-xl shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md hover:-translate-y-1"
+                  variants={itemVariants}
+                >
+                  <div className={`flex items-center justify-center h-12 w-12 rounded-md ${feature.iconBg} text-white mb-5`}>
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900">{feature.title}</h3>
+                  <p className="mt-2 text-base text-gray-500">{feature.description}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
         </div>
       </div>
     </section>
