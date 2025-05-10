@@ -37,7 +37,7 @@ const HomeDashboard: React.FC = () => {
             <motion.img 
               src={floCatPeekingSideImg} 
               alt="FloCat Peeking" 
-              className="absolute -right-1 bottom-0 h-36 md:h-48 lg:h-56 z-10"
+              className="absolute -right-0 bottom-0 h-36 md:h-52 lg:h-64 z-10"
               initial={{ x: 100, opacity: 0 }}
               whileInView={{ x: 0, opacity: 1 }}
               transition={{ 
