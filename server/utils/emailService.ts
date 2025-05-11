@@ -64,7 +64,7 @@ const getRegistrationConfirmationEmail = (registration: Registration) => {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
         <div style="text-align: center; margin-bottom: 30px;">
-          <img src="https://www.gstatic.com/webp/gallery/1.jpg" alt="FloHub Logo" style="width: 150px; height: auto;" />
+          <img src="https://i.ibb.co/C0YV8hS/flohub-logo.png" alt="FloHub Logo" style="width: 150px; height: auto;" />
         </div>
         
         <p style="font-size: 16px; line-height: 1.6;">Hi ${registration.firstName},</p>
@@ -98,7 +98,7 @@ const getAdminNotificationEmail = (registration: Registration) => {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
         <div style="text-align: center; margin-bottom: 30px;">
-          <img src="https://www.gstatic.com/webp/gallery/1.jpg" alt="FloHub Logo" style="width: 150px; height: auto;" />
+          <img src="https://i.ibb.co/C0YV8hS/flohub-logo.png" alt="FloHub Logo" style="width: 150px; height: auto;" />
         </div>
         <h2>New User Registration</h2>
         <p>A new user has registered interest in FloHub:</p>
