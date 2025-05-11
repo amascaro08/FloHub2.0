@@ -110,6 +110,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ error: 'Failed to send test emails' });
     }
   });
+  
+  // Endpoint to send welcome emails to all registered users (one-time use)
+  app.get("/api/send-welcome-to-all", async (_req: Request, res: Response) => {
+    try {
+      // Get all registrations
+      const registrations = await storage.getRegistrations();
+      
+      if (registrations.length === 0) {
+        return res.status(404).json({ error: 'No registrations found' });
+      }
+      
+      const results = [];
+      
+      // Send welcome email to each registration
+      for (const registration of registrations) {
+        try {
+          await sendRegistrationConfirmation(registration);
+          results.push({ 
+            email: registration.email, 
+            success: true 
+          });
+        } catch (error) {
+          console.error(`Error sending to ${registration.email}:`, error);
+          results.push({ 
+            email: registration.email, 
+            success: false, 
+            error: error.message 
+          });
+        }
+        
+        // Add a small delay to prevent rate limiting
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+      
+      return res.status(200).json({ 
+        message: `Sent welcome emails to ${results.filter(r => r.success).length} out of ${registrations.length} users`, 
+        results
+      });
+    } catch (error) {
+      console.error('Error sending bulk emails:', error);
+      return res.status(500).json({ error: 'Failed to send bulk emails' });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
