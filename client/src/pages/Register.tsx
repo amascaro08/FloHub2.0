@@ -71,13 +71,23 @@ const Register: React.FC = () => {
         data.gmailAccount = "";
       }
       
-      await apiRequest(
+      const response = await apiRequest(
         'POST',
         '/api/register',
         data
       );
       
-      // Show success screen instead of toast
+      // Handle the case where the user is already registered
+      // The API now returns 200 in this case with a specific message
+      if (response && typeof response === 'object' && 'message' in response) {
+        toast({
+          title: "Already Registered",
+          description: response.message as string,
+          variant: "default",
+        });
+      }
+      
+      // Show success screen
       setRegistrationSuccess(true);
       form.reset();
     } catch (error) {

@@ -22,8 +22,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if the email already exists
       const existingRegistration = await storage.getRegistrationByEmail(registration.email);
       if (existingRegistration) {
-        return res.status(400).json({ 
-          error: "Email already registered" 
+        // Instead of returning an error, let's reuse the existing registration
+        // and send them an email anyway - it's more user-friendly
+        console.log(`Email ${registration.email} already registered, sending email anyway`);
+        
+        // Send confirmation email to user
+        try {
+          await sendRegistrationConfirmation(existingRegistration);
+          console.log(`Re-confirmation email sent to ${existingRegistration.email}`);
+        } catch (emailError) {
+          console.error('Error sending re-confirmation email:', emailError);
+        }
+        
+        return res.status(200).json({
+          message: "You're already registered! We've sent you another confirmation email.",
+          id: existingRegistration.id,
         });
       }
       
