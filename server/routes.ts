@@ -82,6 +82,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ error: "Internal server error" });
     }
   });
+  
+  // Testing endpoint for sending emails without registration
+  app.get("/api/test-email", async (_req: Request, res: Response) => {
+    try {
+      // Get the most recent registration
+      const registrations = await storage.getRegistrations();
+      
+      if (registrations.length === 0) {
+        return res.status(404).json({ error: 'No registrations found to test with' });
+      }
+      
+      // Use the latest registration
+      const registration = registrations[registrations.length - 1];
+      
+      // Send both emails
+      await sendRegistrationConfirmation(registration);
+      await sendAdminNotification(registration);
+      
+      return res.status(200).json({ 
+        message: 'Test emails sent successfully', 
+        sentTo: registration.email,
+        registrationId: registration.id
+      });
+    } catch (error) {
+      console.error('Error sending test emails:', error);
+      return res.status(500).json({ error: 'Failed to send test emails' });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
