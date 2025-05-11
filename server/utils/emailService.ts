@@ -61,7 +61,7 @@ const getRegistrationConfirmationEmail = (registration: Registration) => {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
         <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #16A34A; font-size: 38px; margin: 0; font-weight: bold;">FloHub</h1>
+          <h1 style="font-size: 38px; margin: 0; font-weight: bold;"><span style="color: #0D9488;">Flo</span><span style="color: #F97316;">Hub</span></h1>
           <p style="color: #666; margin-top: 5px; font-size: 16px;">Your all-in-one purrfect LifeOS</p>
         </div>
         
@@ -96,7 +96,7 @@ const getAdminNotificationEmail = (registration: Registration) => {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
         <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="color: #16A34A; font-size: 32px; margin: 0; font-weight: bold;">FloHub Admin</h1>
+          <h1 style="font-size: 32px; margin: 0; font-weight: bold;"><span style="color: #0D9488;">Flo</span><span style="color: #F97316;">Hub</span> <span style="color: #666;">Admin</span></h1>
           <p style="color: #666; margin-top: 5px; font-size: 16px;">Registration Alert</p>
         </div>
         
