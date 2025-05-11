@@ -60,7 +60,7 @@ const floHubLogoBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAUAAAADwCAYAAABxLb1rAAAACXBIWX
 // Email template for registration confirmation
 const getRegistrationConfirmationEmail = (registration: Registration) => {
   return {
-    subject: "Welcome to FloHub - You're In! 🚀",
+    subject: "Welcome to FloHub - Your Registration Confirmation",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
         <div style="text-align: center; margin-bottom: 30px;">
@@ -125,10 +125,17 @@ export const sendRegistrationConfirmation = async (registration: Registration): 
     
     // Send the email
     await transporter.sendMail({
-      from: `"Alvaro from FloHub" <${process.env.EMAIL_USER || 'flohub@example.com'}>`,
+      from: `"Alvaro - FloHub Team" <${process.env.EMAIL_USER || 'flohub@example.com'}>`,
       to: registration.email,
       subject: emailContent.subject,
       html: emailContent.html,
+      // Make the email appear more legitimate to reduce spam filtering
+      headers: {
+        'X-Priority': '1',
+        'Importance': 'high',
+        'X-MSMail-Priority': 'High',
+        'X-Mailer': 'FloHubMailer'
+      }
     });
     
     console.log(`Confirmation email sent to ${registration.email}`);
