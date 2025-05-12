@@ -11,7 +11,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
 
 // Define the schema for updates
 const updateFormSchema = z.object({
@@ -86,13 +85,20 @@ export default function AdminUpdates() {
         recipientIds: data.recipientIds,
       };
       
-      return await apiRequest('/api/updates', {
+      const response = await fetch('/api/updates', {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: {
           'Content-Type': 'application/json',
         },
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send update');
+      }
+      
+      return await response.json();
     },
     onSuccess: () => {
       toast({
