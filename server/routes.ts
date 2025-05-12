@@ -4,9 +4,9 @@ import path from "path";
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertRegistrationSchema } from "@shared/schema";
+import { insertRegistrationSchema, insertUpdateSchema } from "@shared/schema";
 import { ZodError } from "zod";
-import { sendRegistrationConfirmation, sendAdminNotification } from "./utils/emailService";
+import { sendRegistrationConfirmation, sendAdminNotification, sendUpdateEmail } from "./utils/emailService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
@@ -136,7 +136,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           results.push({ 
             email: registration.email, 
             success: false, 
-            error: error.message 
+            error: error instanceof Error ? error.message : String(error)
           });
         }
         
@@ -151,6 +151,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error sending bulk emails:', error);
       return res.status(500).json({ error: 'Failed to send bulk emails' });
+    }
+  });
+  
+  // API endpoints for updates
+  
+  // Get all updates
+  app.get("/api/updates", async (_req: Request, res: Response) => {
+    try {
+      const updates = await storage.getUpdates();
+      return res.status(200).json(updates);
+    } catch (error) {
+      console.error('Error fetching updates:', error);
+      return res.status(500).json({ error: 'Failed to fetch updates' });
+    }
+  });
+  
+  // Get a specific update
+  app.get("/api/updates/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid update ID' });
+      }
+      
+      const update = await storage.getUpdate(id);
+      if (!update) {
+        return res.status(404).json({ error: 'Update not found' });
+      }
+      
+      return res.status(200).json(update);
+    } catch (error) {
+      console.error('Error fetching update:', error);
+      return res.status(500).json({ error: 'Failed to fetch update' });
+    }
+  });
+  
+  // Create and send a new update
+  app.post("/api/updates", async (req: Request, res: Response) => {
+    try {
+      // Parse and validate the update data
+      const updateData = insertUpdateSchema.parse(req.body);
+      
+      // Determine recipients
+      let recipients: any[] = [];
+      
+      // If recipientIds is empty, send to all registrations
+      if (!updateData.recipientIds || updateData.recipientIds.length === 0) {
+        recipients = await storage.getRegistrations();
+      } else {
+        // Otherwise, get the specified registrations
+        const allRegistrations = await storage.getRegistrations();
+        recipients = allRegistrations.filter(r => 
+          updateData.recipientIds?.includes(r.id.toString())
+        );
+      }
+      
+      if (recipients.length === 0) {
+        return res.status(400).json({ error: 'No recipients found for this update' });
+      }
+      
+      // Create the update record first
+      const update = await storage.createUpdate({
+        ...updateData,
+        recipientCount: recipients.length
+      });
+      
+      // Send the emails
+      const emailResult = await sendUpdateEmail(update, recipients);
+      
+      return res.status(200).json({
+        update,
+        emailResult,
+        message: `Update created and sent to ${emailResult.sent} out of ${recipients.length} recipients`
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ 
+          error: 'Invalid update data', 
+          details: error.errors 
+        });
+      }
+      
+      console.error('Error creating update:', error);
+      return res.status(500).json({ error: 'Failed to create and send update' });
     }
   });
 

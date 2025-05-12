@@ -57,6 +57,7 @@ export const insertUpdateSchema = createInsertSchema(updates).pick({
   content: true,
   sentBy: true,
   recipientIds: true,
+  recipientCount: true,
 });
 
 export type InsertUpdate = z.infer<typeof insertUpdateSchema>;
