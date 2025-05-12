@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import './admin-updates.css';
 import { Pencil, Trash2, X, Check } from 'lucide-react';
 
 // Define the schema for updates
@@ -58,7 +59,7 @@ export default function AdminUpdates() {
   });
 
   // Form setup
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<UpdateFormValues>({
+  const { register, handleSubmit, reset, setValue, control, formState: { errors } } = useForm<UpdateFormValues>({
     resolver: zodResolver(updateFormSchema),
     defaultValues: {
       title: '',

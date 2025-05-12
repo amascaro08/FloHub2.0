@@ -1,0 +1,26 @@
+/* Styling for ReactQuill editor */
+.quill-editor-container {
+  margin-bottom: 60px; /* Space for toolbar */
+}
+
+.quill-editor-container .ql-editor {
+  min-height: 200px;
+  background-color: white;
+  border-radius: 0 0 0.375rem 0.375rem;
+}
+
+.quill-editor-container .ql-toolbar {
+  border-radius: 0.375rem 0.375rem 0 0;
+  background-color: #f9fafb;
+}
+
+.quill-editor-container .ql-container {
+  border-radius: 0 0 0.375rem 0.375rem;
+}
+
+/* Make ReactQuill responsive */
+@media (max-width: 768px) {
+  .quill-editor-container .ql-toolbar {
+    flex-wrap: wrap;
+  }
+}

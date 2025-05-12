@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import './updates.css';
 
 export default function Updates() {
   // Fetch all updates
@@ -60,7 +61,7 @@ export default function Updates() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6">
-                  <div className="prose prose-teal max-w-none">
+                  <div className="prose prose-teal max-w-none update-content">
                     <div dangerouslySetInnerHTML={{ __html: update.content }} />
                   </div>
                 </CardContent>
