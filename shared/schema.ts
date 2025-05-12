@@ -40,3 +40,24 @@ export const insertRegistrationSchema = createInsertSchema(registrations).pick({
 
 export type InsertRegistration = z.infer<typeof insertRegistrationSchema>;
 export type Registration = typeof registrations.$inferSelect;
+
+// Schema for updates sent to registered users
+export const updates = pgTable("updates", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  sentBy: text("sent_by").notNull(),
+  recipientCount: integer("recipient_count").default(0).notNull(),
+  recipientIds: text("recipient_ids").array().default([]),
+});
+
+export const insertUpdateSchema = createInsertSchema(updates).pick({
+  title: true,
+  content: true,
+  sentBy: true,
+  recipientIds: true,
+});
+
+export type InsertUpdate = z.infer<typeof insertUpdateSchema>;
+export type Update = typeof updates.$inferSelect;
