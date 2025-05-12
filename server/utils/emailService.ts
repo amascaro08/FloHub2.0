@@ -75,6 +75,8 @@ const getRegistrationConfirmationEmail = (registration: Registration) => {
         
         <p style="font-size: 16px; line-height: 1.6;">Your support means everything. As one of the first to join, your feedback will help shape the future of FloHub. I want to build something truly useful — and I can't do it without you.</p>
         
+        <p style="font-size: 16px; line-height: 1.6;">To stay updated on the latest developments and announcements, make sure to check our updates page at <a href="https://flohub.replit.com/updates" style="color: #0D9488; text-decoration: underline;">flohub.replit.com/updates</a>. We'll be posting regular progress updates there!</p>
+        
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eaeaea;">
           <p style="font-size: 16px; line-height: 1.6; margin-bottom: 5px;">Talk soon,</p>
           <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Alvaro</p>
