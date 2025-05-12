@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { Pencil, Trash2, X, Check } from 'lucide-react';
 
 // Define the schema for updates
 const updateFormSchema = z.object({
@@ -28,6 +30,12 @@ export default function AdminUpdates() {
   const queryClient = useQueryClient();
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
+  const [editingUpdateId, setEditingUpdateId] = useState<number | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    title: '',
+    content: '',
+    sentBy: ''
+  });
 
   // Fetch all registrations
   const { data: registrations, isLoading: loadingRegistrations } = useQuery({
@@ -118,6 +126,71 @@ export default function AdminUpdates() {
       });
     }
   });
+  
+  // Update existing update mutation
+  const updateUpdateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number, data: any }) => {
+      const response = await fetch(`/api/updates/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update');
+      }
+      
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Update edited',
+        description: 'The update was successfully edited.',
+      });
+      setEditingUpdateId(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/updates'] });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error editing update',
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        variant: 'destructive',
+      });
+    }
+  });
+  
+  // Delete update mutation
+  const deleteUpdateMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/updates/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete update');
+      }
+      
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Update deleted',
+        description: 'The update was successfully deleted.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/updates'] });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error deleting update',
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        variant: 'destructive',
+      });
+    }
+  });
 
   // Form submission handler
   const onSubmit = async (data: UpdateFormValues) => {
@@ -140,6 +213,38 @@ export default function AdminUpdates() {
         ? prev.filter(r => r !== id)
         : [...prev, id]
     );
+  };
+  
+  // Start editing an update
+  const handleEditClick = (update: any) => {
+    setEditingUpdateId(update.id);
+    setEditFormData({
+      title: update.title,
+      content: update.content,
+      sentBy: update.sentBy
+    });
+  };
+  
+  // Cancel editing
+  const handleCancelEdit = () => {
+    setEditingUpdateId(null);
+  };
+  
+  // Save edited update
+  const handleSaveEdit = () => {
+    if (editingUpdateId) {
+      updateUpdateMutation.mutate({
+        id: editingUpdateId,
+        data: editFormData
+      });
+    }
+  };
+  
+  // Handle delete confirmation
+  const handleDeleteClick = (id: number) => {
+    if (window.confirm('Are you sure you want to delete this update? This action cannot be undone.')) {
+      deleteUpdateMutation.mutate(id);
+    }
   };
 
   return (
@@ -181,16 +286,34 @@ export default function AdminUpdates() {
                   <div className="space-y-2">
                     <Label htmlFor="content">Email Content</Label>
                     <div className="text-sm text-gray-500 mb-2">
-                      You can use HTML for formatting (e.g., &lt;b&gt;bold&lt;/b&gt;, &lt;i&gt;italic&lt;/i&gt;, &lt;a href="..."&gt;link&lt;/a&gt;)
+                      Use the rich text editor below to format your content
                     </div>
-                    <Textarea
-                      id="content"
-                      placeholder="Enter the email content with HTML formatting"
-                      rows={10}
-                      {...register('content')}
+                    <Controller
+                      name="content"
+                      control={control}
+                      render={({ field }) => (
+                        <div className="quill-editor-container">
+                          <ReactQuill
+                            theme="snow"
+                            value={field.value}
+                            onChange={field.onChange}
+                            modules={{
+                              toolbar: [
+                                [{ 'header': [1, 2, 3, false] }],
+                                ['bold', 'italic', 'underline', 'strike'],
+                                [{'color': []}, {'background': []}],
+                                [{'list': 'ordered'}, {'list': 'bullet'}],
+                                ['link', 'image'],
+                                ['clean']
+                              ]
+                            }}
+                            style={{ height: '200px', marginBottom: '50px' }}
+                          />
+                        </div>
+                      )}
                     />
                     {errors.content && (
-                      <p className="text-sm text-red-500">{errors.content.message}</p>
+                      <p className="text-sm text-red-500 mt-14">{errors.content.message}</p>
                     )}
                   </div>
 
@@ -274,23 +397,119 @@ export default function AdminUpdates() {
                   <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
                     {updates.map((update: any) => (
                       <Card key={update.id} className="border-gray-200">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-lg">{update.title}</CardTitle>
-                          <div className="flex justify-between items-center text-sm text-gray-500">
-                            <span>Sent by: {update.sentBy}</span>
-                            <span className="text-xs">
-                              {new Date(update.createdAt).toLocaleString()}
-                            </span>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-sm bg-gray-50 p-3 rounded-md max-h-32 overflow-y-auto">
-                            <div dangerouslySetInnerHTML={{ __html: update.content }} />
-                          </div>
-                        </CardContent>
-                        <CardFooter className="pt-0 text-xs text-gray-500">
-                          Sent to {update.recipientCount} recipients
-                        </CardFooter>
+                        {editingUpdateId === update.id ? (
+                          <CardContent className="pt-4">
+                            <div className="space-y-4">
+                              <div>
+                                <Label htmlFor={`edit-title-${update.id}`}>Title</Label>
+                                <Input
+                                  id={`edit-title-${update.id}`}
+                                  value={editFormData.title}
+                                  onChange={(e) => setEditFormData({
+                                    ...editFormData,
+                                    title: e.target.value
+                                  })}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor={`edit-content-${update.id}`}>Content</Label>
+                                <div className="mt-1">
+                                  <ReactQuill
+                                    theme="snow"
+                                    value={editFormData.content}
+                                    onChange={(content) => setEditFormData({
+                                      ...editFormData,
+                                      content
+                                    })}
+                                    modules={{
+                                      toolbar: [
+                                        [{ 'header': [1, 2, 3, false] }],
+                                        ['bold', 'italic', 'underline', 'strike'],
+                                        [{'color': []}, {'background': []}],
+                                        [{'list': 'ordered'}, {'list': 'bullet'}],
+                                        ['link', 'image'],
+                                        ['clean']
+                                      ]
+                                    }}
+                                    style={{ height: '150px', marginBottom: '40px' }}
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <Label htmlFor={`edit-sender-${update.id}`}>Sender</Label>
+                                <Input
+                                  id={`edit-sender-${update.id}`}
+                                  value={editFormData.sentBy}
+                                  onChange={(e) => setEditFormData({
+                                    ...editFormData,
+                                    sentBy: e.target.value
+                                  })}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div className="flex justify-end space-x-2 pt-4">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleCancelEdit}
+                                  className="flex items-center"
+                                >
+                                  <X className="mr-1 h-4 w-4" /> Cancel
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={handleSaveEdit}
+                                  className="flex items-center bg-teal-600 hover:bg-teal-700"
+                                  disabled={updateUpdateMutation.isPending}
+                                >
+                                  <Check className="mr-1 h-4 w-4" /> 
+                                  {updateUpdateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        ) : (
+                          <>
+                            <CardHeader className="pb-2">
+                              <div className="flex justify-between">
+                                <CardTitle className="text-lg">{update.title}</CardTitle>
+                                <div className="flex space-x-1">
+                                  <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="h-8 w-8 text-gray-500 hover:text-teal-600"
+                                    onClick={() => handleEditClick(update)}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    size="icon" 
+                                    variant="ghost" 
+                                    className="h-8 w-8 text-gray-500 hover:text-red-600"
+                                    onClick={() => handleDeleteClick(update.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="flex justify-between items-center text-sm text-gray-500">
+                                <span>Sent by: {update.sentBy}</span>
+                                <span className="text-xs">
+                                  {new Date(update.createdAt).toLocaleString()}
+                                </span>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="text-sm bg-gray-50 p-3 rounded-md max-h-32 overflow-y-auto">
+                                <div dangerouslySetInnerHTML={{ __html: update.content }} />
+                              </div>
+                            </CardContent>
+                            <CardFooter className="pt-0 text-xs text-gray-500">
+                              Sent to {update.recipientCount} recipients
+                            </CardFooter>
+                          </>
+                        )}
                       </Card>
                     ))}
                   </div>

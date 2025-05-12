@@ -19,6 +19,8 @@ export interface IStorage {
   createUpdate(update: InsertUpdate): Promise<Update>;
   getUpdates(): Promise<Update[]>;
   getUpdate(id: number): Promise<Update | undefined>;
+  updateUpdate(id: number, updateData: Partial<InsertUpdate>): Promise<Update | undefined>;
+  deleteUpdate(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -85,6 +87,23 @@ export class DatabaseStorage implements IStorage {
       .from(updates)
       .where(eq(updates.id, id));
     return update || undefined;
+  }
+  
+  async updateUpdate(id: number, updateData: Partial<InsertUpdate>): Promise<Update | undefined> {
+    const [updatedUpdate] = await db
+      .update(updates)
+      .set(updateData)
+      .where(eq(updates.id, id))
+      .returning();
+    return updatedUpdate || undefined;
+  }
+  
+  async deleteUpdate(id: number): Promise<boolean> {
+    const result = await db
+      .delete(updates)
+      .where(eq(updates.id, id))
+      .returning({ id: updates.id });
+    return result.length > 0;
   }
 }
 

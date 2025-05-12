@@ -187,6 +187,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Update an existing update
+  app.put("/api/updates/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid update ID' });
+      }
+      
+      // Validate update data
+      const updateData = req.body;
+      
+      // Check if update exists
+      const existingUpdate = await storage.getUpdate(id);
+      if (!existingUpdate) {
+        return res.status(404).json({ error: 'Update not found' });
+      }
+      
+      // Update the record
+      const updatedUpdate = await storage.updateUpdate(id, updateData);
+      if (!updatedUpdate) {
+        return res.status(500).json({ error: 'Failed to update record' });
+      }
+      
+      return res.status(200).json({
+        message: 'Update successfully edited',
+        update: updatedUpdate
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ 
+          error: 'Invalid update data', 
+          details: error.errors 
+        });
+      }
+      
+      console.error('Error updating update:', error);
+      return res.status(500).json({ error: 'Failed to update record' });
+    }
+  });
+  
+  // Delete an update
+  app.delete("/api/updates/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid update ID' });
+      }
+      
+      // Check if update exists
+      const existingUpdate = await storage.getUpdate(id);
+      if (!existingUpdate) {
+        return res.status(404).json({ error: 'Update not found' });
+      }
+      
+      // Delete the record
+      const deleted = await storage.deleteUpdate(id);
+      if (!deleted) {
+        return res.status(500).json({ error: 'Failed to delete update' });
+      }
+      
+      return res.status(200).json({
+        message: 'Update successfully deleted',
+        id
+      });
+    } catch (error) {
+      console.error('Error deleting update:', error);
+      return res.status(500).json({ error: 'Failed to delete update' });
+    }
+  });
+  
   // Create and send a new update
   app.post("/api/updates", async (req: Request, res: Response) => {
     try {
