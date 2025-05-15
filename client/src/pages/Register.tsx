@@ -133,7 +133,7 @@ const Register: React.FC = () => {
                   </p>
                   <ul className="list-disc pl-5 text-blue-800 space-y-2">
                     <li>You'll receive an email confirmation of your registration shortly. <span className="italic">(If you don't see it, please check your spam folder and mark it as "Not Spam")</span></li>
-                    <li>Visit <a href="https://flohub.replit.com/updates" className="text-teal-700 underline hover:text-teal-800">flohub.replit.com/updates</a> regularly to stay updated on our development progress.</li>
+                    <li>Visit <a href="https://flohub.replit.app/updates" className="text-teal-700 underline hover:text-teal-800">flohub.replit.app/updates</a> regularly to stay updated on our development progress.</li>
                     <li>We'll notify you with instructions when the testing phase begins.</li>
                     <li>Early testers will get exclusive access to premium features.</li>
                     <li>Your feedback will directly shape the future of FloHub.</li>
