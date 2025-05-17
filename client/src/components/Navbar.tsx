@@ -10,7 +10,7 @@ const Navbar: React.FC = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
-  const dashboardUrl = "https://flow-hubdev.vercel.app/dashboard";
+  const dashboardUrl = "https://flohub.vercel.app/index";
 
   return (
     <header className="sticky top-0 bg-white/90 backdrop-blur-sm border-b border-gray-100 z-50">
