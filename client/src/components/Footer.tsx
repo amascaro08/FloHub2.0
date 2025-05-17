@@ -46,6 +46,14 @@ const Footer: React.FC = () => {
           </div>
         </div>
         <div className="mt-12 border-t border-gray-700 pt-8">
+          <div className="flex flex-col md:flex-row justify-center items-center space-y-4 md:space-y-0 md:space-x-8 mb-6">
+            <Link href="/privacy-policy" className="text-sm text-gray-400 hover:text-teal-400 transition-colors">
+              Privacy Policy
+            </Link>
+            <Link href="/terms-of-service" className="text-sm text-gray-400 hover:text-teal-400 transition-colors">
+              Terms of Service
+            </Link>
+          </div>
           <p className="text-base text-gray-400 text-center">
             &copy; {currentYear} FloHub. All rights reserved.
           </p>

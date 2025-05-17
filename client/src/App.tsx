@@ -5,6 +5,8 @@ import Register from "@/pages/Register";
 import AdminUpdates from "@/pages/AdminUpdates";
 import Updates from "@/pages/Updates";
 import Dashboard from "@/pages/Dashboard";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+import TermsOfService from "@/pages/TermsOfService";
 
 function App() {
   return (
@@ -14,6 +16,8 @@ function App() {
       <Route path="/admin/updates" component={AdminUpdates} />
       <Route path="/updates" component={Updates} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/privacy-policy" component={PrivacyPolicy} />
+      <Route path="/terms-of-service" component={TermsOfService} />
       <Route component={NotFound} />
     </Switch>
   );
