@@ -113,7 +113,7 @@ const PrivacyPolicy: React.FC = () => {
             
             <h2>9. Contact Us</h2>
             <p>
-              If you have any questions about this Privacy Policy, please contact us at privacy@flohub.io.
+              If you have any questions about this Privacy Policy, please contact us at flohubofficial@gmail.com.
             </p>
           </div>
         </div>

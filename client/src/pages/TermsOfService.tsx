@@ -58,14 +58,32 @@ const TermsOfService: React.FC = () => {
               for any illegal or unauthorized purpose. You must not, in the use of the service, violate any laws in your jurisdiction.
             </p>
             
-            <h2>5. Service Modifications</h2>
+            <h2>5. Intellectual Property Rights</h2>
+            <p>
+              All rights, title, and interest in and to the FloHub service (including but not limited to software, designs, text, graphics, 
+              pictures, video, information, applications, and other files) and any content created and made available through the 
+              service, including the FloHub name, logo, and our mascot character "FloCat", are and will remain the exclusive property of 
+              FloHub and its licensors.
+            </p>
+            <p>
+              The visual design, character designs (including but not limited to "FloCat"), layout, look, appearance, graphics, and user interface 
+              of FloHub are protected by copyright, trademark, and other intellectual property laws. Nothing in the Terms gives you a right to use 
+              the FloHub name, logo, character designs, or any branding or design elements of our service. You may not reproduce, modify, create 
+              derivative works from, display, perform, distribute, sell, rent, lease, transmit, or in any way exploit any content from our service.
+            </p>
+            <p>
+              Any feedback, comments, or suggestions you may provide regarding FloHub is entirely voluntary and we will be free to use such feedback, 
+              comments, or suggestions as we see fit without any obligation to you.
+            </p>
+            
+            <h2>6. Service Modifications</h2>
             <p>
               FloHub reserves the right to modify or discontinue, temporarily or permanently, the service (or any part thereof) 
               with or without notice at any time. FloHub shall not be liable to you or to any third party for any modification, 
               suspension, or discontinuance of the service.
             </p>
             
-            <h2>6. Limitation of Liability</h2>
+            <h2>7. Limitation of Liability</h2>
             <p>
               In no event shall FloHub or its suppliers be liable for any damages (including, without limitation, damages for 
               loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials 
@@ -73,35 +91,35 @@ const TermsOfService: React.FC = () => {
               of the possibility of such damage.
             </p>
             
-            <h2>7. Accuracy of Materials</h2>
+            <h2>8. Accuracy of Materials</h2>
             <p>
               The materials appearing on FloHub's website could include technical, typographical, or photographic errors. 
               FloHub does not warrant that any of the materials on its website are accurate, complete, or current. FloHub 
               may make changes to the materials contained on its website at any time without notice.
             </p>
             
-            <h2>8. Links</h2>
+            <h2>9. Links</h2>
             <p>
               FloHub has not reviewed all of the sites linked to its website and is not responsible for the contents of any 
               such linked site. The inclusion of any link does not imply endorsement by FloHub of the site. Use of any such 
               linked website is at the user's own risk.
             </p>
             
-            <h2>9. Governing Law</h2>
+            <h2>10. Governing Law</h2>
             <p>
               These terms and conditions are governed by and construed in accordance with the laws and you irrevocably submit 
               to the exclusive jurisdiction of the courts in that location.
             </p>
             
-            <h2>10. Changes to Terms</h2>
+            <h2>11. Changes to Terms</h2>
             <p>
               FloHub may revise these terms of service for its website at any time without notice. By using this website, 
               you are agreeing to be bound by the then current version of these terms of service.
             </p>
             
-            <h2>11. Contact Us</h2>
+            <h2>12. Contact Us</h2>
             <p>
-              If you have any questions about these Terms of Service, please contact us at terms@flohub.io.
+              If you have any questions about these Terms of Service, please contact us at flohubofficial@gmail.com.
             </p>
           </div>
         </div>
