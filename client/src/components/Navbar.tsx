@@ -29,8 +29,13 @@ const Navbar: React.FC = () => {
             <Button asChild variant="ghost" className="text-sm font-medium text-gray-600 hover:text-primary">
               <Link href="/register">Register for Testing</Link>
             </Button>
-            <Button asChild variant="default">
-              <a href={dashboardUrl}>Log in</a>
+            <Button 
+              variant="default"
+              onClick={() => {
+                alert("Beta testing starting soon! Register to get early access.");
+              }}
+            >
+              Coming Soon
             </Button>
           </div>
           
@@ -67,12 +72,15 @@ const Navbar: React.FC = () => {
           >
             Register for Testing
           </Link>
-          <a 
-            href={dashboardUrl}
-            className="block px-3 py-2 rounded-md text-base font-medium text-white bg-primary hover:bg-primary/90"
+          <button 
+            className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-white bg-primary hover:bg-primary/90"
+            onClick={() => {
+              alert("Beta testing starting soon! Register to get early access.");
+              setMobileMenuOpen(false);
+            }}
           >
-            Log in
-          </a>
+            Coming Soon
+          </button>
         </div>
       </div>
     </header>
