@@ -1,16 +1,20 @@
-import { createRoot } from "react-dom/client";
+import React from "react";
+import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "./lib/queryClient";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Toaster } from "@/components/ui/toaster";
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
-createRoot(document.getElementById("root")!).render(
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+// Get Google Client ID from environment variables
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
+if (!googleClientId) {
+  console.warn('VITE_GOOGLE_CLIENT_ID is not set! Google login will not work correctly.');
+}
+
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+  <React.StrictMode>
+    <GoogleOAuthProvider clientId={googleClientId}>
       <App />
-      <Toaster />
-    </TooltipProvider>
-  </QueryClientProvider>
+    </GoogleOAuthProvider>
+  </React.StrictMode>
 );
