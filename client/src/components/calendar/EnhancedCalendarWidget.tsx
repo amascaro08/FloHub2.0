@@ -479,15 +479,23 @@ export default function EnhancedCalendarWidget({ isMinimized = false }: Enhanced
                         {selectedEvent.description.includes('Meeting ID') && (
                           <div><span className="font-medium">Meeting ID:</span> {selectedEvent.description.match(/Meeting ID:.*?([a-zA-Z0-9]+)/)?.[1] || 'Unknown'}</div>
                         )}
-                        {selectedEvent.description.includes('join the meeting now') && (
+                        {/* Extract Teams meeting link */}
+                        {(selectedEvent.description.includes('JoinTeamsMeeting') || 
+                          selectedEvent.description.includes('join the meeting') || 
+                          selectedEvent.description.includes('https://teams.microsoft')) && (
                           <div className="mt-3">
                             <a 
-                              href={selectedEvent.description.match(/href="([^"]+)"/)?.[1] || '#'} 
+                              href={
+                                selectedEvent.description.match(/href="(https:\/\/teams.microsoft[^"]+)"/)?.[1] || 
+                                selectedEvent.description.match(/href="(https:\/\/aka.ms\/[^"]+)"/)?.[1] || 
+                                selectedEvent.description.match(/(https:\/\/teams.microsoft[^\s"<>]+)/)?.[1] ||
+                                '#'
+                              } 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline"
+                              className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                             >
-                              Join meeting
+                              Join Teams Meeting
                             </a>
                           </div>
                         )}
