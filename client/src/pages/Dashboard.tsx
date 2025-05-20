@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
+import WidgetGrid from '../components/widgets/WidgetGrid';
+import DashboardLayout from '../components/dashboard/DashboardLayout';
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();

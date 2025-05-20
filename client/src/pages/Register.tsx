@@ -88,7 +88,7 @@ export default function Register() {
               </p>
               
               <p className="text-gray-700 dark:text-gray-300 mt-2">
-                Be sure to check out our <span onClick={() => window.location.href = '/updates'} className="text-primary-600 dark:text-primary-400 font-medium hover:underline cursor-pointer">updates page</span> for the latest news about FloHub.
+                Be sure to check out our <Link href="/updates"><a className="text-primary-600 dark:text-primary-400 font-medium hover:underline">updates page</a></Link> for the latest news about FloHub.
               </p>
             </div>
           </div>

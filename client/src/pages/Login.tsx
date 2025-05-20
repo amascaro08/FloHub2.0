@@ -55,12 +55,11 @@ export default function Login() {
             <div className="bg-primary-50 dark:bg-primary-900/20 rounded-md p-4 text-center">
               <p className="text-sm text-gray-700 dark:text-gray-300">
                 FloHub's beta testing program will begin in July 2025. 
-                <span 
-                  onClick={() => window.location.href = '/register'} 
-                  className="text-primary-600 dark:text-primary-400 font-medium hover:underline ml-1 cursor-pointer"
-                >
-                  Register for early access
-                </span>
+                <Link href="/register">
+                  <a className="text-primary-600 dark:text-primary-400 font-medium hover:underline ml-1">
+                    Register for early access
+                  </a>
+                </Link>
               </p>
             </div>
           </div>
@@ -68,12 +67,11 @@ export default function Login() {
       </div>
       
       <div className="mt-8 text-center">
-        <span 
-          onClick={() => window.location.href = '/'} 
-          className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 cursor-pointer"
-        >
-          ← Back to home
-        </span>
+        <Link href="/">
+          <a className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400">
+            ← Back to home
+          </a>
+        </Link>
       </div>
     </div>
   );
