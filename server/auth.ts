@@ -1,185 +1,216 @@
-import { Request, Response, NextFunction } from "express";
-import { storage } from "./storage";
-import bcrypt from "bcrypt";
-import { z } from "zod";
+import { Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
+import bcrypt from 'bcrypt';
+import { storage } from './storage';
+import { User } from '@shared/schema';
+import passport from 'passport';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
-// User registration schema
+// Validation schemas
 export const registerSchema = z.object({
+  username: z.string().min(3).max(50),
   email: z.string().email(),
-  password: z.string().min(8),
-  name: z.string().min(2),
-  username: z.string().optional()
+  password: z.string().min(6),
+  name: z.string().min(1),
 });
 
-// User login schema
 export const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(1)
+  password: z.string().min(1),
 });
 
-// User session type
+// User session interface
 export interface UserSession {
   id: number;
   email: string;
   name: string;
 }
 
-// Authentication middleware
+// Setup Google OAuth Strategy if credentials are available
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: '/api/auth/google/callback',
+        scope: ['profile', 'email']
+      },
+      async function(accessToken, refreshToken, profile, done) {
+        try {
+          // See if user already exists
+          let user = await storage.getUserByEmail(profile.emails?.[0]?.value || '');
+          
+          if (!user) {
+            // Create new user with Google profile
+            const username = profile.emails?.[0]?.value?.split('@')[0] || '';
+            const newUser = {
+              username,
+              email: profile.emails?.[0]?.value || '',
+              name: profile.displayName || username,
+              password: await bcrypt.hash(Math.random().toString(36), 10), // Random password
+              googleId: profile.id,
+              isOAuthUser: true
+            };
+            
+            user = await storage.createUser(newUser);
+          }
+          
+          return done(null, user);
+        } catch (error) {
+          return done(error as Error);
+        }
+      }
+    )
+  );
+  
+  // Configure Passport session handling
+  passport.serializeUser((user: any, done) => {
+    done(null, user.id);
+  });
+  
+  passport.deserializeUser(async (id: number, done) => {
+    try {
+      const user = await storage.getUser(id);
+      done(null, user);
+    } catch (error) {
+      done(error);
+    }
+  });
+}
+
+// Middleware to check if user is authenticated
 export const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-  if (req.session && req.session.user) {
+  if (req.session.user) {
     next();
   } else {
-    res.status(401).json({ message: "Unauthorized" });
+    res.status(401).json({ message: 'Not authenticated' });
   }
 };
 
-// Register a new user
+// User registration handler
 export const registerUser = async (req: Request, res: Response) => {
   try {
-    const validatedData = registerSchema.parse(req.body);
+    const userData = registerSchema.parse(req.body);
     
     // Check if user already exists
-    const existingUser = await storage.getUserByEmail(validatedData.email);
+    const existingUser = await storage.getUserByEmail(userData.email);
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({ message: 'User with this email already exists' });
     }
     
     // Hash password
-    const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
     
-    // Create user
-    const user = await storage.createUser({
-      username: validatedData.username || validatedData.email.split('@')[0],
-      email: validatedData.email,
-      password: hashedPassword,
-      name: validatedData.name,
-      createdAt: new Date()
+    // Create new user
+    const newUser = await storage.createUser({
+      ...userData,
+      password: hashedPassword
     });
     
-    // Create session
-    if (req.session) {
-      req.session.user = {
-        id: user.id,
-        email: user.email,
-        name: user.name
-      };
-    }
+    // Set user in session
+    req.session.user = {
+      id: newUser.id,
+      email: newUser.email,
+      name: newUser.name
+    };
     
-    res.status(201).json({ 
-      message: "User created successfully",
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name
-      }
+    res.status(201).json({
+      id: newUser.id,
+      email: newUser.email,
+      name: newUser.name
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ message: "Validation error", errors: error.errors });
+      res.status(400).json({ message: 'Invalid input', errors: error.errors });
     } else {
-      console.error("Registration error:", error);
-      res.status(500).json({ message: "Server error during registration" });
+      console.error('Registration error:', error);
+      res.status(500).json({ message: 'An error occurred during registration' });
     }
   }
 };
 
-// Login user
+// User login handler
 export const loginUser = async (req: Request, res: Response) => {
   try {
-    const validatedData = loginSchema.parse(req.body);
-    
-    // For debugging
-    console.log(`Login attempt for email: ${validatedData.email}`);
+    const { email, password } = loginSchema.parse(req.body);
     
     // Find user
-    const user = await storage.getUserByEmail(validatedData.email);
+    const user = await storage.getUserByEmail(email);
     if (!user) {
-      console.log(`User not found: ${validatedData.email}`);
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
     
-    console.log(`User found, checking password...`);
-    console.log(`User password hash: ${user.password.substring(0, 10)}...`);
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
     
-    // Temporary direct login for testing with our specific test accounts
-    if ((validatedData.email === 'test@example.com' || validatedData.email === 'flo@example.com') && 
-        validatedData.password === 'testpass123') {
-      console.log('Test account login successful');
-      
-      // Create session
-      if (req.session) {
+    // Set user in session
+    req.session.user = {
+      id: user.id,
+      email: user.email,
+      name: user.name
+    };
+    
+    res.status(200).json({
+      id: user.id,
+      email: user.email,
+      name: user.name
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ message: 'Invalid input', errors: error.errors });
+    } else {
+      console.error('Login error:', error);
+      res.status(500).json({ message: 'An error occurred during login' });
+    }
+  }
+};
+
+// User logout handler
+export const logoutUser = (req: Request, res: Response) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error destroying session:', err);
+      return res.status(500).json({ message: 'Error logging out' });
+    }
+    res.clearCookie('connect.sid');
+    res.status(200).json({ message: 'Logged out successfully' });
+  });
+};
+
+// Get current user
+export const getCurrentUser = (req: Request, res: Response) => {
+  if (req.session.user) {
+    res.status(200).json({ user: req.session.user });
+  } else {
+    res.status(401).json({ message: 'Not authenticated' });
+  }
+};
+
+// Google auth routes
+export const setupGoogleAuthRoutes = (app: any) => {
+  // Initiate Google OAuth flow
+  app.get('/api/auth/google', passport.authenticate('google', {
+    scope: ['profile', 'email']
+  }));
+  
+  // Google OAuth callback
+  app.get('/api/auth/google/callback', 
+    passport.authenticate('google', { failureRedirect: '/login' }),
+    (req: Request, res: Response) => {
+      // On successful authentication
+      if (req.user) {
+        const user = req.user as User;
         req.session.user = {
           id: user.id,
           email: user.email,
           name: user.name
         };
       }
-      
-      return res.status(200).json({ 
-        message: "Login successful",
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name
-        }
-      });
+      res.redirect('/dashboard');
     }
-    
-    // Check password
-    const passwordMatch = await bcrypt.compare(validatedData.password, user.password);
-    console.log(`Password match result: ${passwordMatch}`);
-    
-    if (!passwordMatch) {
-      return res.status(401).json({ message: "Invalid email or password" });
-    }
-    
-    // Create session
-    if (req.session) {
-      req.session.user = {
-        id: user.id,
-        email: user.email,
-        name: user.name
-      };
-    }
-    
-    res.status(200).json({ 
-      message: "Login successful",
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name
-      }
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({ message: "Validation error", errors: error.errors });
-    } else {
-      console.error("Login error:", error);
-      res.status(500).json({ message: "Server error during login" });
-    }
-  }
-};
-
-// Logout user
-export const logoutUser = (req: Request, res: Response) => {
-  if (req.session) {
-    req.session.destroy((err: any) => {
-      if (err) {
-        return res.status(500).json({ message: "Logout failed" });
-      }
-      res.clearCookie("connect.sid");
-      res.status(200).json({ message: "Logged out successfully" });
-    });
-  } else {
-    res.status(200).json({ message: "Already logged out" });
-  }
-};
-
-// Get current user
-export const getCurrentUser = (req: Request, res: Response) => {
-  if (req.session && req.session.user) {
-    res.status(200).json({ user: req.session.user });
-  } else {
-    res.status(401).json({ message: "Not authenticated" });
-  }
-};
+  );
+}

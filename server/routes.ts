@@ -8,6 +8,7 @@ import { insertRegistrationSchema, insertUpdateSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { sendRegistrationConfirmation, sendAdminNotification, sendUpdateEmail } from "./utils/emailService";
 import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated } from "./auth";
+import passport from 'passport';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes
@@ -15,6 +16,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/login', loginUser);
   app.post('/api/auth/logout', logoutUser);
   app.get('/api/auth/me', getCurrentUser);
+  
+  // Google OAuth routes
+  app.get('/api/auth/google', passport.authenticate('google', {
+    scope: ['profile', 'email']
+  }));
+  
+  app.get('/api/auth/google/callback', 
+    passport.authenticate('google', { failureRedirect: '/login' }),
+    (req: Request, res: Response) => {
+      // On successful authentication
+      if (req.user) {
+        const user = req.user as any;
+        req.session.user = {
+          id: user.id,
+          email: user.email,
+          name: user.name
+        };
+      }
+      res.redirect('/dashboard');
+    }
+  );
   
   // Health check endpoint
   app.get('/health', (_req: Request, res: Response) => {

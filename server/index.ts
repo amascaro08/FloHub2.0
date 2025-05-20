@@ -3,7 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import session from "express-session";
 import passport from "passport";
-import { setupGoogleAuth } from "./googleAuth";
+import { setupGoogleAuthRoutes } from "./auth";
 
 // Extend Express Session for our user data
 declare module "express-session" {
@@ -42,7 +42,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Set up Google OAuth routes
-setupGoogleAuth(app);
+setupGoogleAuthRoutes(app);
 
 app.use((req, res, next) => {
   const start = Date.now();
