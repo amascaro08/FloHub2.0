@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
 import fetch from 'node-fetch';
 import { storage } from '../storage';
-// Use a simpler authentication middleware that matches the current app setup
-const customIsAuthenticated = (req: any, res: Response, next: Function) => {
-  if (!req.user || !req.user.claims || !req.user.claims.sub) {
+// Use a middleware that leverages session-based authentication
+const sessionAuth = (req: any, res: Response, next: Function) => {
+  if (!req.session || !req.session.userId) {
     return res.status(401).json({ error: 'Authentication required' });
   }
   next();
@@ -47,7 +47,7 @@ type CalendarApiResponse = CalendarEvent[] | GoogleCalendarResponse | MicrosoftC
 const router = Router();
 
 // Get all calendar sources for the current user
-router.get('/sources', customIsAuthenticated, async (req: any, res: Response) => {
+router.get('/sources', sessionAuth, async (req: any, res: Response) => {
   try {
     const userId = req.user.claims.sub;
     const sources = await storage.getCalendarSources(userId);
@@ -77,7 +77,7 @@ router.get('/sources', customIsAuthenticated, async (req: any, res: Response) =>
 });
 
 // Add Power Automate URL source
-router.post('/url-source', customIsAuthenticated, async (req: any, res: Response) => {
+router.post('/url-source', sessionAuth, async (req: any, res: Response) => {
   try {
     const { name, url, tags } = req.body;
     const userId = req.user.claims.sub;
@@ -107,7 +107,7 @@ router.post('/url-source', customIsAuthenticated, async (req: any, res: Response
 });
 
 // Update a calendar source
-router.put('/sources/:id', customIsAuthenticated, async (req: any, res: Response) => {
+router.put('/sources/:id', sessionAuth, async (req: any, res: Response) => {
   try {
     const sourceId = parseInt(req.params.id, 10);
     const userId = req.user.claims.sub;
@@ -140,7 +140,7 @@ router.put('/sources/:id', customIsAuthenticated, async (req: any, res: Response
 });
 
 // Delete a calendar source
-router.delete('/sources/:id', customIsAuthenticated, async (req: any, res: Response) => {
+router.delete('/sources/:id', sessionAuth, async (req: any, res: Response) => {
   try {
     const sourceId = parseInt(req.params.id, 10);
     const userId = req.user.claims.sub;
@@ -172,7 +172,7 @@ router.delete('/sources/:id', customIsAuthenticated, async (req: any, res: Respo
 });
 
 // Get calendar events from all enabled sources
-router.get('/events', customIsAuthenticated, async (req: any, res: Response) => {
+router.get('/events', sessionAuth, async (req: any, res: Response) => {
   try {
     const userId = req.user.claims.sub;
     const { timeMin, timeMax } = req.query;
