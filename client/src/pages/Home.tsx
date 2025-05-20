@@ -37,7 +37,7 @@ export default function Home() {
         <div className="flex flex-col md:flex-row items-center justify-between w-full mb-16">
           <div className="md:w-1/2 mb-8 md:mb-0 md:pr-8">
             <img
-              src="/attached_assets/FloHub_Logo_Transparent.png"
+              src="/attached_assets/20250510_221117_0000.png"
               alt="FloHub Logo"
               className="w-64 mb-6 animate-pulse-subtle"
             />
@@ -58,7 +58,7 @@ export default function Home() {
           </div>
           <div className="md:w-1/2">
             <img
-              src="/attached_assets/file_00000000e9c861f88107f89411768c87.png"
+              src="/attached_assets/Screenshot_20250510-222111.png"
               alt="FloHub Interface"
               className="rounded-lg shadow-2xl"
             />
