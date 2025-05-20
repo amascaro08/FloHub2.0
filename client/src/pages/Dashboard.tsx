@@ -28,80 +28,339 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 type WidgetType = 'tasks' | 'calendar' | 'chat' | 'overview' | 'notes' | 'habits';
 
 // Simplified demo widgets
-const TaskWidget = () => (
-  <div className="h-full overflow-auto">
-    <ul className="space-y-3">
-      <li className="flex items-start">
-        <div className="flex items-center h-5 mt-1">
-          <input type="checkbox" className="h-4 w-4 rounded border-gray-300" />
-        </div>
-        <div className="ml-3 text-sm">
-          <label className="font-medium text-gray-800">Finish project proposal</label>
-          <p className="text-gray-500">Due tomorrow</p>
-        </div>
-      </li>
-      <li className="flex items-start">
-        <div className="flex items-center h-5 mt-1">
-          <input type="checkbox" className="h-4 w-4 rounded border-gray-300" />
-        </div>
-        <div className="ml-3 text-sm">
-          <label className="font-medium text-gray-800">Schedule team meeting</label>
-          <p className="text-gray-500">By end of week</p>
-        </div>
-      </li>
-      <li className="flex items-start">
-        <div className="flex items-center h-5 mt-1">
-          <input type="checkbox" defaultChecked className="h-4 w-4 rounded border-gray-300" />
-        </div>
-        <div className="ml-3 text-sm">
-          <label className="font-medium text-gray-800 line-through">Send email to client</label>
-          <p className="text-gray-500">Completed yesterday</p>
-        </div>
-      </li>
-    </ul>
-    <button className="mt-4 text-teal-600 hover:text-teal-800 text-sm font-medium flex items-center">
-      <span className="mr-1">+</span> Add new task
-    </button>
-  </div>
-);
-
-const CalendarWidget = () => (
-  <div className="h-full overflow-hidden">
-    <div className="flex flex-col h-full">
-      <div className="mb-4">
-        <h3 className="text-lg font-medium text-gray-900">May 2025</h3>
+const TaskWidget = () => {
+  const [tasks, setTasks] = useState([
+    { id: 1, text: "Finish project proposal", dueDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(), done: false, source: "personal", tags: ["work"] },
+    { id: 2, text: "Schedule team meeting", dueDate: new Date(new Date().setDate(new Date().getDate() + 3)).toISOString(), done: false, source: "work", tags: ["meeting"] },
+    { id: 3, text: "Send email to client", dueDate: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(), done: true, source: "personal", tags: ["client"] },
+  ]);
+  
+  const [newTask, setNewTask] = useState("");
+  const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
+  
+  // Toggle task completion status
+  const toggleTaskDone = (id: number) => {
+    setTasks(tasks.map(task => 
+      task.id === id ? { ...task, done: !task.done } : task
+    ));
+  };
+  
+  // Add a new task
+  const addTask = () => {
+    if (!newTask.trim()) return;
+    
+    const newTaskObj = {
+      id: Math.max(0, ...tasks.map(t => t.id)) + 1,
+      text: newTask.trim(),
+      dueDate: new Date().toISOString(),
+      done: false,
+      source: "personal",
+      tags: []
+    };
+    
+    setTasks([...tasks, newTaskObj]);
+    setNewTask("");
+  };
+  
+  // Format date to readable format
+  const formatDate = (isoDate: string) => {
+    const date = new Date(isoDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    if (date.toDateString() === today.toDateString()) return "Today";
+    if (date.toDateString() === tomorrow.toDateString()) return "Tomorrow";
+    
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+  
+  return (
+    <div className="h-full overflow-auto">
+      <div className="flex mb-3">
+        <input 
+          type="text" 
+          placeholder="Add a new task..."
+          className="flex-1 p-2 border border-gray-300 rounded-l-md text-sm"
+          value={newTask}
+          onChange={(e) => setNewTask(e.target.value)}
+          onKeyPress={(e) => e.key === "Enter" && addTask()}
+        />
+        <button 
+          onClick={addTask}
+          className="bg-teal-600 text-white px-3 rounded-r-md hover:bg-teal-700"
+        >
+          Add
+        </button>
       </div>
-      <div className="grid grid-cols-7 gap-2 text-xs">
-        <div className="text-center font-medium">Su</div>
-        <div className="text-center font-medium">Mo</div>
-        <div className="text-center font-medium">Tu</div>
-        <div className="text-center font-medium">We</div>
-        <div className="text-center font-medium">Th</div>
-        <div className="text-center font-medium">Fr</div>
-        <div className="text-center font-medium">Sa</div>
-        
-        {/* Calendar days */}
-        {Array.from({ length: 31 }, (_, i) => (
-          <div 
-            key={i} 
-            className={`text-center p-1 rounded-full ${i+1 === 20 ? 'bg-teal-500 text-white font-bold' : 'hover:bg-gray-100'}`}
-          >
-            {i+1}
-          </div>
+      
+      <ul className="space-y-3">
+        {tasks.map(task => (
+          <li key={task.id} className="flex items-start group">
+            <div className="flex items-center h-5 mt-1">
+              <input 
+                type="checkbox" 
+                checked={task.done}
+                onChange={() => toggleTaskDone(task.id)}
+                className="h-4 w-4 rounded border-gray-300" 
+              />
+            </div>
+            <div className="ml-3 text-sm flex-1">
+              <div className="flex justify-between">
+                <label className={`font-medium text-gray-800 ${task.done ? 'line-through text-gray-500' : ''}`}>
+                  {task.text}
+                </label>
+                <div className="hidden group-hover:flex space-x-1">
+                  <button className="text-gray-400 hover:text-gray-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                    </svg>
+                  </button>
+                  <button className="text-gray-400 hover:text-red-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center">
+                <p className="text-gray-500 mr-2">{formatDate(task.dueDate)}</p>
+                
+                {/* Source tag */}
+                <span className={`px-1.5 py-0.5 text-xs rounded-full mr-1 ${
+                  task.source === 'work' 
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'bg-green-100 text-green-800'
+                }`}>
+                  {task.source}
+                </span>
+                
+                {/* Task tags */}
+                {task.tags.map(tag => (
+                  <span key={tag} className="px-1.5 py-0.5 bg-gray-100 text-gray-800 text-xs rounded-full mr-1">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </li>
         ))}
+      </ul>
+    </div>
+  );
+};
+
+const CalendarWidget = () => {
+  const [events, setEvents] = useState([
+    { 
+      id: '1', 
+      summary: 'Team Standup', 
+      start: { dateTime: `${new Date().toISOString().split('T')[0]}T10:00:00` },
+      end: { dateTime: `${new Date().toISOString().split('T')[0]}T10:30:00` },
+      source: 'work',
+      calendarName: 'Work',
+      tags: ['daily', 'team']
+    },
+    { 
+      id: '2', 
+      summary: 'Client Meeting', 
+      start: { dateTime: `${new Date().toISOString().split('T')[0]}T14:00:00` },
+      end: { dateTime: `${new Date().toISOString().split('T')[0]}T15:00:00` },
+      source: 'personal',
+      calendarName: 'Personal',
+      tags: ['client']
+    },
+    { 
+      id: '3', 
+      summary: 'Project Review', 
+      start: { dateTime: `${new Date().toISOString().split('T')[0]}T16:30:00` },
+      end: { dateTime: `${new Date().toISOString().split('T')[0]}T17:30:00` },
+      source: 'work',
+      calendarName: 'Work',
+      tags: ['project']
+    }
+  ]);
+  
+  const [view, setView] = useState<'today' | 'week' | 'month'>('today');
+  const [selectedCalendars, setSelectedCalendars] = useState(['Work', 'Personal']);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  
+  // Get current month name and year
+  const currentMonthYear = new Date().toLocaleDateString('en-US', { 
+    month: 'long', 
+    year: 'numeric' 
+  });
+  
+  // Get current date
+  const today = new Date();
+  const currentDay = today.getDate();
+  
+  // Calculate days in current month
+  const daysInMonth = new Date(
+    today.getFullYear(),
+    today.getMonth() + 1,
+    0
+  ).getDate();
+  
+  // Calculate first day of month (0 = Sunday, 1 = Monday, etc.)
+  const firstDayOfMonth = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    1
+  ).getDay();
+  
+  // Format event time
+  const formatEventTime = (dateTimeStr: string) => {
+    const date = new Date(dateTimeStr);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+  
+  // Filter events for today
+  const todaysEvents = events.filter(event => {
+    if (!event.start.dateTime) return false;
+    const eventDate = new Date(event.start.dateTime).toISOString().split('T')[0];
+    const todayDate = new Date().toISOString().split('T')[0];
+    return eventDate === todayDate;
+  }).sort((a, b) => {
+    return new Date(a.start.dateTime).getTime() - new Date(b.start.dateTime).getTime();
+  });
+  
+  return (
+    <div className="h-full overflow-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-medium text-gray-900">{currentMonthYear}</h3>
+        <div className="flex space-x-1 text-xs">
+          <button 
+            onClick={() => setView('today')}
+            className={`px-2 py-1 rounded ${view === 'today' ? 'bg-teal-100 text-teal-800' : 'bg-gray-100'}`}
+          >
+            Today
+          </button>
+          <button 
+            onClick={() => setView('week')}
+            className={`px-2 py-1 rounded ${view === 'week' ? 'bg-teal-100 text-teal-800' : 'bg-gray-100'}`}
+          >
+            Week
+          </button>
+          <button 
+            onClick={() => setView('month')}
+            className={`px-2 py-1 rounded ${view === 'month' ? 'bg-teal-100 text-teal-800' : 'bg-gray-100'}`}
+          >
+            Month
+          </button>
+        </div>
       </div>
+      
+      {view === 'month' && (
+        <div className="grid grid-cols-7 gap-1 text-xs mb-4">
+          <div className="text-center font-medium">Su</div>
+          <div className="text-center font-medium">Mo</div>
+          <div className="text-center font-medium">Tu</div>
+          <div className="text-center font-medium">We</div>
+          <div className="text-center font-medium">Th</div>
+          <div className="text-center font-medium">Fr</div>
+          <div className="text-center font-medium">Sa</div>
+          
+          {/* Empty cells for days before the first day of month */}
+          {Array.from({ length: firstDayOfMonth }, (_, i) => (
+            <div key={`empty-${i}`} className="text-center p-1"></div>
+          ))}
+          
+          {/* Calendar days */}
+          {Array.from({ length: daysInMonth }, (_, i) => {
+            const dayNumber = i + 1;
+            const isToday = dayNumber === currentDay;
+            const hasEvents = events.some(event => {
+              if (!event.start.dateTime) return false;
+              const eventDate = new Date(event.start.dateTime);
+              return eventDate.getDate() === dayNumber && 
+                    eventDate.getMonth() === today.getMonth() &&
+                    eventDate.getFullYear() === today.getFullYear();
+            });
+            
+            return (
+              <div 
+                key={dayNumber} 
+                className={`text-center p-1 rounded-full relative
+                  ${isToday ? 'bg-teal-500 text-white font-bold' : 'hover:bg-gray-100'}
+                `}
+              >
+                {dayNumber}
+                {hasEvents && (
+                  <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full"></span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      
       <div className="mt-4">
         <h4 className="text-sm font-medium text-gray-900 mb-2">Today's Events</h4>
-        <div className="bg-teal-50 p-2 rounded-md mb-2">
-          <p className="text-xs font-medium text-teal-700">10:00 AM - Team Standup</p>
-        </div>
-        <div className="bg-orange-50 p-2 rounded-md">
-          <p className="text-xs font-medium text-orange-700">2:00 PM - Client Meeting</p>
-        </div>
+        {todaysEvents.length === 0 ? (
+          <p className="text-sm text-gray-500">No events scheduled for today</p>
+        ) : (
+          <div className="space-y-2">
+            {todaysEvents.map(event => (
+              <div 
+                key={event.id} 
+                className={`p-2 rounded-md ${
+                  event.source === 'work' ? 'bg-blue-50' : 'bg-teal-50'
+                }`}
+                onClick={() => setSelectedEvent(event)}
+              >
+                <div className="flex justify-between items-start">
+                  <p className={`text-xs font-medium ${
+                    event.source === 'work' ? 'text-blue-700' : 'text-teal-700'
+                  }`}>
+                    {formatEventTime(event.start.dateTime)} - {event.summary}
+                  </p>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    event.source === 'work' 
+                      ? 'bg-blue-100 text-blue-800' 
+                      : 'bg-teal-100 text-teal-800'
+                  }`}>
+                    {event.calendarName}
+                  </span>
+                </div>
+                {event.tags && event.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {event.tags.map(tag => (
+                      <span 
+                        key={tag} 
+                        className="bg-gray-100 px-1 py-0.5 rounded-full text-xs text-gray-600"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      
+      <div className="mt-4 text-right">
+        <button className="text-teal-600 text-xs flex items-center ml-auto">
+          <span>View Full Calendar</span>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </button>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const ChatWidget = () => {
   const [messages, setMessages] = useState([
