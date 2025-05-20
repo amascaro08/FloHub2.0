@@ -28,6 +28,12 @@ export default function TasksPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/");
+    }
+  }, [status, router]);
+
   const shouldFetch = status === "authenticated";
   const { data: tasks, mutate } = useSWR<Task[]>(
     shouldFetch ? "/api/tasks" : null,
@@ -117,13 +123,14 @@ export default function TasksPage() {
     );
   }, [tasks, search]);
 
-  if (status === "loading") {
+  if (status === "loading" || !userSettings) { // Wait for userSettings to load
     return <p>Loading tasks…</p>;
   }
 
   if (!session) {
     return <p>Please sign in to see your tasks.</p>;
   }
+
   return (
     <div className="p-4 max-w-4xl mx-auto"> {/* Added max-width and auto margin for better centering on larger screens */}
       <h1 className="text-2xl font-semibold mb-4 text-[var(--fg)]">Tasks</h1> {/* Applied text color variable */}

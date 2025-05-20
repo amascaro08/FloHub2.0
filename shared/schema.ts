@@ -4,30 +4,13 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").unique(),
-  email: text("email").notNull().unique(),
+  username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  name: text("name").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  // Google OAuth fields
-  googleId: text("google_id").unique(),
-  googleAccessToken: text("google_access_token"),
-  googleRefreshToken: text("google_refresh_token"),
-  avatarUrl: text("avatar_url"),
-  isOAuthUser: boolean("is_oauth_user").default(false),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
-  email: true,
   password: true,
-  name: true,
-  createdAt: true,
-  googleId: true,
-  googleAccessToken: true,
-  googleRefreshToken: true,
-  avatarUrl: true,
-  isOAuthUser: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

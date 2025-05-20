@@ -1,48 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import session from "express-session";
-import passport from "passport";
-import { setupGoogleAuthRoutes } from "./auth";
-
-// Extend Express Session for our user data
-declare module "express-session" {
-  interface SessionData {
-    user?: {
-      id: number;
-      email: string;
-      name: string;
-    };
-    passport?: {
-      user: number;
-    };
-  }
-}
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-// Set up session middleware
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "flohub-secret-key",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
-      httpOnly: true,
-    },
-  })
-);
-
-// Initialize Passport and session support
-app.use(passport.initialize());
-app.use(passport.session());
-
-// Set up Google OAuth routes
-setupGoogleAuthRoutes(app);
 
 app.use((req, res, next) => {
   const start = Date.now();

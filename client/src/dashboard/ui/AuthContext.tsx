@@ -4,7 +4,7 @@ import type { Session } from "next-auth";
 
 type AuthContextType = {
   user: Session["user"] | null;
-  login: (provider?: string) => void;
+  login: () => void;
   logout: () => void;
   isLocked: boolean;
   toggleLock: () => void;
@@ -21,10 +21,6 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: session } = useSession();
   // Initialize state from localStorage, default to false if not found
-
-  if (!session) {
-    return <div>Loading...</div>; // Or any other fallback UI
-  }
   const [isLocked, setIsLocked] = useState<boolean>(false); // Default to false initially
   
   // Load lock state from localStorage on mount (client-side only)
@@ -53,16 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isLocked]);
 
 
-  const login = (provider?: string) => {
-    if (provider === "google") {
-      signIn("google");
-    } else if (provider === "credentials") {
-      signIn("credentials");
-    } else {
-      // If no provider is specified, redirect to the login page
-      window.location.href = "/login";
-    }
-  };
+  const login = () => signIn("google");
   const logout = () => signOut();
   const toggleLock = () => {
     setIsLocked(!isLocked);

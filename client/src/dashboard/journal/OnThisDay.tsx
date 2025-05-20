@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { formatDate, getDateStorageKey } from '@/lib/dateUtils';
 
 interface OnThisDayProps {
   onViewEntry?: (date: string) => void;
-  timezone?: string;
 }
 
 interface HistoricalEntry {
@@ -13,17 +11,12 @@ interface HistoricalEntry {
   timestamp: string;
 }
 
-const OnThisDay: React.FC<OnThisDayProps> = ({ onViewEntry, timezone }) => {
+const OnThisDay: React.FC<OnThisDayProps> = ({ onViewEntry }) => {
   const [historicalEntry, setHistoricalEntry] = useState<HistoricalEntry | null>(null);
   const { data: session } = useSession();
 
-  if (!session) {
-    return <div>Loading...</div>; // Or any other fallback UI
-  }
-
   useEffect(() => {
     if (typeof window !== 'undefined' && session?.user?.email) {
-      // Create date objects with the user's timezone
       const today = new Date();
       const lastYear = new Date(today);
       lastYear.setFullYear(today.getFullYear() - 1);
@@ -32,8 +25,7 @@ const OnThisDay: React.FC<OnThisDayProps> = ({ onViewEntry, timezone }) => {
       const lastYearDate = `${lastYear.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
       
       // Try to load entry from this day last year
-      const storageKey = getDateStorageKey('journal_entry', session.user.email, timezone, lastYearDate);
-      const savedEntry = localStorage.getItem(storageKey);
+      const savedEntry = localStorage.getItem(`journal_entry_${session.user.email}_${lastYearDate}`);
       
       if (savedEntry) {
         try {
@@ -48,13 +40,13 @@ const OnThisDay: React.FC<OnThisDayProps> = ({ onViewEntry, timezone }) => {
         }
       }
     }
-  }, [session, timezone]);
+  }, [session]);
 
-  const formatDateDisplay = (dateStr: string) => {
-    return formatDate(dateStr, timezone, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
     });
   };
 
@@ -87,7 +79,7 @@ const OnThisDay: React.FC<OnThisDayProps> = ({ onViewEntry, timezone }) => {
       
       <div className="mb-3">
         <span className="text-teal-600 dark:text-teal-400 font-medium">
-          {formatDateDisplay(historicalEntry.date)}
+          {formatDate(historicalEntry.date)}
         </span>
       </div>
       
@@ -99,9 +91,7 @@ const OnThisDay: React.FC<OnThisDayProps> = ({ onViewEntry, timezone }) => {
       
       <div className="flex justify-between items-center">
         <span className="text-xs text-slate-500 dark:text-slate-400">
-          {new Date(historicalEntry.timestamp).toLocaleTimeString(undefined, {
-            timeZone: timezone
-          })}
+          {new Date(historicalEntry.timestamp).toLocaleTimeString()}
         </span>
         
         {onViewEntry && (

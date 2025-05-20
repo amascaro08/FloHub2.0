@@ -1,89 +1,67 @@
 'use client'
 
-import React, { useState, useEffect, memo, useMemo } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { useSession } from 'next-auth/react';
-import { marked } from 'marked';
-import { useWidgetTracking } from '@/lib/analyticsTracker';
-import {
-  fetchUserSettings,
-  fetchCalendarEvents,
-  fetchTasks,
-  fetchNotes,
-  fetchMeetings,
-  fetchHabits,
-  fetchHabitCompletions
-} from '@/lib/widgetFetcher';
+import { marked } from 'marked'; // Import marked
 // Initialize marked with GFM options and ensure it doesn't return promises
 marked.setOptions({
   gfm: true,
   async: false
 });
-import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
-import { isSameDay } from 'date-fns';
-import useSWR from 'swr';
-import type { UserSettings } from '../../types/app';
-import type { CalendarEvent, Task, Note, Habit, HabitCompletion } from '../../types/calendar';
+import { formatInTimeZone, toZonedTime } from 'date-fns-tz'; // Import formatInTimeZone and toZonedTime
+import { isSameDay } from 'date-fns'; // Import isSameDay from date-fns
+import useSWR from 'swr'; // Import useSWR
+import type { UserSettings } from '../../types/app'; // Import UserSettings type
+import type { Note } from '../../types/app'; // Import shared Note type
+import type { Habit, HabitCompletion } from '../../types/habit-tracker'; // Import Habit types
 
-// Create a memoized markdown parser
-const createMarkdownParser = () => {
-  const parseMarkdown = (text: string): string => {
-    try {
-      const result = marked(text);
-      return typeof result === 'string' ? result : '';
-    } catch (err) {
-      console.error("Error parsing markdown:", err);
-      return text;
-    }
-  };
-  return parseMarkdown;
-};
 
-// Memoized fetcher function for SWR
-const fetcher = async (url: string) => {
-  return fetchUserSettings(url);
-};
+interface CalendarEvent {
+  id: string;
+  calendarId: string; // Calendar ID field
+  summary: string;
+  start: { dateTime?: string; date?: string };
+  end?: { dateTime?: string; date?: string };
+  source?: "personal" | "work"; // "personal" = Google, "work" = O365
+  description?: string; // Description field
+  calendarName?: string; // Calendar name field
+  tags?: string[]; // Tags field
+}
+
+interface Task {
+  id: string;
+  text: string;
+  done: boolean;
+  source?: "personal" | "work"; // Add source tag
+}
 
 const AtAGlanceWidget = () => {
-  const { data: session } = useSession({ required: false });
-  
-  if (!session) {
-    return <div>Loading...</div>; // Or any other fallback UI
-  }
+  const { data: session } = useSession();
   const userName = session?.user?.name || "User";
-  
-  // Check if we're on the client side
-  const isClient = typeof window !== 'undefined';
-  
-  // Track widget usage (client-side only)
-  const trackingHook = isClient ? useWidgetTracking('AtAGlanceWidget') : { trackInteraction: () => {} };
-  const { trackInteraction } = trackingHook;
 
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [notes, setNotes] = useState<Note[]>([]); 
-  const [meetings, setMeetings] = useState<Note[]>([]);
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [habitCompletions, setHabitCompletions] = useState<HabitCompletion[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]); // Add state for notes
+  const [meetings, setMeetings] = useState<Note[]>([]); // Meeting notes also use the Note type
+  const [habits, setHabits] = useState<Habit[]>([]); // Add state for habits
+  const [habitCompletions, setHabitCompletions] = useState<HabitCompletion[]>([]); // Add state for habit completions
   const [aiMessage, setAiMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formattedHtml, setFormattedHtml] = useState<string>("FloCat is thinking...");
-  const [dataFetchStarted, setDataFetchStarted] = useState(false);
 
-  // Fetch user settings with SWR for caching
-  const { data: loadedSettings, error: settingsError } = useSWR(
-    session ? "/api/userSettings" : null,
-    fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60000 } // Cache for 1 minute
-  );
+  // Fetch user settings
+  const fetcher = async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  };
+  const { data: loadedSettings, error: settingsError } = useSWR<UserSettings>(session ? "/api/userSettings" : null, fetcher);
 
   // State for calendar sources, initialized from settings
   const [calendarSources, setCalendarSources] = useState<any[]>([]);
   const [selectedCals, setSelectedCals] = useState<string[]>([]);
   const [powerAutomateUrl, setPowerAutomateUrl] = useState<string>("");
-
-  // Memoize the markdown parser
-  const parseMarkdown = useMemo(() => createMarkdownParser(), []);
 
   // Update calendar settings when settings load
   useEffect(() => {
@@ -100,64 +78,57 @@ const AtAGlanceWidget = () => {
       
       // Set calendar sources if available
       if (loadedSettings.calendarSources && loadedSettings.calendarSources.length > 0) {
-        setCalendarSources(loadedSettings.calendarSources.filter((source: any) => source.isEnabled));
+        setCalendarSources(loadedSettings.calendarSources.filter(source => source.isEnabled));
       }
     }
   }, [loadedSettings]);
 
-  // Function to determine the current time interval (morning, lunch, evening)
-  const getTimeInterval = (date: Date, timezone: string): 'morning' | 'lunch' | 'evening' | 'other' => {
-    const hour = parseInt(formatInTimeZone(date, timezone, 'HH'), 10);
-    if (hour >= 5 && hour < 12) return 'morning';
-    if (hour >= 12 && hour < 17) return 'lunch';
-    if (hour >= 17 || hour < 5) return 'evening';
-    return 'other'; // Should not happen with the current logic, but as a fallback
-  };
 
-  // Skip cache and always fetch fresh data
-  useEffect(() => {
-    if (!session || dataFetchStarted) return;
-    
-    try {
-      // Clear any existing cache
-      localStorage.removeItem('flohub.atAGlanceMessage');
-      localStorage.removeItem('flohub.atAGlanceTimestamp');
-      localStorage.removeItem('flohub.atAGlanceInterval');
-      
-      // Always set flag to start data fetching
-      setDataFetchStarted(true);
-      console.log("AtAGlanceWidget: Starting fresh data fetch");
-    } catch (err) {
-      console.error("Error accessing localStorage:", err);
-      setDataFetchStarted(true);
-    }
-  }, [session, dataFetchStarted]);
+ // Function to determine the current time interval (morning, lunch, evening)
+ const getTimeInterval = (date: Date, timezone: string): 'morning' | 'lunch' | 'evening' | 'other' => {
+   const hour = parseInt(formatInTimeZone(date, timezone, 'HH'), 10);
+   if (hour >= 5 && hour < 12) return 'morning';
+   if (hour >= 12 && hour < 17) return 'lunch';
+   if (hour >= 17 || hour < 5) return 'evening';
+   return 'other'; // Should not happen with the current logic, but as a fallback
+ };
 
-  // Main data fetching effect
-  useEffect(() => {
-    if (!session || !loadedSettings || !dataFetchStarted) return;
-    
-    let isMounted = true; // Flag to prevent state updates after unmount
-    
-    const fetchData = async () => {
-      if (!isMounted) return;
-      
-      setLoading(true);
-      setError(null);
-      setAiMessage(null); // Clear previous message while loading
+ // Function to safely parse markdown (memoized to prevent unnecessary re-renders)
+ const parseMarkdown = React.useCallback((text: string): string => {
+   try {
+     const result = marked(text);
+     return typeof result === 'string' ? result : '';
+   } catch (err) {
+     console.error("Error parsing markdown:", err);
+     return text;
+   }
+ }, []);
 
-      const now = new Date();
-      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const currentTimeInterval = getTimeInterval(now, userTimezone);
+ useEffect(() => {
+   let isMounted = true; // Flag to prevent state updates after unmount
+   
+   const fetchData = async () => {
+     if (!isMounted) return;
+     
+     setLoading(true);
+     setError(null);
+     setAiMessage(null); // Clear previous message while loading
 
-      console.log("AtAGlanceWidget: Fetching data for interval:", currentTimeInterval);
+     const now = new Date();
+     const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+     const currentTimeInterval = getTimeInterval(now, userTimezone);
 
-      try {
-        // Calculate start and end of day in the user's timezone
+     console.log("AtAGlanceWidget: Fetching data for interval:", currentTimeInterval);
+
+     try {
+       // Fetch upcoming events for today, including o365Url
+       // Calculate start and end of day in the user's timezone, including the timezone offset
+
+        // Calculate start and end of day in the user's timezone, including the timezone offset
         const startOfTodayInTimezone = formatInTimeZone(now, userTimezone, 'yyyy-MM-dd\'T\'00:00:00XXX');
         const endOfTodayInTimezone = formatInTimeZone(now, userTimezone, 'yyyy-MM-dd\'T\'23:59:59XXX');
 
-        // Convert to UTC ISO strings for the API
+        // Create Date objects from the timezone-aware strings and convert them to UTC ISO strings for the API
         const startOfTodayUTC = new Date(startOfTodayInTimezone).toISOString();
         const endOfTodayUTC = new Date(endOfTodayInTimezone).toISOString();
 
@@ -166,310 +137,250 @@ const AtAGlanceWidget = () => {
         
         // If we have calendar sources, use them
         if (calendarSources && calendarSources.length > 0) {
+          console.log("AtAGlanceWidget: Using calendar sources:", calendarSources);
           apiUrlParams += `&useCalendarSources=true`;
         } else {
           // Otherwise fall back to legacy settings
+          // Construct calendarId query parameter from selectedCals
           const calendarIdQuery = loadedSettings?.selectedCals && loadedSettings.selectedCals.length > 0
             ? `&calendarId=${loadedSettings.selectedCals.map((id: string) => encodeURIComponent(id)).join('&calendarId=')}`
-            : '';
+            : ''; // If no calendars selected, don't add calendarId param (API defaults to primary)
           
           apiUrlParams += calendarIdQuery;
           
           // Add PowerAutomate URL if available
           if (loadedSettings?.powerAutomateUrl) {
+            console.log("AtAGlanceWidget: Using powerAutomateUrl:", loadedSettings.powerAutomateUrl);
             apiUrlParams += `&o365Url=${encodeURIComponent(loadedSettings.powerAutomateUrl)}`;
           }
         }
         
-        // Fetch data in parallel using Promise.all with enhanced fetcher
-        const [eventsResponse, tasksData, notesData, meetingsData] = await Promise.all([
-          // Fetch calendar events with enhanced fetcher
-          fetchCalendarEvents(`/api/calendar?${apiUrlParams}`, `flohub:calendar:${apiUrlParams}`),
-          
-          // Fetch tasks with enhanced fetcher
-          fetchTasks(),
-          
-          // Fetch notes with enhanced fetcher
-          fetchNotes(),
-          
-          // Fetch meetings with enhanced fetcher
-          fetchMeetings()
-        ]);
+        const eventsApiUrl = `/api/calendar?${apiUrlParams}`;
+       console.log("AtAGlanceWidget: Fetching events from URL:", eventsApiUrl);
 
-        // Handle both response formats: direct array or {events: [...]} object
-        // Extract events array from response
-        const eventsData = eventsResponse || [];
-        
-        console.log("Events data retrieved:", eventsData.length, "events");
-
-        // Process events data
-        const eventsInUserTimezone = eventsData.map((event: CalendarEvent) => {
-          // Handle start date/time based on type
-          let start: any = {};
-          if (event.start instanceof Date) {
-            start = { dateTime: formatInTimeZone(event.start, userTimezone, 'yyyy-MM-dd\'T\'HH:mm:ssXXX') };
-          } else {
-            // It's a CalendarEventDateTime
-            if (event.start.dateTime) {
-              start = { dateTime: formatInTimeZone(toZonedTime(event.start.dateTime, userTimezone), userTimezone, 'yyyy-MM-dd\'T\'HH:mm:ssXXX') };
-            } else if (event.start.date) {
-              start = { date: event.start.date }; // All-day events don't need time conversion
-            }
-          }
-          
-          // Handle end date/time based on type
-          let end: any = undefined;
-          if (event.end) {
-            if (event.end instanceof Date) {
-              end = { dateTime: formatInTimeZone(event.end, userTimezone, 'yyyy-MM-dd\'T\'HH:mm:ssXXX') };
-            } else {
-              // It's a CalendarEventDateTime
-              if (event.end.dateTime) {
-                end = { dateTime: formatInTimeZone(toZonedTime(event.end.dateTime, userTimezone), userTimezone, 'yyyy-MM-dd\'T\'HH:mm:ssXXX') };
-              } else if (event.end.date) {
-                end = { date: event.end.date }; // All-day events don't need time conversion
-              }
-            }
-          }
-
-          return {
-            ...event,
-            start,
-            end,
-          };
-        });
-
-        // Update state with fetched data
-        if (isMounted) {
-          setUpcomingEvents(eventsInUserTimezone);
-          setTasks(tasksData.tasks || []);
-          setNotes(notesData.notes || []);
-          setMeetings(meetingsData.meetings || []);
+       const eventsRes = await fetch(eventsApiUrl);
+        if (!eventsRes.ok) {
+          throw new Error(`Error fetching events: ${eventsRes.statusText}`);
         }
+       const eventsData: CalendarEvent[] = await eventsRes.json();
+       console.log("AtAGlanceWidget: Fetched raw eventsData:", eventsData); // Log raw data
+       console.log("AtAGlanceWidget: Number of events fetched:", eventsData.length); // Log number of events
+       console.log("AtAGlanceWidget: Events data structure example:", eventsData.length > 0 ? eventsData[0] : "No events"); // Log example event structure
 
-        // Fetch habits in a separate non-blocking call with enhanced fetcher
-        try {
-          // Use enhanced fetcher for habits
-          const habitsData = await fetchHabits();
-          if (isMounted) setHabits(habitsData.habits || []);
+       // Convert event times to user's timezone
+       const eventsInUserTimezone = eventsData.map(event => {
+         const start = event.start.dateTime
+           ? { dateTime: formatInTimeZone(toZonedTime(event.start.dateTime, userTimezone), userTimezone, 'yyyy-MM-dd\'T\'HH:mm:ssXXX') }
+         : event.start.date
+           ? { date: event.start.date } // All-day events don't need time conversion
+           : {};
+         const end = event.end?.dateTime
+           ? { dateTime: formatInTimeZone(toZonedTime(event.end.dateTime, userTimezone), userTimezone, 'yyyy-MM-dd\'T\'HH:mm:ssXXX') }
+          : event.end?.date
+            ? { date: event.end.date } // All-day events don't need time conversion
+            : undefined;
+
+         return {
+           ...event,
+           start,
+           end,
+         };
+       });
+
+       console.log("AtAGlanceWidget: Events converted to user timezone:", eventsInUserTimezone); // Log events after timezone conversion
+       setUpcomingEvents(eventsInUserTimezone);
+
+       // Fetch tasks
+       const tasksRes = await fetch('/api/tasks');
+        if (!tasksRes.ok) {
+          throw new Error(`Error fetching tasks: ${tasksRes.statusText}`);
+        }
+        const tasksData: Task[] = await tasksRes.json();
+        setTasks(tasksData);
+
+        // Fetch notes
+        const notesRes = await fetch('/api/notes');
+        if (!notesRes.ok) {
+          throw new Error(`Error fetching notes: ${notesRes.statusText}`);
+        }
+        const notesData: Note[] = await notesRes.json();
+        setNotes(notesData);
+
+        // Fetch meetings
+        const meetingsRes = await fetch('/api/meetings');
+        if (!meetingsRes.ok) {
+          throw new Error(`Error fetching meetings: ${meetingsRes.statusText}`);
+        }
+        const meetingsData: Note[] = await meetingsRes.json();
+        setMeetings(meetingsData);
+
+        // Fetch habits
+        const habitsRes = await fetch('/api/habits');
+        if (!habitsRes.ok) {
+          console.log("Error fetching habits:", habitsRes.statusText);
+          // Don't throw error here, just log it and continue
+        } else {
+          const habitsData: Habit[] = await habitsRes.json();
+          setHabits(habitsData);
           
           // Fetch habit completions for the current month
           const today = new Date();
-          const completionsData = await fetchHabitCompletions(
-            today.getFullYear(),
-            today.getMonth()
-          );
-          if (isMounted) setHabitCompletions(completionsData.completions || []);
-        } catch (err) {
-          console.log("Error fetching habits:", err);
-          // Don't fail the whole widget if habits can't be fetched
+          const habitCompletionsRes = await fetch(`/api/habits/completions?year=${today.getFullYear()}&month=${today.getMonth()}`);
+          if (habitCompletionsRes.ok) {
+            const completionsData: HabitCompletion[] = await habitCompletionsRes.json();
+            setHabitCompletions(completionsData);
+          }
         }
 
+
         // Filter out completed tasks for the AI prompt
-        const incompleteTasks = tasksData.tasks ? tasksData.tasks.filter((task: Task) => !task.completed) : [];
-        console.log("Incomplete tasks found:", incompleteTasks.length);
+        const incompleteTasks = tasksData.filter(task => !task.done);
 
-        // Filter out past events for the AI prompt - include events for the next 7 days
-        const upcomingEventsForPrompt = eventsInUserTimezone.filter((ev: CalendarEvent) => {
-          const nowInUserTimezone = toZonedTime(now, userTimezone);
-          
-          // Create a date 7 days from now for the filter window
-          const oneWeekFromNow = new Date(nowInUserTimezone);
-          oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
 
-          // Handle Date or CalendarEventDateTime
-          if (ev.start instanceof Date) {
-            // It's a Date object
-            return ev.start.getTime() >= nowInUserTimezone.getTime() &&
-                   ev.start.getTime() <= oneWeekFromNow.getTime();
-          } else {
-            // It's a CalendarEventDateTime
-            if (ev.start.dateTime) {
-              // Timed event
-              const startTime = toZonedTime(ev.start.dateTime, userTimezone);
-              let endTime = null;
-              
-              if (ev.end) {
-                if (ev.end instanceof Date) {
-                  endTime = ev.end;
-                } else if (ev.end.dateTime) {
-                  endTime = toZonedTime(ev.end.dateTime, userTimezone);
-                }
-              }
+       // Filter out past events for the AI prompt, using times already converted to user's timezone
+       const upcomingEventsForPrompt = eventsInUserTimezone.filter(ev => {
+         console.log("AtAGlanceWidget: Filtering event:", ev.summary, ev.start.dateTime || ev.start.date);
+         const nowInUserTimezone = toZonedTime(now, userTimezone); // Use toZonedTime for current time as well
 
-              // Include if the event hasn't ended yet and starts within the next 7 days
-              const hasNotEnded = !endTime || endTime.getTime() > nowInUserTimezone.getTime();
-              const startsWithinNextWeek = startTime.getTime() <= oneWeekFromNow.getTime();
-              const startsAfterNow = startTime.getTime() >= nowInUserTimezone.getTime();
+         if (ev.start.dateTime) {
+           // Timed event
+           const startTime = toZonedTime(ev.start.dateTime, userTimezone);
+           const endTime = ev.end?.dateTime ? toZonedTime(ev.end.dateTime, userTimezone) : null;
 
-              return hasNotEnded && startsWithinNextWeek && startsAfterNow;
-            } else if (ev.start.date) {
-              // All-day event
-              const eventDate = toZonedTime(ev.start.date, userTimezone);
-              
-              // Include if the event date is within the next 7 days
-              return eventDate.getTime() >= nowInUserTimezone.getTime() &&
-                     eventDate.getTime() <= oneWeekFromNow.getTime();
-            }
-          }
-          return false;
-        });
-        
-        console.log("Upcoming events for prompt:", upcomingEventsForPrompt.length, "events found");
+           // Include if the event starts today AND has not ended yet
+           const isToday = isSameDay(startTime, nowInUserTimezone);
+           const hasNotEnded = !endTime || endTime.getTime() > nowInUserTimezone.getTime();
 
-        // Clear any cached message to force a new one to be generated
-        try {
-          localStorage.removeItem('flohub.atAGlanceMessage');
-          localStorage.removeItem('flohub.atAGlanceTimestamp');
-          localStorage.removeItem('flohub.atAGlanceInterval');
-          
-          // Always generate a new message
-          if (isMounted) {
-            console.log("AtAGlanceWidget: Generating new message for interval:", currentTimeInterval);
-            
-            // Get today's date in YYYY-MM-DD format for habit completions
-            const todayFormatted = formatInTimeZone(now, userTimezone, 'yyyy-MM-dd');
-            
-            // Filter habits that should be completed today (limit to 5 for performance)
-            const todaysHabits = habits.filter(habit => {
-              const dayOfWeek = now.getDay(); // 0-6, Sunday-Saturday
-              
-              switch (habit.frequency) {
-                case 'daily':
-                  return true;
-                case 'weekly':
-                  return dayOfWeek === 0; // Sunday
-                case 'custom':
-                  // Check for customDays property, which might not be in the type definition
-                  return (habit as any).customDays?.includes(dayOfWeek) || false;
-                default:
-                  return false;
-              }
-            }).slice(0, 5); // Limit to 5 habits to reduce prompt size
-            
-            // Check which habits are completed today
-            const completedHabits = todaysHabits.filter(habit =>
-              habitCompletions.some(c =>
-                c.habitId === habit.id &&
-                c.date === todayFormatted &&
-                c.completed
-              )
-            );
-            
-            // Calculate habit completion rate
-            const habitCompletionRate = todaysHabits.length > 0
-              ? Math.round((completedHabits.length / todaysHabits.length) * 100)
-              : 0;
-            
-            // Include more items in each category
-            const limitedEvents = upcomingEventsForPrompt.slice(0, 5);
-            const limitedTasks = incompleteTasks.slice(0, 5);
-            
-            console.log("Events for AI message:", limitedEvents.length);
-            console.log("Tasks for AI message:", limitedTasks.length);
-            
-            // Get the user's FloCat style and personality preferences from settings
-            const floCatStyle = loadedSettings?.floCatStyle || "default";
-            const floCatPersonality = loadedSettings?.floCatPersonality || [];
-            const preferredName = loadedSettings?.preferredName || userName;
-            
-            // Build personality traits string from keywords
-            const personalityTraits = Array.isArray(floCatPersonality) && floCatPersonality.length > 0
-              ? `Your personality traits include: ${floCatPersonality.join(", ")}.`
-              : "";
-            
-            // Generate the appropriate prompt based on the FloCat style
-            let styleInstruction = "";
-            
-            switch(floCatStyle) {
-              case "more_catty":
-                styleInstruction = `You are FloCat, an extremely playful and cat-like AI assistant. Use LOTS of cat puns, cat emojis (😺 😻 🐱), and cat-like expressions (like 'purr-fect', 'meow', 'paw-some'). Be enthusiastic and playful in your summary. ${personalityTraits}`;
-                break;
-              case "less_catty":
-                styleInstruction = `You are FloCat, a helpful and friendly AI assistant. While you have a cat mascot, you should minimize cat puns and references. Focus on being helpful and friendly while only occasionally using a cat emoji (😺). ${personalityTraits}`;
-                break;
-              case "professional":
-                styleInstruction = `You are FloCat, a professional and efficient AI assistant. Provide a concise, business-like summary with no cat puns, emojis, or playful language. Focus on delivering information clearly and efficiently. Use formal language. ${personalityTraits}`;
-                break;
-              default: // default style
-                styleInstruction = `You are FloCat, an AI assistant with a friendly, sarcastic cat personality 🐾. ${personalityTraits}`;
-            }
-            
-            // Generate AI message with a more compact prompt
-            const prompt = `${styleInstruction}
-Generate a short "At A Glance" message for ${preferredName} with:
+           const shouldKeep = isToday && hasNotEnded;
+           console.log("AtAGlanceWidget: Timed event times (user timezone):", startTime, endTime, "Current time (user timezone):", nowInUserTimezone, "Is today:", isToday, "Has not ended:", hasNotEnded, "Keep timed event?", shouldKeep);
+           return shouldKeep;
 
-EVENTS: ${limitedEvents.map((event: CalendarEvent) => {
-  // Check if event has the required properties
-  if (!event || !(event.summary || event.title) || !event.start) {
-    console.warn("Invalid event format:", event);
-    return null; // Skip this event
-  }
+         } else if (ev.start.date) {
+           // All-day event
+           const eventDate = toZonedTime(ev.start.date, userTimezone);
 
-  let eventTime;
-  if (event.start instanceof Date) {
-    eventTime = formatInTimeZone(event.start, userTimezone, 'h:mm a');
-  } else {
-    eventTime = event.start.dateTime
-      ? formatInTimeZone(new Date(event.start.dateTime), userTimezone, 'h:mm a')
-      : event.start.date;
-  }
-  
-  const eventTitle = event.summary || event.title || 'Untitled Event';
-  const calendarType = event.source === "work" ? "work" : "personal";
-  const calendarTags = event.tags && event.tags.length > 0 ? ` (${event.tags.join(', ')})` : '';
-  return `${eventTitle} at ${eventTime} [${calendarType}${calendarTags}]`;
-}).filter(item => item !== null).join(', ') || 'None'}
+           // Include if the event date is today
+           const isToday = isSameDay(eventDate, nowInUserTimezone);
 
-TASKS: ${limitedTasks.map((task: Task) => task.text).join(', ') || 'None'}
+           const shouldKeep = isToday;
+           console.log("AtAGlanceWidget: All-day event date (user timezone):", eventDate, "Current time (user timezone):", nowInUserTimezone, "Is today:", isToday, "Keep all-day event?", shouldKeep);
+           return shouldKeep;
+         }
+         // Should not happen if data is well-formed, but filter out if no start time/date
+         console.log("AtAGlanceWidget: Filtering out event with no start time/date.");
+         return false;
+       });
+          console.log("AtAGlanceWidget: upcomingEventsForPrompt:", upcomingEventsForPrompt); // Add this log
+
+       // Check for cached message *after* fetching data
+       try {
+         const cachedMessage = localStorage.getItem('flohub.atAGlanceMessage');
+         const cachedTimestamp = localStorage.getItem('flohub.atAGlanceTimestamp');
+         const cachedInterval = localStorage.getItem('flohub.atAGlanceInterval');
+
+         if (cachedMessage && cachedTimestamp && cachedInterval === currentTimeInterval && isMounted) {
+           // Use cached message if it's from the current time interval
+           setAiMessage(cachedMessage);
+           // Pre-parse the markdown for the cached message
+           setFormattedHtml(parseMarkdown(cachedMessage));
+           console.log("AtAGlanceWidget: Using cached message for interval:", currentTimeInterval);
+         } else if (isMounted) {
+         console.log("AtAGlanceWidget: Generating new message for interval:", currentTimeInterval);
+         
+         // Get today's date in YYYY-MM-DD format for habit completions
+         const todayFormatted = formatInTimeZone(now, userTimezone, 'yyyy-MM-dd');
+         
+         // Filter habits that should be completed today (limit to 5 for performance)
+         const todaysHabits = habits.filter(habit => {
+           const dayOfWeek = now.getDay(); // 0-6, Sunday-Saturday
+           
+           switch (habit.frequency) {
+             case 'daily':
+               return true;
+             case 'weekly':
+               return dayOfWeek === 0; // Sunday
+             case 'custom':
+               return habit.customDays?.includes(dayOfWeek) || false;
+             default:
+               return false;
+           }
+         }).slice(0, 5); // Limit to 5 habits to reduce prompt size
+         
+         // Check which habits are completed today
+         const completedHabits = todaysHabits.filter(habit =>
+           habitCompletions.some(c =>
+             c.habitId === habit.id &&
+             c.date === todayFormatted &&
+             c.completed
+           )
+         );
+         
+         // Calculate habit completion rate
+         const habitCompletionRate = todaysHabits.length > 0
+           ? Math.round((completedHabits.length / todaysHabits.length) * 100)
+           : 0;
+         
+         // Limit the number of items in each category to reduce prompt size
+         const limitedEvents = upcomingEventsForPrompt.slice(0, 3);
+         const limitedTasks = incompleteTasks.slice(0, 3);
+         const limitedNotes = notes.slice(0, 2);
+         const limitedMeetings = meetings.slice(0, 2);
+         
+         // Generate AI message with a more compact prompt
+         const prompt = `You are FloCat, an AI assistant with a friendly, sarcastic cat personality 🐾.
+Generate a short "At A Glance" message for ${userName} with:
+
+EVENTS: ${limitedEvents.map(event => {
+ const eventTime = event.start.dateTime
+   ? formatInTimeZone(new Date(event.start.dateTime), userTimezone, 'h:mm a')
+   : event.start.date;
+ const calendarType = event.source === "work" ? "work" : "personal";
+ const calendarTags = event.tags && event.tags.length > 0 ? ` (${event.tags.join(', ')})` : '';
+ return `${event.summary} at ${eventTime} [${calendarType}${calendarTags}]`;
+}).join(', ') || 'None'}
+
+TASKS: ${limitedTasks.map(task => task.text).join(', ') || 'None'}
 
 HABITS: ${completedHabits.length}/${todaysHabits.length} completed (${habitCompletionRate}%)
 ${todaysHabits.map(habit => {
-  const isCompleted = completedHabits.some(h => h.id === habit.id);
-  return `${isCompleted ? '✅' : '⬜'} ${habit.name}`;
+ const isCompleted = completedHabits.some(h => h.id === habit.id);
+ return `${isCompleted ? '✅' : '⬜'} ${habit.name}`;
 }).join(', ') || 'None'}
 
 Be witty and brief (under 200 words). Use markdown formatting. Consider the time (${currentTimeInterval}).`;
 
 
-            const aiRes = await fetch('/api/assistant', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ history: [], prompt }),
-            });
+          const aiRes = await fetch('/api/assistant', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ history: [], prompt }),
+          });
 
-            if (!aiRes.ok) {
-              // If we get a timeout or other error, generate a simple message instead
-              if (aiRes.status === 504) {
-                console.warn("AI request timed out, using fallback message");
-                const fallbackMessage = `# Hello ${userName}! 😺
+          if (!aiRes.ok) {
+            // If we get a timeout or other error, generate a simple message instead
+            if (aiRes.status === 504) {
+              console.warn("AI request timed out, using fallback message");
+              const fallbackMessage = `# Hello ${userName}! 😺
 
 ## Your Day at a Glance
 
 ${upcomingEventsForPrompt.length > 0 ? `
 **Upcoming Events:**
-${upcomingEventsForPrompt.slice(0, 5).map((event: CalendarEvent) => {
-  let eventTime;
-  if (event.start instanceof Date) {
-    eventTime = formatInTimeZone(event.start, userTimezone, 'h:mm a');
-  } else {
-    eventTime = event.start.dateTime
-      ? formatInTimeZone(new Date(event.start.dateTime), userTimezone, 'h:mm a')
-      : event.start.date;
-  }
-  
-  const eventTitle = event.summary || event.title || 'Untitled Event';
+${upcomingEventsForPrompt.slice(0, 3).map(event => {
+  const eventTime = event.start.dateTime
+    ? formatInTimeZone(new Date(event.start.dateTime), userTimezone, 'h:mm a')
+    : event.start.date;
   const calendarName = event.calendarName || (event.source === "work" ? "Work Calendar" : "Personal Calendar");
   const calendarTags = event.tags && event.tags.length > 0 ? ` (${event.tags.join(', ')})` : '';
-  return `- ${eventTitle} at ${eventTime} - ${calendarName}${calendarTags}`;
+  return `- ${event.summary} at ${eventTime} - ${calendarName}${calendarTags}`;
 }).join('\n')}
 ` : ''}
 
 ${incompleteTasks.length > 0 ? `
 **Tasks to Complete:**
-${incompleteTasks.slice(0, 5).map((task: Task) => `- ${task.text}`).join('\n')}
+${incompleteTasks.slice(0, 3).map(task => `- ${task.text}`).join('\n')}
 ` : ''}
 
 ${todaysHabits.length > 0 ? `
@@ -482,97 +393,93 @@ ${todaysHabits.slice(0, 3).map(habit => {
 
 Have a purr-fect day!`;
 
-                setAiMessage(fallbackMessage);
-                setFormattedHtml(parseMarkdown(fallbackMessage));
-                
-                // Store the fallback message in localStorage
-                try {
-                  localStorage.setItem('flohub.atAGlanceMessage', fallbackMessage);
-                  localStorage.setItem('flohub.atAGlanceTimestamp', now.toISOString());
-                  localStorage.setItem('flohub.atAGlanceInterval', currentTimeInterval);
-                } catch (err) {
-                  console.error("Error saving to localStorage:", err);
-                }
-                
-                return;
-              }
-              throw new Error(`Error generating AI message: ${aiRes.statusText}`);
+              setAiMessage(fallbackMessage);
+              setFormattedHtml(parseMarkdown(fallbackMessage));
+              return;
             }
-
-            const aiData = await aiRes.json();
-            if (aiData.reply && isMounted) {
-              setAiMessage(aiData.reply);
-              // Pre-parse the markdown
-              setFormattedHtml(parseMarkdown(aiData.reply));
-              
-              // Store the new message and timestamp in localStorage
-              try {
-                localStorage.setItem('flohub.atAGlanceMessage', aiData.reply);
-                localStorage.setItem('flohub.atAGlanceTimestamp', now.toISOString());
-                localStorage.setItem('flohub.atAGlanceInterval', currentTimeInterval);
-              } catch (err) {
-                console.error("Error saving to localStorage:", err);
-              }
-            } else if (isMounted) {
-              setError("AI assistant did not return a message.");
-            }
+            throw new Error(`Error generating AI message: ${aiRes.statusText}`);
           }
-        } catch (err) {
-          console.error("Error accessing localStorage:", err);
-        }
+
+          const aiData = await aiRes.json();
+          if (aiData.reply && isMounted) {
+            setAiMessage(aiData.reply);
+            // Pre-parse the markdown
+            setFormattedHtml(parseMarkdown(aiData.reply));
+            
+            // Store the new message and timestamp in localStorage
+            try {
+              localStorage.setItem('flohub.atAGlanceMessage', aiData.reply);
+              localStorage.setItem('flohub.atAGlanceTimestamp', now.toISOString());
+              localStorage.setItem('flohub.atAGlanceInterval', currentTimeInterval);
+            } catch (err) {
+              console.error("Error saving to localStorage:", err);
+            }
+          } else if (isMounted) {
+            setError("AI assistant did not return a message.");
+          }
+         }
+       } catch (err) {
+         console.error("Error accessing localStorage:", err);
+       }
 
 
-      } catch (err: any) {
-        if (isMounted) {
-          setError(err.message);
-          console.error("Error fetching data or generating AI message for At A Glance widget:", err);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
+     } catch (err: any) {
+       if (isMounted) {
+         setError(err.message);
+         console.error("Error fetching data or generating AI message for At A Glance widget:", err);
+       }
+     } finally {
+       if (isMounted) {
+         setLoading(false);
+       }
+     }
+   };
 
-    // Fetch data when session and loadedSettings are available
-    fetchData();
-    
-    // Cleanup function to prevent state updates after unmount
-    return () => {
-      isMounted = false;
-    };
-  }, [session, loadedSettings, parseMarkdown, dataFetchStarted]); 
+   // Fetch data when session or loadedSettings changes
+   if (session && loadedSettings) { // Only fetch data if session and settings are loaded
+     fetchData();
+   }
+   
+   // Cleanup function to prevent state updates after unmount
+   return () => {
+     isMounted = false;
+   };
+  }, [session, loadedSettings, parseMarkdown]); // Include all dependencies
 
-  let loadingMessage = "Planning your day...";
-  if (loading) {
-    // Determine a more specific loading message based on what's being fetched
-    if (!loadedSettings) {
-      loadingMessage = "Loading settings...";
-    } else if (session && loadedSettings && !upcomingEvents.length && !tasks.length && !notes.length && !meetings.length) {
-       loadingMessage = "Gathering your day's information...";
-    } else if (session && loadedSettings && upcomingEvents.length > 0 && tasks.length === 0 && notes.length === 0 && meetings.length === 0) {
-        loadingMessage = "Checking for tasks, notes, and meetings...";
-    } else if (session && loadedSettings && upcomingEvents.length === 0 && tasks.length > 0 && notes.length === 0 && meetings.length === 0) {
-        loadingMessage = "Checking for events, notes, and meetings...";
-    } else {
-        loadingMessage = "Compiling your daily summary...";
-    }
-
-    return <div className="p-4 border rounded-lg shadow-sm">{loadingMessage}</div>;
-  }
-
-  if (error) {
-     return <div className="p-4 border rounded-lg shadow-sm text-red-500">Error: {error}</div>;
+ let loadingMessage = "Planning your day...";
+ if (loading) {
+   // Determine a more specific loading message based on what's being fetched
+   if (!loadedSettings) {
+     loadingMessage = "Loading settings...";
+   } else if (session && loadedSettings && !upcomingEvents.length && !tasks.length && !notes.length && !meetings.length) {
+      loadingMessage = "Gathering your day's information...";
+   } else if (session && loadedSettings && upcomingEvents.length > 0 && tasks.length === 0 && notes.length === 0 && meetings.length === 0) {
+       loadingMessage = "Checking for tasks, notes, and meetings...";
+   } else if (session && loadedSettings && upcomingEvents.length === 0 && tasks.length > 0 && notes.length === 0 && meetings.length === 0) {
+       loadingMessage = "Checking for events, notes, and meetings...";
+   } else {
+       loadingMessage = "Compiling your daily summary...";
    }
 
-   return (
-     <div className="p-4 border rounded-lg shadow-sm flex flex-col h-full justify-between">
-       <div className="text-lg flex-1 overflow-auto" dangerouslySetInnerHTML={{ __html: formattedHtml }}>
-         {/* Message will be rendered here by dangerouslySetInnerHTML */}
-       </div>
-       <p className="text-sm mt-2 self-end">- FloCat 😼</p>
-     </div>
-   );
+
+   return <div className="p-4 border rounded-lg shadow-sm">{loadingMessage}</div>;
+ }
+
+ if (error) {
+    return <div className="p-4 border rounded-lg shadow-sm text-red-500">Error: {error}</div>;
+  }
+
+  // We've removed the separate useEffect for markdown conversion
+  // and integrated it directly into the data fetching flow
+
+  return (
+    <div className="p-4 border rounded-lg shadow-sm flex flex-col h-full justify-between">
+      <div className="text-lg flex-1 overflow-auto" dangerouslySetInnerHTML={{ __html: formattedHtml }}>
+        {/* Message will be rendered here by dangerouslySetInnerHTML */}
+      </div>
+      <p className="text-sm mt-2 self-end">- FloCat 😼</p>
+    </div>
+  );
 };
 
 export default memo(AtAGlanceWidget);

@@ -4,16 +4,28 @@ import { useSession } from "next-auth/react"; // Import useSession
 import { formatInTimeZone } from 'date-fns-tz'; // Import formatInTimeZone
 import { parseISO } from 'date-fns'; // Import parseISO
 
-import {
-  CalendarEvent,
-  CalendarSettings,
-  CalendarEventDateTime,
-  isDate,
-  isCalendarEventDateTime
-} from "../../types/calendar.js";
+// Define Settings type (can be moved to a shared types file)
+export type Settings = {
+  selectedCals: string[];
+  defaultView: "today" | "tomorrow" | "week" | "month" | "custom";
+  customRange: { start: string; end: string };
+  powerAutomateUrl?: string;
+};
 
 type ViewType = 'today' | 'tomorrow' | 'week' | 'month' | 'custom';
 type CustomRange = { start: string; end: string };
+
+export interface CalendarEvent {
+  id: string;
+  calendarId: string; // Calendar ID field
+  summary?: string;
+  start: { dateTime?: string; date?: string };
+  end?: { dateTime?: string; date?: string };
+  source?: "personal" | "work"; // "personal" = Google, "work" = O365
+  description?: string; // Description field
+  calendarName?: string; // Calendar name field
+  tags?: string[]; // Tags field
+}
 
 // Generic fetcher for SWR
 const fetcher = async (url: string) => {
@@ -30,29 +42,16 @@ const calendarEventsFetcher = async (url: string): Promise<CalendarEvent[]> => {
   const res = await fetch(url, { credentials: 'include' });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Error loading events');
-  
-  // Handle both formats: direct array or {events: [...]} object 
-  if (Array.isArray(data)) {
-    return data;
-  } else if (data && Array.isArray(data.events)) {
-    return data.events;
-  } else {
-    console.error("Unexpected response format from calendar API:", data);
-    return [];
-  }
+  return data;
 };
 
 function CalendarWidget() {
-  const { data: session } = useSession();
+  const { data: session } = useSession(); // Get session for conditional fetching
   const { mutate } = useSWRConfig();
-
-  if (!session) {
-    return <div>Loading...</div>; // Or any other fallback UI
-  }
 
   // Fetch persistent user settings via SWR
   const { data: loadedSettings, error: settingsError } =
-    useSWR<CalendarSettings>(session ? "/api/userSettings" : null, fetcher);
+    useSWR<Settings>(session ? "/api/userSettings" : null, fetcher);
 
   // Local state derived from loadedSettings or defaults
   const [selectedCals, setSelectedCals] = useState<string[]>(['primary']);
@@ -202,7 +201,6 @@ function CalendarWidget() {
     }
   }, [data]);
 
-  const hasValidCalendar = loadedSettings && loadedSettings.selectedCals && loadedSettings.selectedCals.length > 0 && !loadedSettings.selectedCals.every(calId => calId === 'primary');
 
   // Filter out past events and find the next upcoming event
   const now = new Date();
@@ -215,30 +213,14 @@ function CalendarWidget() {
           index === self.findIndex((e) => e.id === event.id)
         )
         .filter(ev => {
-          // Get start date based on type
-          let eventStartDate: Date | null = null;
-          let eventEndDate: Date | null = null;
-          
-          if (isDate(ev.start)) {
-            eventStartDate = ev.start;
-          } else if (isCalendarEventDateTime(ev.start)) {
-            eventStartDate = ev.start.dateTime ? parseISO(ev.start.dateTime) :
-                            (ev.start.date ? parseISO(ev.start.date) : null);
-          }
-          
-          if (ev.end) {
-            if (isDate(ev.end)) {
-              eventEndDate = ev.end;
-            } else if (isCalendarEventDateTime(ev.end)) {
-              eventEndDate = ev.end.dateTime ? parseISO(ev.end.dateTime) :
-                            (ev.end.date ? parseISO(ev.end.date) : null);
-          }
-        }
+          const eventStartDate = ev.start.dateTime ? parseISO(ev.start.dateTime) : (ev.start.date ? parseISO(ev.start.date) : null);
+          const eventEndDate = ev.end?.dateTime ? parseISO(ev.end.dateTime) : (ev.end?.date ? parseISO(ev.end.date) : null);
 
           console.log("Filtering event:", ev.summary, "Start:", eventStartDate, "End:", eventEndDate);
           console.log("Current time (local):", now);
           console.log("Start of today (local):", startOfToday);
           console.log("Active view:", activeView);
+
 
           if (!eventStartDate) return false; // Must have a start time/date
 
@@ -248,7 +230,7 @@ function CalendarWidget() {
           if (activeView === 'today' || activeView === 'tomorrow') {
              if (eventEndDate) {
                return eventEndDate.getTime() >= now.getTime();
-             } else if (isCalendarEventDateTime(ev.start) && ev.start.date && !ev.start.dateTime) {
+             } else if (ev.start.date && !ev.start.dateTime) {
                // All-day event today/tomorrow
                const allDayEndDate = new Date(ev.start.date);
                allDayEndDate.setHours(23, 59, 59, 999); // Consider all-day event ending at end of day
@@ -269,23 +251,8 @@ function CalendarWidget() {
   // The next upcoming event is the first one in the sorted, filtered list
   // Note: Sorting is handled by the API, but we re-sort here just in case or for client-side additions
   upcomingEvents.sort((a, b) => {
-    let dateA = 0;
-    let dateB = 0;
-    
-    if (isDate(a.start)) {
-      dateA = a.start.getTime();
-    } else if (isCalendarEventDateTime(a.start)) {
-      dateA = a.start.dateTime ? new Date(a.start.dateTime).getTime() :
-             (a.start.date ? new Date(a.start.date).getTime() : 0);
-    }
-    
-    if (isDate(b.start)) {
-      dateB = b.start.getTime();
-    } else if (isCalendarEventDateTime(b.start)) {
-      dateB = b.start.dateTime ? new Date(b.start.dateTime).getTime() :
-             (b.start.date ? new Date(b.start.date).getTime() : 0);
-    }
-    
+    const dateA = a.start.dateTime ? new Date(a.start.dateTime).getTime() : (a.start.date ? new Date(a.start.date).getTime() : 0);
+    const dateB = b.start.dateTime ? new Date(b.start.dateTime).getTime() : (b.start.date ? new Date(b.start.date).getTime() : 0);
     return dateA - dateB;
   });
 
@@ -294,17 +261,12 @@ function CalendarWidget() {
 
   // Format event for display
   const formatEvent = (ev: CalendarEvent) => {
-    if (isCalendarEventDateTime(ev.start)) {
-      if (ev.start.date && !ev.start.dateTime) {
-        const d = new Date(ev.start.date);
-        return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-      }
-      const dt = new Date(ev.start.dateTime || ev.start.date!);
-      return dt.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-    } else if (isDate(ev.start)) {
-      return ev.start.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    if (ev.start.date && !ev.start.dateTime) {
+      const d = new Date(ev.start.date);
+      return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
     }
-    return "Unknown date format";
+    const dt = new Date(ev.start.dateTime || ev.start.date!);
+    return dt.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   };
 
   // Handlers for opening modal
@@ -320,29 +282,11 @@ function CalendarWidget() {
   };
   const openEdit = (ev: CalendarEvent) => {
     setEditingEvent(ev);
-    
-    let startStr = '';
-    let endStr = '';
-    
-    if (isCalendarEventDateTime(ev.start)) {
-      startStr = ev.start.dateTime || (ev.start.date ? `${ev.start.date}T00:00` : '');
-    } else if (isDate(ev.start)) {
-      startStr = ev.start.toISOString().substring(0, 16); // Format as YYYY-MM-DDTHH:MM
-    }
-    
-    if (ev.end) {
-      if (isCalendarEventDateTime(ev.end)) {
-        endStr = ev.end.dateTime || (ev.end.date ? `${ev.end.date}T00:00` : '');
-      } else if (isDate(ev.end)) {
-        endStr = ev.end.toISOString().substring(0, 16); // Format as YYYY-MM-DDTHH:MM
-      }
-    }
-    
     setForm({
       calendarId: selectedCals[0] || '',
       summary: ev.summary || '',
-      start: startStr,
-      end: endStr,
+      start: ev.start.dateTime || `${ev.start.date}T00:00`,
+      end: ev.end?.dateTime || `${ev.end?.date}T00:00`,
     });
     setModalOpen(true);
   };
@@ -394,14 +338,12 @@ function CalendarWidget() {
     }
   };
 
-  const handleDeleteEvent = async (eventId: string, calendarId?: string) => {
+  const handleDeleteEvent = async (eventId: string, calendarId: string) => {
     console.log("Deleting event:", eventId, "from calendar:", calendarId);
     if (!viewingEvent) return; // Should not happen if button is visible, but for safety
-    
+
     try {
-      // Use the provided calendarId or fall back to a default if not available
-      const effectiveCalendarId = calendarId || viewingEvent.calendarId || 'primary';
-      const url = `/api/calendar/event?id=${eventId}&calendarId=${effectiveCalendarId}`;
+      const url = `/api/calendar/event?id=${eventId}&calendarId=${viewingEvent.calendarId}`;
 
       const res = await fetch(url, {
         method: 'DELETE',
@@ -427,172 +369,67 @@ function CalendarWidget() {
 
   return (
     <div className="relative">
-      {!hasValidCalendar ? (
-        <div className="text-neutral-500 dark:text-neutral-400 flex items-center justify-center py-8">
-          Please select a valid calendar in your <a href="/dashboard/settings-modular" className="text-teal-500 hover:text-teal-400 underline ml-1" target="_blank" rel="noopener noreferrer">settings</a>.
-        </div>
-      ) : (
-        <>
-          {/* Time Frame Selector */}
-          <div className="mb-4">
-            <div className="flex flex-wrap gap-2 mb-3">
-              <button
-                onClick={() => setActiveView('today')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                  activeView === 'today'
-                    ? 'bg-teal-500 text-white'
-                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                }`}
-              >
-                Today
-              </button>
-              <button
-                onClick={() => setActiveView('tomorrow')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                  activeView === 'tomorrow'
-                    ? 'bg-teal-500 text-white'
-                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                }`}
-              >
-                Tomorrow
-              </button>
-              <button
-                onClick={() => setActiveView('week')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                  activeView === 'week'
-                    ? 'bg-teal-500 text-white'
-                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                }`}
-              >
-                This Week
-              </button>
-              <button
-                onClick={() => setActiveView('month')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                  activeView === 'month'
-                    ? 'bg-teal-500 text-white'
-                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                }`}
-              >
-                This Month
-              </button>
-              <button
-                onClick={() => setActiveView('custom')}
-                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                  activeView === 'custom'
-                    ? 'bg-teal-500 text-white'
-                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                }`}
-              >
-                Custom Range
-              </button>
-            </div>
-            
-            {activeView === 'custom' && (
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="date"
-                  value={customRange.start}
-                  onChange={(e) => setCustomRange({ ...customRange, start: e.target.value })}
-                  className="input-modern flex-1"
-                />
-                <span className="self-center">to</span>
-                <input
-                  type="date"
-                  value={customRange.end}
-                  onChange={(e) => setCustomRange({ ...customRange, end: e.target.value })}
-                  className="input-modern flex-1"
-                />
-              </div>
-            )}
-          </div>
-          
-          {/* Display Next Upcoming Event */}
-          {!data ? (
-            <div className="text-neutral-500 dark:text-neutral-400 flex items-center justify-center py-8">
-              Loading calendar events...
-            </div>
-          ) : upcomingEvents.length === 0 ? (
-            <div className="text-neutral-500 dark:text-neutral-400 flex items-center justify-center py-8">
-              No upcoming events in the selected time frame.
-            </div>
-          ) : (
-            <>
-              <div className="bg-white dark:bg-neutral-800 shadow rounded-lg p-4">
-                <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100 mb-2">Next Up</h2>
-                {upcomingEvents.map((event) => (
-                  <div key={event.id} className="mb-4">
-                    <h3 className="font-medium text-neutral-700 dark:text-neutral-200">{event.summary}</h3>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                      {formatEvent(event)}
-                    </p>
-                    {/* View Details Button */}
-                    <button
-                      onClick={() => setViewingEvent(event)}
-                      className="text-teal-500 hover:text-teal-400 underline text-sm mt-1"
-                    >
-                      View Details
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </>
-      )}
-
       {/* Event Details Modal */}
       {viewingEvent && (
-        <div className="fixed inset-0 bg-neutral-600 bg-opacity-50 overflow-y-auto h-full w-full">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-neutral-800">
-            <div className="mt-3 text-center">
-              <h3 className="text-lg leading-6 font-medium text-neutral-900 dark:text-neutral-100">
-                {viewingEvent.summary}
-              </h3>
-              <div className="mt-2">
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                  {formatEvent(viewingEvent)}
-                </p>
-                {viewingEvent.description && (
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
-                    {viewingEvent.description}
-                  </p>
-                )}
-                {viewingEvent.location && (
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
-                    Location: {viewingEvent.location}
-                  </p>
-                )}
-                {viewingEvent.tags && viewingEvent.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setViewingEvent(null)}>
+          <div className="bg-[var(--surface)] p-6 rounded-xl shadow-lg w-full max-w-md max-h-full overflow-y-auto border border-neutral-200 dark:border-neutral-700" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-4 border-b pb-2 border-neutral-200 dark:border-neutral-700">Event Details</h3>
+            <div className="space-y-3">
+              <div>
+                <span className="font-medium text-neutral-600 dark:text-neutral-300">Title: </span>
+                <span className="font-semibold">{viewingEvent.summary || "(No title)"}</span>
+              </div>
+              <div>
+                <span className="font-medium text-neutral-600 dark:text-neutral-300">When: </span>
+                <span>{formatEvent(viewingEvent)}</span>
+              </div>
+              <div>
+                <span className="font-medium text-neutral-600 dark:text-neutral-300">Calendar: </span>
+                <span>{viewingEvent.calendarName || (viewingEvent.source === "work" ? "Work Calendar" : "Personal Calendar")}</span>
+              </div>
+              <div>
+                <span className="font-medium text-neutral-600 dark:text-neutral-300">Type: </span>
+                <span className={`tag ${viewingEvent.source === "work" ? "tag-work" : "tag-personal"}`}>
+                  {viewingEvent.source === "work" ? "Work" : "Personal"}
+                </span>
+              </div>
+              {viewingEvent.tags && viewingEvent.tags.length > 0 && (
+                <div>
+                  <span className="font-medium text-neutral-600 dark:text-neutral-300">Tags: </span>
+                  <div className="flex flex-wrap gap-1 mt-1">
                     {viewingEvent.tags.map(tag => (
-                      <span key={tag} className="bg-teal-100 text-teal-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded dark:bg-teal-700 dark:text-teal-300">
+                      <span key={tag} className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full text-xs">
                         {tag}
                       </span>
                     ))}
                   </div>
-                )}
-              </div>
-              <div className="items-center px-4 py-3">
-                <button
-                  className="px-4 py-2 bg-teal-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-300"
-                  onClick={() => openEdit(viewingEvent)}
-                >
-                  Edit Event
-                </button>
-                <button
-                  className="mt-2 px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-300"
-                  onClick={() => handleDeleteEvent(viewingEvent.id, viewingEvent.calendarId)}
-                >
-                  Delete Event
-                </button>
-                <button
-                  className="mt-2 px-4 py-2 bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-base font-medium rounded-md w-full shadow-sm hover:bg-neutral-300 dark:hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500"
-                  onClick={() => setViewingEvent(null)}
-                >
-                  Close
-                </button>
-              </div>
+                </div>
+              )}
+              {viewingEvent.description && (
+                <div>
+                  <span className="font-medium text-neutral-600 dark:text-neutral-300">Description: </span>
+                  <div className="mt-1 p-2 bg-neutral-50 dark:bg-neutral-800 rounded-lg" dangerouslySetInnerHTML={{ __html: viewingEvent.description }} />
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 mt-6 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+              {viewingEvent?.source === "personal" && (
+                <>
+                  <button
+                    onClick={() => { setViewingEvent(null); openEdit(viewingEvent); }}
+                    className="btn-secondary"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteEvent(viewingEvent.id, viewingEvent.calendarId)}
+                    className="bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-all duration-200"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+              <button onClick={() => setViewingEvent(null)} className="btn-secondary">Close</button>
             </div>
           </div>
         </div>
@@ -600,79 +437,219 @@ function CalendarWidget() {
 
       {/* Add/Edit Event Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-neutral-600 bg-opacity-50 overflow-y-auto h-full w-full">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white dark:bg-neutral-800">
-            <div className="mt-3 text-center">
-              <h3 className="text-lg leading-6 font-medium text-neutral-900 dark:text-neutral-100">
-                {editingEvent ? 'Edit Event' : 'Add New Event'}
-              </h3>
-              <div className="mt-2">
-                <label htmlFor="calendarId" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">Calendar</label>
-                <div className="mt-1">
-                  <select
-                    id="calendarId"
-                    name="calendarId"
-                    value={form.calendarId}
-                    onChange={(e) => setForm({ ...form, calendarId: e.target.value })}
-                    className="shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full sm:text-sm border-neutral-300 dark:border-neutral-700 rounded-md dark:bg-neutral-700 dark:text-neutral-200"
-                  >
-                    {selectedCals.map((id) => (
-                      <option key={id} value={id}>{id}</option>
-                    ))}
-                  </select>
-                </div>
-                <label htmlFor="summary" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mt-3">Event Summary</label>
-                <div className="mt-1">
-                  <input
-                    type="text"
-                    name="summary"
-                    id="summary"
-                    className="shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full sm:text-sm border-neutral-300 dark:border-neutral-700 rounded-md dark:bg-neutral-700 dark:text-neutral-200"
-                    value={form.summary}
-                    onChange={(e) => setForm({ ...form, summary: e.target.value })}
-                  />
-                </div>
-                <label htmlFor="start" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mt-3">Start Time</label>
-                <div className="mt-1">
-                  <input
-                    type="datetime-local"
-                    name="start"
-                    id="start"
-                    className="shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full sm:text-sm border-neutral-300 dark:border-neutral-700 rounded-md dark:bg-neutral-700 dark:text-neutral-200"
-                    value={form.start}
-                    onChange={(e) => setForm({ ...form, start: e.target.value })}
-                  />
-                </div>
-                <label htmlFor="end" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mt-3">End Time (optional)</label>
-                <div className="mt-1">
-                  <input
-                    type="datetime-local"
-                    name="end"
-                    id="end"
-                    className="shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full sm:text-sm border-neutral-300 dark:border-neutral-700 rounded-md dark:bg-neutral-700 dark:text-neutral-200"
-                    value={form.end}
-                    onChange={(e) => setForm({ ...form, end: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="items-center px-4 py-3">
-                <button
-                  className="px-4 py-2 bg-teal-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-300"
-                  onClick={handleSaveEvent}
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setModalOpen(false)}>
+          <div className="bg-[var(--surface)] p-6 rounded-xl shadow-lg w-full max-w-md border border-neutral-200 dark:border-neutral-700" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-4 border-b pb-2 border-neutral-200 dark:border-neutral-700">
+              {editingEvent ? "Edit Event" : "Add Event"}
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Calendar</label>
+                <select
+                  value={form.calendarId}
+                  onChange={(e) => setForm((f) => ({ ...f, calendarId: e.target.value }))}
+                  className="input-modern"
                 >
-                  Save Event
-                </button>
+                  {selectedCals.map((id) => (
+                    <option key={id} value={id}>
+                      {id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Title</label>
+                <input
+                  type="text"
+                  value={form.summary}
+                  onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
+                  className="input-modern"
+                  placeholder="Event title"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Start</label>
+                <input
+                  type="datetime-local"
+                  value={form.start}
+                  onChange={(e) => setForm((f) => ({ ...f, start: e.target.value }))}
+                  className="input-modern"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">End</label>
+                <input
+                  type="datetime-local"
+                  value={form.end}
+                  onChange={(e) => setForm((f) => ({ ...f, end: e.target.value }))}
+                  className="input-modern"
+                />
+              </div>
+              <div className="flex justify-end gap-2 mt-6 pt-3 border-t border-neutral-200 dark:border-neutral-700">
                 <button
-                  className="mt-2 px-4 py-2 bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-base font-medium rounded-md w-full shadow-sm hover:bg-neutral-300 dark:hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500"
                   onClick={() => setModalOpen(false)}
+                  className="btn-secondary"
                 >
                   Cancel
+                </button>
+                <button
+                  onClick={handleSaveEvent}
+                  className="btn-primary"
+                >
+                  Save Event
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Filter Buttons */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            activeView === 'today' 
+              ? 'bg-primary-500 text-white shadow-sm' 
+              : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700'
+          }`}
+          onClick={() => setActiveView('today')}
+        >
+          Today
+        </button>
+        <button
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            activeView === 'week' 
+              ? 'bg-primary-500 text-white shadow-sm' 
+              : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700'
+          }`}
+          onClick={() => setActiveView('week')}
+        >
+          This Week
+        </button>
+        <button
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            activeView === 'month' 
+              ? 'bg-primary-500 text-white shadow-sm' 
+              : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700'
+          }`}
+          onClick={() => setActiveView('month')}
+        >
+          This Month
+        </button>
+        {/* Custom Range button and inputs */}
+        <button
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            activeView === 'custom' 
+              ? 'bg-primary-500 text-white shadow-sm' 
+              : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700'
+          }`}
+          onClick={() => setActiveView('custom')}
+        >
+          Custom Range
+        </button>
+        {activeView === 'custom' && (
+          <div className="flex flex-wrap gap-2 items-center mt-2 w-full">
+            <input
+              type="date"
+              value={customRange.start}
+              onChange={(e) => setCustomRange({ ...customRange, start: e.target.value })}
+              className="input-modern py-1 text-sm"
+            />
+            <span className="text-neutral-500">to</span>
+            <input
+              type="date"
+              value={customRange.end}
+              onChange={(e) => setCustomRange({ ...customRange, end: e.target.value })}
+              className="input-modern py-1 text-sm"
+            />
+          </div>
+        )}
+        {/* Add Event Button */}
+        <button
+          className="ml-auto px-3 py-1.5 rounded-lg text-sm font-medium bg-primary-500 text-white hover:bg-primary-600 transition-all shadow-sm flex items-center"
+          onClick={openAdd}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+          </svg>
+          Add Event
+        </button>
+      </div>
+
+      {/* Event List */}
+      <div className="overflow-y-auto mt-2">
+        {!data && !error && (
+          <div className="text-neutral-500 dark:text-neutral-400 flex items-center justify-center py-8">
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Loading events...
+          </div>
+        )}
+        {error && (
+          <div className="text-red-500 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg mt-2">
+            <p className="font-medium">Error loading events:</p>
+            <p className="text-sm mt-1">{error.message}</p>
+          </div>
+        )}
+        {upcomingEvents.length === 0 && !error && !(!data && !error) && (
+          <div className="text-neutral-500 dark:text-neutral-400 text-center py-8 border border-dashed border-neutral-200 dark:border-neutral-700 rounded-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p>No upcoming events scheduled.</p>
+            <button 
+              onClick={openAdd}
+              className="mt-3 text-primary-500 hover:text-primary-600 font-medium text-sm inline-flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+              </svg>
+              Add an event
+            </button>
+          </div>
+        )}
+        {upcomingEvents.length > 0 && (
+          <ul className="space-y-1">
+            {upcomingEvents.map((ev) => (
+              <li
+                key={ev.id}
+                className="py-3 px-3 border-b border-neutral-200 dark:border-neutral-700 last:border-0 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors mb-1"
+                onClick={() => setViewingEvent(ev)}
+              >
+                <div className="flex items-start">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{ev.summary || "(No title)"}</div>
+                    <div className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 flex items-center gap-1">
+                      <span>{formatEvent(ev)}</span>
+                      {ev.calendarName && (
+                        <span className="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
+                          {ev.calendarName}
+                        </span>
+                      )}
+                    </div>
+                    {ev.tags && ev.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {ev.tags.map(tag => (
+                          <span key={tag} className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full text-xs">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="ml-2 shrink-0">
+                    <span className={`tag ${ev.source === "work" ? "tag-work" : "tag-personal"}`}>
+                      {ev.source === "work" ? "Work" : "Personal"}
+                    </span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

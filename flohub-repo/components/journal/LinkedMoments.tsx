@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
-import { getCurrentDate } from '@/lib/dateUtils';
 
 interface LinkedMomentsProps {
-  date?: string; // Optional date to show moments for a specific day 
-  timezone?: string; // User's timezone
+  date?: string; // Optional date to show moments for a specific day
 }
 
 interface Task {
@@ -18,24 +16,20 @@ interface Task {
 interface CalendarEvent {
   id: string;
   title: string;
-  start: Date | string | { dateTime?: string; date?: string }; // Can be Date, string, or object with dateTime/date
-  end: Date | string | { dateTime?: string; date?: string };
+  start: Date | string; // Can be Date or string when serialized from API
+  end: Date | string;
   description?: string;
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-const LinkedMoments: React.FC<LinkedMomentsProps> = ({ date, timezone }) => {
+const LinkedMoments: React.FC<LinkedMomentsProps> = ({ date }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const { data: session, status } = useSession();
-
-  if (!session) {
-    return <div>Loading...</div>; // Or any other fallback UI
-  }
   
-  // Use the provided date or default to today in user's timezone
-  const targetDate = date || getCurrentDate(timezone);
+  // Use the provided date or default to today
+  const targetDate = date || new Date().toISOString().split('T')[0];
 
   // Fetch tasks
   const { data: tasksData } = useSWR(
@@ -65,33 +59,9 @@ const LinkedMoments: React.FC<LinkedMomentsProps> = ({ date, timezone }) => {
       // Filter events for the target date
       const filteredEvents = eventsData.events.filter((event: CalendarEvent) => {
         if (!event.start) return false;
-        
-        try {
-          // Safely convert to a Date object first
-          let eventDate;
-          if (typeof event.start === 'string') {
-            eventDate = new Date(event.start);
-          } else if (event.start instanceof Date) {
-            eventDate = event.start;
-          } else if (typeof event.start === 'object' && event.start !== null) {
-            // Handle case where start might be an object with dateTime or date property
-            const dateStr = event.start.dateTime || event.start.date;
-            if (dateStr) {
-              eventDate = new Date(dateStr);
-            } else {
-              return false; // Skip if we can't get a valid date
-            }
-          } else {
-            return false; // Skip if we can't get a valid date
-          }
-          
-          // Now we have a proper Date object, extract the date part
-          const dateStr = eventDate.toISOString().split('T')[0];
-          return dateStr === targetDate;
-        } catch (error) {
-          console.error("Error processing event date:", error, event);
-          return false; // Skip this event if there's an error
-        }
+        // Ensure we're working with a Date object
+        const eventDate = (typeof event.start === 'string' ? new Date(event.start) : event.start).toISOString().split('T')[0];
+        return eventDate === targetDate;
       });
       setEvents(filteredEvents);
     } else {
@@ -101,10 +71,9 @@ const LinkedMoments: React.FC<LinkedMomentsProps> = ({ date, timezone }) => {
   }, [eventsData, targetDate]);
 
   const formatTime = (dateTimeStr: string) => {
-    return new Date(dateTimeStr).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: timezone
+    return new Date(dateTimeStr).toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit' 
     });
   };
 
@@ -125,24 +94,7 @@ const LinkedMoments: React.FC<LinkedMomentsProps> = ({ date, timezone }) => {
             {events.map(event => (
               <li key={event.id} className="flex items-start p-2 rounded-lg bg-slate-50 dark:bg-slate-700">
                 <div className="flex-shrink-0 w-10 text-center text-teal-600 dark:text-teal-400 font-medium">
-                  {(() => {
-                    try {
-                      let dateStr;
-                      if (typeof event.start === 'string') {
-                        dateStr = event.start;
-                      } else if (event.start instanceof Date) {
-                        dateStr = event.start.toISOString();
-                      } else if (typeof event.start === 'object' && event.start !== null) {
-                        dateStr = event.start.dateTime || event.start.date || '';
-                      } else {
-                        return 'N/A';
-                      }
-                      return formatTime(dateStr);
-                    } catch (error) {
-                      console.error("Error formatting event time:", error);
-                      return 'N/A';
-                    }
-                  })()}
+                  {formatTime(typeof event.start === 'string' ? event.start : event.start.toISOString())}
                 </div>
                 <div className="ml-3">
                   <p className="text-slate-800 dark:text-slate-200">{event.title}</p>

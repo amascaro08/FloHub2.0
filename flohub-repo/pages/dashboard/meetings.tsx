@@ -7,7 +7,7 @@ import useSWR from "swr";
 import { useRouter } from "next/navigation";
 // Import types
 import type { Note, UserSettings, Action } from "@/types/app"; // Import Note, UserSettings, and Action types
-import type { CalendarEvent, CalendarSettings } from "@/types/calendar"; // Import CalendarEvent and CalendarSettings types
+import type { CalendarEvent, Settings } from "@/components/widgets/CalendarWidget"; // Import CalendarEvent and Settings types
 import { parseISO } from 'date-fns'; // Import parseISO
 // Import meeting notes components
 import AddMeetingNoteModal from "@/components/meetings/AddMeetingNoteModal";
@@ -34,15 +34,11 @@ export default function MeetingsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  if (!session) {
-    return <div>Loading...</div>; // Or any other fallback UI
-  }
-
-
-
-
-
-
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/");
+    }
+  }, [status, router]);
 
   const shouldFetch = status === "authenticated";
 
@@ -62,7 +58,7 @@ export default function MeetingsPage() {
     fetcher,
     {
       revalidateOnFocus: false, // Don't revalidate on window focus
-      dedupingInterval: 60000 // Dedupe requests within 1 minute 
+      dedupingInterval: 60000 // Dedupe requests within 1 minute
     }
   );
 
@@ -282,8 +278,8 @@ export default function MeetingsPage() {
   };
 
 
-  // Show loading state if needed
-  if (!session && status === "loading") {
+  // Show loading state if notes, calendar events, or settings are loading
+  if (status === "loading" || (!meetingNotesResponse && !meetingNotesError) || (!calendarEvents && !calendarError && shouldFetch && userSettings?.powerAutomateUrl) || (!userSettings && !settingsError && shouldFetch)) { // Use userSettings and settingsError, check for powerAutomateUrl
     return <p>Loading meeting notes, calendar events, and settings…</p>;
   }
 
