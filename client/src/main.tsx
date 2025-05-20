@@ -3,6 +3,8 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
 
 // Get Google Client ID from environment variables
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
