@@ -9,6 +9,12 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   name: text("name").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Google OAuth fields
+  googleId: text("google_id").unique(),
+  googleAccessToken: text("google_access_token"),
+  googleRefreshToken: text("google_refresh_token"),
+  avatarUrl: text("avatar_url"),
+  isOAuthUser: boolean("is_oauth_user").default(false),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -17,6 +23,11 @@ export const insertUserSchema = createInsertSchema(users).pick({
   password: true,
   name: true,
   createdAt: true,
+  googleId: true,
+  googleAccessToken: true,
+  googleRefreshToken: true,
+  avatarUrl: true,
+  isOAuthUser: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
