@@ -38,7 +38,8 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Calendar, Check, Plus, Trash, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { apiRequest } from '@/lib/api';
+// Use the query client we just created
+import { apiRequest, queryClient } from '../../lib/queryClient';
 
 interface CalendarSource {
   id: string;
@@ -83,7 +84,19 @@ const CalendarSettings = () => {
   // Fetch user settings (includes calendar sources)
   const { data: settings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['/api/userSettings'],
-    retry: 1
+    retry: 1,
+    // Provide a default value for settings to avoid type errors
+    placeholderData: {
+      selectedCals: [],
+      defaultView: 'month',
+      customRange: {
+        start: new Date().toISOString().slice(0, 10),
+        end: new Date().toISOString().slice(0, 10),
+      },
+      globalTags: [],
+      activeWidgets: ["tasks", "calendar", "ataglance", "quicknote"],
+      calendarSources: []
+    }
   });
 
   // Mutations for calendar actions

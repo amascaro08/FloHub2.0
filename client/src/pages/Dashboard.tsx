@@ -627,7 +627,7 @@ const HabitTrackerWidget = () => {
 // Define widget components
 const widgetComponents: Record<WidgetType, React.ReactNode> = {
   tasks: <TaskWidget />,
-  calendar: <CalendarWidget />,
+  calendar: <CalendarWidgetComponent />,
   chat: <ChatWidget />,
   overview: <OverviewWidget />,
   notes: <NotesWidget />,
