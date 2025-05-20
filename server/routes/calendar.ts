@@ -3,6 +3,41 @@ import fetch from 'node-fetch';
 import { storage } from '../storage';
 import { isAuthenticated } from '../replitAuth';
 
+// Types for calendar data
+interface CalendarEvent {
+  id: string;
+  summary?: string;
+  title?: string;
+  subject?: string;
+  description?: string;
+  bodyPreview?: string;
+  start: string | { dateTime?: string; date?: string; timeZone?: string };
+  end: string | { dateTime?: string; date?: string; timeZone?: string };
+  location?: string | { displayName?: string };
+  source?: string;
+  calendarName?: string;
+  tags?: string[];
+  organizer?: any;
+  attendees?: any[];
+}
+
+// Possible response formats from different calendar APIs
+interface GoogleCalendarResponse {
+  items: CalendarEvent[];
+}
+
+interface MicrosoftCalendarResponse {
+  value: CalendarEvent[];
+}
+
+interface PowerAutomateResponse {
+  events?: CalendarEvent[];
+  value?: CalendarEvent[];
+  items?: CalendarEvent[];
+}
+
+type CalendarApiResponse = CalendarEvent[] | GoogleCalendarResponse | MicrosoftCalendarResponse | PowerAutomateResponse;
+
 const router = Router();
 
 // Get all calendar sources for the current user
@@ -191,7 +226,7 @@ router.get('/events', isAuthenticated, async (req: any, res: Response) => {
 });
 
 // Helper function to fetch events from a Power Automate URL
-async function fetchEventsFromUrl(url: string, timeMin: string, timeMax: string): Promise<any[]> {
+async function fetchEventsFromUrl(url: string, timeMin: string, timeMax: string): Promise<CalendarEvent[]> {
   try {
     // Add time range parameters to URL if it supports it
     const separator = url.includes('?') ? '&' : '?';
@@ -203,16 +238,16 @@ async function fetchEventsFromUrl(url: string, timeMin: string, timeMax: string)
       throw new Error(`Failed to fetch from URL: ${response.status} ${response.statusText}`);
     }
     
-    const data = await response.json();
+    const data = await response.json() as CalendarApiResponse;
     
     // Handle different response formats
     if (Array.isArray(data)) {
-      return data;
-    } else if (data.events && Array.isArray(data.events)) {
+      return data as CalendarEvent[];
+    } else if ('events' in data && Array.isArray(data.events)) {
       return data.events;
-    } else if (data.value && Array.isArray(data.value)) {
+    } else if ('value' in data && Array.isArray(data.value)) {
       return data.value;
-    } else if (data.items && Array.isArray(data.items)) {
+    } else if ('items' in data && Array.isArray(data.items)) {
       return data.items;
     }
     
