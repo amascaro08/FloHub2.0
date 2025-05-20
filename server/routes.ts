@@ -7,6 +7,7 @@ import { storage } from "./storage";
 import { insertRegistrationSchema, insertUpdateSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { sendRegistrationConfirmation, sendAdminNotification, sendUpdateEmail } from "./utils/emailService";
+import { registerCalendarRoutes } from "./routes/calendar";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
