@@ -135,10 +135,12 @@ export class FirebaseTaskService implements TaskService {
       }
       
       // Update in PostgreSQL
-      const updatedTask = await storage.updateTask(taskId, {
-        ...updates,
-        updatedAt: new Date()
-      });
+      // updateTask already handles adding updatedAt in storage.ts
+      const updatedTask = await storage.updateTask(taskId, updates);
+      
+      if (!updatedTask) {
+        return null;
+      }
       
       // Update in Firebase if firebaseId exists
       if (task.firebaseId) {
@@ -157,7 +159,8 @@ export class FirebaseTaskService implements TaskService {
     } catch (error) {
       console.error('Error updating task:', error);
       // If Firebase fails, at least return the PostgreSQL task
-      return storage.updateTask(taskId, updates);
+      const result = await storage.updateTask(taskId, updates);
+      return result || null;
     }
   }
   

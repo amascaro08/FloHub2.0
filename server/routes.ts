@@ -9,6 +9,7 @@ import { ZodError } from "zod";
 import { sendRegistrationConfirmation, sendAdminNotification, sendUpdateEmail } from "./utils/emailService";
 import calendarRoutes from "./routes/calendar";
 import taskRoutes from "./routes/tasks";
+import userSettingsRoutes from "./routes/userSettings";
 import { setupAuthRoutes } from "./routes/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -20,6 +21,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register task routes
   app.use('/api/tasks', taskRoutes);
+  
+  // Register user settings routes
+  app.use('/api/auth/settings', userSettingsRoutes);
   // Health check endpoint
   app.get('/health', (_req: Request, res: Response) => {
     res.status(200).send('OK');
