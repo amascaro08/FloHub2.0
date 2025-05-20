@@ -39,63 +39,97 @@ export default function CalendarIntegrationSettings() {
   const [newCalendarName, setNewCalendarName] = useState('');
   const [newCalendarTags, setNewCalendarTags] = useState('');
 
-  const handleConnectGoogle = () => {
-    // In a real implementation, this would redirect to Google OAuth
+  const handleConnectGoogle = async () => {
+    // Prepare the OAuth redirect
     toast({
       title: "Google Authentication",
       description: "Redirecting to Google for authentication...",
     });
     
-    // Simulating a successful connection
-    setTimeout(() => {
-      const newSource: CalendarSource = {
-        id: `google-${Date.now()}`,
-        name: newCalendarName || 'My Google Calendar',
-        type: 'google',
-        isEnabled: true,
-        tags: newCalendarTags.split(',').map(tag => tag.trim())
-      };
-      
-      setCalendarSources([...calendarSources, newSource]);
-      setNewCalendarName('');
-      setNewCalendarTags('');
-      
-      toast({
-        title: "Calendar Connected",
-        description: `Successfully connected to ${newSource.name}`,
+    try {
+      // Get the OAuth URL from the server
+      const response = await fetch('/api/calendar/google/auth-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          calendarName: newCalendarName || 'My Google Calendar',
+          tags: newCalendarTags ? newCalendarTags.split(',').map(tag => tag.trim()) : []
+        }),
       });
-    }, 1500);
+      
+      if (!response.ok) {
+        throw new Error('Failed to get authentication URL');
+      }
+      
+      const data = await response.json();
+      
+      // Save current settings in localStorage before redirect
+      const calSettings = {
+        name: newCalendarName || 'My Google Calendar',
+        tags: newCalendarTags ? newCalendarTags.split(',').map(tag => tag.trim()) : []
+      };
+      localStorage.setItem('calendarSettings', JSON.stringify(calSettings));
+      
+      // Redirect to Google OAuth
+      window.location.href = data.authUrl;
+    } catch (error) {
+      toast({
+        title: "Authentication Error",
+        description: "Could not connect to Google Calendar. Please try again.",
+        variant: "destructive",
+      });
+      console.error('Google auth error:', error);
+    }
   };
 
-  const handleConnectOffice365 = () => {
-    // In a real implementation, this would redirect to Microsoft OAuth
+  const handleConnectOffice365 = async () => {
+    // Prepare the OAuth redirect
     toast({
       title: "Microsoft Authentication",
       description: "Redirecting to Microsoft for authentication...",
     });
     
-    // Simulating a successful connection
-    setTimeout(() => {
-      const newSource: CalendarSource = {
-        id: `o365-${Date.now()}`,
-        name: newCalendarName || 'My Office 365 Calendar',
-        type: 'o365',
-        isEnabled: true,
-        tags: newCalendarTags.split(',').map(tag => tag.trim())
-      };
-      
-      setCalendarSources([...calendarSources, newSource]);
-      setNewCalendarName('');
-      setNewCalendarTags('');
-      
-      toast({
-        title: "Calendar Connected",
-        description: `Successfully connected to ${newSource.name}`,
+    try {
+      // Get the OAuth URL from the server
+      const response = await fetch('/api/calendar/microsoft/auth-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          calendarName: newCalendarName || 'My Office 365 Calendar',
+          tags: newCalendarTags ? newCalendarTags.split(',').map(tag => tag.trim()) : []
+        }),
       });
-    }, 1500);
+      
+      if (!response.ok) {
+        throw new Error('Failed to get authentication URL');
+      }
+      
+      const data = await response.json();
+      
+      // Save current settings in localStorage before redirect
+      const calSettings = {
+        name: newCalendarName || 'My Office 365 Calendar',
+        tags: newCalendarTags ? newCalendarTags.split(',').map(tag => tag.trim()) : []
+      };
+      localStorage.setItem('calendarSettings', JSON.stringify(calSettings));
+      
+      // Redirect to Microsoft OAuth
+      window.location.href = data.authUrl;
+    } catch (error) {
+      toast({
+        title: "Authentication Error",
+        description: "Could not connect to Office 365 Calendar. Please try again.",
+        variant: "destructive",
+      });
+      console.error('Microsoft auth error:', error);
+    }
   };
 
-  const handleAddPowerAutomateUrl = () => {
+  const handleAddPowerAutomateUrl = async () => {
     if (!powerAutomateUrl) {
       toast({
         title: "Error",
@@ -105,23 +139,50 @@ export default function CalendarIntegrationSettings() {
       return;
     }
     
-    const newSource: CalendarSource = {
-      id: `url-${Date.now()}`,
-      name: newCalendarName || 'Power Automate Calendar',
-      type: 'url',
-      isEnabled: true,
-      tags: newCalendarTags.split(',').map(tag => tag.trim())
-    };
-    
-    setCalendarSources([...calendarSources, newSource]);
-    setNewCalendarName('');
-    setNewCalendarTags('');
-    setPowerAutomateUrl('');
-    
-    toast({
-      title: "Calendar Connected",
-      description: `Power Automate URL calendar added successfully`,
-    });
+    try {
+      // Save the Power Automate URL to the backend
+      const response = await fetch('/api/calendar/url-source', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newCalendarName || 'Power Automate Calendar',
+          url: powerAutomateUrl,
+          tags: newCalendarTags ? newCalendarTags.split(',').map(tag => tag.trim()) : []
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save calendar source');
+      }
+      
+      const newSourceData = await response.json();
+      const newSource: CalendarSource = {
+        id: newSourceData.id || `url-${Date.now()}`,
+        name: newCalendarName || 'Power Automate Calendar',
+        type: 'url',
+        isEnabled: true,
+        tags: newCalendarTags ? newCalendarTags.split(',').map(tag => tag.trim()) : []
+      };
+      
+      setCalendarSources([...calendarSources, newSource]);
+      setNewCalendarName('');
+      setNewCalendarTags('');
+      setPowerAutomateUrl('');
+      
+      toast({
+        title: "Calendar Connected",
+        description: `Power Automate URL calendar added successfully`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add Power Automate calendar. Please try again.",
+        variant: "destructive",
+      });
+      console.error('Power Automate save error:', error);
+    }
   };
 
   const toggleCalendarEnabled = (id: string) => {

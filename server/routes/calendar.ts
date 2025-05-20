@@ -1,432 +1,360 @@
-import { Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { storage } from '../storage';
-import { getGoogleAuthUrl, getGoogleTokensFromCode } from '../utils/googleAuth';
-import { getMicrosoftAuthUrl, getMicrosoftTokensFromCode } from '../utils/microsoftAuth';
-import { 
-  fetchEventsFromAllSources, 
-  listGoogleCalendars, 
-  listMicrosoftCalendars,
-  CalendarEvent,
-  CalendarSource
-} from '../utils/calendarIntegration';
-import { validatePowerAutomateUrl } from '../utils/powerAutomateIntegration';
+import { isAuthenticated } from '../utils/auth';
+import { google } from 'googleapis';
+import * as msal from '@azure/msal-node';
 
-// Calendar API routes
-export function registerCalendarRoutes(app: any) {
-  // Get calendar events
-  app.get('/api/calendar/events', async (req: Request, res: Response) => {
-    try {
-      const { timeMin, timeMax } = req.query;
-      const userId = req.user?.id || '1'; // In a real app, this would be the authenticated user's ID
+const router = Router();
 
-      // Validate date parameters
-      if (!timeMin || !timeMax) {
-        return res.status(400).json({ error: 'Missing timeMin or timeMax parameters' });
-      }
+// OAuth configuration for Google
+const googleOAuthConfig = {
+  clientId: process.env.GOOGLE_OAUTH_ID || '',
+  clientSecret: process.env.GOOGLE_OAUTH_SECRET || '',
+  redirectUri: `${process.env.HOST_URL || 'http://localhost:5000'}/api/calendar/google/callback`,
+  scopes: [
+    'https://www.googleapis.com/auth/calendar.readonly',
+    'https://www.googleapis.com/auth/calendar.events.readonly',
+  ],
+};
 
-      // Get user settings to retrieve calendar sources
-      // In a real implementation, this would fetch from the database
-      const userSettings = {
-        calendarSources: [
-          {
-            id: 'google-primary',
-            name: 'Personal Google Calendar',
-            type: 'google' as const,
-            sourceId: 'primary',
-            isEnabled: true,
-            userId,
-            tags: ['personal'],
-            connectionData: {
-              // This would contain tokens in a real implementation
-              access_token: process.env.GOOGLE_ACCESS_TOKEN,
-              refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-              expiry_date: Date.now() + 3600000 // 1 hour from now
-            }
-          },
-          {
-            id: 'microsoft-work',
-            name: 'Work Office 365 Calendar',
-            type: 'o365' as const,
-            sourceId: 'primary',
-            isEnabled: true,
-            userId,
-            tags: ['work'],
-            connectionData: {
-              // This would contain tokens in a real implementation
-              access_token: process.env.MICROSOFT_ACCESS_TOKEN,
-              refresh_token: process.env.MICROSOFT_REFRESH_TOKEN,
-              expires_at: Date.now() + 3600000 // 1 hour from now
-            }
-          }
-        ]
-      };
+// OAuth configuration for Microsoft
+const msalConfig = {
+  auth: {
+    clientId: process.env.MICROSOFT_CLIENT_ID || '',
+    clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
+    authority: 'https://login.microsoftonline.com/common',
+  },
+};
 
-      // Check if we have API keys/tokens for the calendar services
-      const hasGoogleAuth = !!process.env.GOOGLE_ACCESS_TOKEN;
-      const hasMicrosoftAuth = !!process.env.MICROSOFT_ACCESS_TOKEN;
+const msalScopes = ['Calendars.Read', 'Calendars.ReadWrite'];
+const msalRedirectUri = `${process.env.HOST_URL || 'http://localhost:5000'}/api/calendar/microsoft/callback`;
 
-      let events: CalendarEvent[] = [];
+// Route to get Google OAuth URL
+router.post('/google/auth-url', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const { calendarName, tags } = req.body;
+    
+    // Store calendar settings in session for retrieval after OAuth callback
+    req.session.calendarSetup = {
+      provider: 'google',
+      name: calendarName || 'Google Calendar',
+      tags: tags || [],
+    };
+    await req.session.save();
+    
+    // Create OAuth2 client
+    const oauth2Client = new google.auth.OAuth2(
+      googleOAuthConfig.clientId,
+      googleOAuthConfig.clientSecret,
+      googleOAuthConfig.redirectUri
+    );
+    
+    // Generate authentication URL
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: googleOAuthConfig.scopes,
+      prompt: 'consent',
+      state: user.id.toString(), // Pass user ID in state parameter
+    });
+    
+    res.json({ authUrl });
+  } catch (error) {
+    console.error('Error generating Google auth URL:', error);
+    res.status(500).json({ error: 'Failed to generate authorization URL' });
+  }
+});
 
-      // If we have real authentication credentials, use them to fetch real events
-      if (hasGoogleAuth || hasMicrosoftAuth) {
-        try {
-          events = await fetchEventsFromAllSources(
-            userSettings.calendarSources, 
-            timeMin as string, 
-            timeMax as string
-          );
-        } catch (fetchError) {
-          console.error('Error fetching from real calendar sources:', fetchError);
-          // Fall back to sample data
-        }
-      }
-
-      // If we couldn't fetch real events or don't have authentication, use sample data
-      if (events.length === 0) {
-        events = [
-          { 
-            id: '1', 
-            calendarId: 'primary',
-            summary: 'Team Standup', 
-            start: { dateTime: `${new Date().toISOString().split('T')[0]}T10:00:00` },
-            end: { dateTime: `${new Date().toISOString().split('T')[0]}T10:30:00` },
-            source: 'work',
-            calendarName: 'Work',
-            tags: ['daily', 'team'],
-            description: 'Daily team standup meeting to discuss progress and blockers.'
-          },
-          { 
-            id: '2', 
-            calendarId: 'primary',
-            summary: 'Client Meeting', 
-            start: { dateTime: `${new Date().toISOString().split('T')[0]}T14:00:00` },
-            end: { dateTime: `${new Date().toISOString().split('T')[0]}T15:00:00` },
-            source: 'personal',
-            calendarName: 'Personal',
-            tags: ['client'],
-            description: 'Meeting with client to discuss project requirements and timeline.'
-          },
-          { 
-            id: '3', 
-            calendarId: 'primary',
-            summary: 'Project Review', 
-            start: { dateTime: `${new Date().toISOString().split('T')[0]}T16:30:00` },
-            end: { dateTime: `${new Date().toISOString().split('T')[0]}T17:30:00` },
-            source: 'work',
-            calendarName: 'Work',
-            tags: ['project'],
-            description: 'Weekly project review meeting with stakeholders.'
-          }
-        ];
-      }
-
-      return res.json(events);
-    } catch (error) {
-      console.error('Error fetching calendar events:', error);
-      return res.status(500).json({ error: 'Failed to fetch calendar events' });
+// Google OAuth callback handler
+router.get('/google/callback', async (req: Request, res: Response) => {
+  try {
+    const { code, state } = req.query;
+    
+    if (!code || !state) {
+      return res.status(400).send('Missing required parameters');
     }
-  });
-
-  // Get available calendars
-  app.get('/api/calendar/list', async (req: Request, res: Response) => {
-    try {
-      const userId = req.user?.id || '1'; // In a real app, this would be the authenticated user's ID
-
-      // Get user settings to retrieve calendar sources
-      // In a real implementation, this would fetch from the database
-      const userSettings = {
-        calendarSources: [
-          {
-            id: 'google-primary',
-            name: 'Personal Google Calendar',
-            type: 'google' as const,
-            sourceId: 'primary',
-            isEnabled: true,
-            userId,
-            tags: ['personal'],
-            connectionData: {
-              // This would contain tokens in a real implementation
-              access_token: process.env.GOOGLE_ACCESS_TOKEN,
-              refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-              expiry_date: Date.now() + 3600000 // 1 hour from now
-            }
-          },
-          {
-            id: 'microsoft-work',
-            name: 'Work Office 365 Calendar',
-            type: 'o365' as const,
-            sourceId: 'primary',
-            isEnabled: true,
-            userId,
-            tags: ['work'],
-            connectionData: {
-              // This would contain tokens in a real implementation
-              access_token: process.env.MICROSOFT_ACCESS_TOKEN,
-              refresh_token: process.env.MICROSOFT_REFRESH_TOKEN,
-              expires_at: Date.now() + 3600000 // 1 hour from now
-            }
-          }
-        ]
-      };
-
-      // Check if we have API keys/tokens for the calendar services
-      const hasGoogleAuth = !!process.env.GOOGLE_ACCESS_TOKEN;
-      const hasMicrosoftAuth = !!process.env.MICROSOFT_ACCESS_TOKEN;
-
-      let calendars: any[] = [];
-
-      // Attempt to fetch real calendar data if we have the auth tokens
-      if (hasGoogleAuth) {
-        try {
-          const googleSource = userSettings.calendarSources.find(s => s.type === 'google');
-          if (googleSource && googleSource.connectionData) {
-            const googleCalendars = await listGoogleCalendars(googleSource.connectionData, userId);
-            calendars.push(...googleCalendars);
-          }
-        } catch (error) {
-          console.error('Error fetching Google calendars:', error);
-          // Continue even if Google fetch fails
-        }
-      }
-
-      if (hasMicrosoftAuth) {
-        try {
-          const microsoftSource = userSettings.calendarSources.find(s => s.type === 'o365');
-          if (microsoftSource && microsoftSource.connectionData) {
-            const microsoftCalendars = await listMicrosoftCalendars(microsoftSource.connectionData, userId);
-            calendars.push(...microsoftCalendars);
-          }
-        } catch (error) {
-          console.error('Error fetching Microsoft calendars:', error);
-          // Continue even if Microsoft fetch fails
-        }
-      }
-
-      // If we couldn't fetch any real calendars, use sample data
-      if (calendars.length === 0) {
-        calendars = [
-          { id: 'primary', summary: 'Personal Calendar', primary: true },
-          { id: 'work', summary: 'Work Calendar' },
-          { id: 'family', summary: 'Family Calendar' }
-        ];
-      }
-
-      return res.json(calendars);
-    } catch (error) {
-      console.error('Error fetching calendars:', error);
-      return res.status(500).json({ error: 'Failed to fetch calendars' });
-    }
-  });
-
-  // Create calendar event
-  app.post('/api/calendar/events', async (req: Request, res: Response) => {
-    try {
-      const { calendarId = 'primary', summary, start, end, source, description, tags } = req.body;
-
-      if (!summary || !start) {
-        return res.status(400).json({ error: 'Missing required event information' });
-      }
-
-      // In a real implementation, this would create an event via Google/Microsoft APIs
-      // This requires proper authentication with the calendar provider
-      const newEvent: CalendarEvent = {
-        id: `event-${Date.now()}`,
-        calendarId,
-        summary,
-        start,
-        end,
-        source: source || 'personal',
-        description,
-        calendarName: calendarId === 'primary' ? 'Personal Calendar' : 'Work Calendar',
-        tags: tags || []
-      };
-
-      return res.status(201).json(newEvent);
-    } catch (error) {
-      console.error('Error creating calendar event:', error);
-      return res.status(500).json({ error: 'Failed to create calendar event' });
-    }
-  });
-
-  // Get user settings (including calendar preferences)
-  app.get('/api/userSettings', async (req: Request, res: Response) => {
-    try {
-      // In a real implementation, this would fetch user settings from the database
-      const userSettings = {
-        selectedCals: ['primary', 'work'],
-        defaultView: 'month',
-        customRange: {
-          start: new Date().toISOString().slice(0, 10),
-          end: new Date().toISOString().slice(0, 10),
+    
+    // Retrieve user ID from state parameter
+    const userId = parseInt(state as string, 10);
+    
+    // Exchange authorization code for tokens
+    const oauth2Client = new google.auth.OAuth2(
+      googleOAuthConfig.clientId,
+      googleOAuthConfig.clientSecret,
+      googleOAuthConfig.redirectUri
+    );
+    
+    const { tokens } = await oauth2Client.getToken(code as string);
+    
+    // Get calendar setup from session
+    const calendarSetup = req.session.calendarSetup;
+    
+    // Create calendar source in database
+    if (tokens.refresh_token) {
+      await storage.createCalendarSource({
+        userId: userId.toString(),
+        name: calendarSetup?.name || 'Google Calendar',
+        type: 'google',
+        accessToken: tokens.access_token || '',
+        refreshToken: tokens.refresh_token,
+        expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : new Date(Date.now() + 3600 * 1000),
+        settings: {
+          tags: calendarSetup?.tags || [],
         },
-        globalTags: ['work', 'personal', 'family', 'health', 'finance'],
-        activeWidgets: ['tasks', 'calendar', 'ataglance', 'quicknote', 'habit-tracker'],
-        calendarSources: [
-          {
-            name: 'Google Calendar',
-            type: 'google',
-            sourceId: 'primary',
-            isEnabled: true,
-            tags: ['personal']
-          },
-          {
-            name: 'Work Calendar',
-            type: 'google',
-            sourceId: 'work',
-            isEnabled: true,
-            tags: ['work']
-          }
-        ]
-      };
-
-      return res.json(userSettings);
-    } catch (error) {
-      console.error('Error fetching user settings:', error);
-      return res.status(500).json({ error: 'Failed to fetch user settings' });
-    }
-  });
-
-  // Update user settings
-  app.post('/api/userSettings', async (req: Request, res: Response) => {
-    try {
-      const settings = req.body;
-      
-      // In a real implementation, this would save user settings to the database
-      
-      return res.status(200).json({ success: true, message: 'Settings saved successfully' });
-    } catch (error) {
-      console.error('Error saving user settings:', error);
-      return res.status(500).json({ error: 'Failed to save user settings' });
-    }
-  });
-
-  // Calendar Authentication Routes
-
-  // Get Google OAuth URL
-  app.get('/api/calendar/auth/google', async (req: Request, res: Response) => {
-    try {
-      const { state = 'default', accountLabel = 'Personal' } = req.query;
-      
-      if (!process.env.GOOGLE_OAUTH_ID || !process.env.GOOGLE_OAUTH_SECRET) {
-        return res.status(500).json({ 
-          error: 'Google OAuth credentials not configured',
-          configured: false
-        });
-      }
-
-      // In a real implementation, this would generate a proper OAuth URL
-      // For now, we'll return a mock URL for UI testing purposes
-      return res.json({
-        url: `https://accounts.google.com/o/oauth2/v2/auth?client_id=mock&redirect_uri=https://flohub.replit.app/api/auth/callback/google&response_type=code&scope=openid+email+profile+https://www.googleapis.com/auth/calendar&state=${state}-${encodeURIComponent(accountLabel as string)}&access_type=offline&prompt=consent`,
-        configured: true
+        isEnabled: true,
       });
-    } catch (error) {
-      console.error('Error generating Google OAuth URL:', error);
-      return res.status(500).json({ error: 'Failed to generate Google OAuth URL' });
     }
-  });
+    
+    // Clear calendar setup from session
+    delete req.session.calendarSetup;
+    await req.session.save();
+    
+    // Redirect back to calendar settings
+    res.redirect('/dashboard/settings?tab=integrations');
+  } catch (error) {
+    console.error('Error processing Google callback:', error);
+    res.status(500).send('Failed to process authentication');
+  }
+});
 
-  // Get Microsoft OAuth URL
-  app.get('/api/calendar/auth/microsoft', async (req: Request, res: Response) => {
-    try {
-      const { state = 'default' } = req.query;
-      
-      if (!process.env.MICROSOFT_OAUTH_ID || !process.env.MICROSOFT_OAUTH_SECRET) {
-        return res.status(500).json({ 
-          error: 'Microsoft OAuth credentials not configured',
-          configured: false
-        });
-      }
+// Route to get Microsoft OAuth URL
+router.post('/microsoft/auth-url', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const { calendarName, tags } = req.body;
+    
+    // Store calendar settings in session for retrieval after OAuth callback
+    req.session.calendarSetup = {
+      provider: 'microsoft',
+      name: calendarName || 'Office 365 Calendar',
+      tags: tags || [],
+    };
+    await req.session.save();
+    
+    // Create MSAL application
+    const msalApp = new msal.ConfidentialClientApplication(msalConfig);
+    
+    // Generate authentication URL
+    const authUrlParams = {
+      scopes: msalScopes,
+      redirectUri: msalRedirectUri,
+      state: user.id.toString(), // Pass user ID in state parameter
+    };
+    
+    const authUrl = await msalApp.getAuthCodeUrl(authUrlParams);
+    
+    res.json({ authUrl });
+  } catch (error) {
+    console.error('Error generating Microsoft auth URL:', error);
+    res.status(500).json({ error: 'Failed to generate authorization URL' });
+  }
+});
 
-      // In a real implementation, this would generate a proper OAuth URL
-      // For now, we'll return a mock URL for UI testing purposes
-      return res.json({
-        url: `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=mock&redirect_uri=https://flohub.replit.app/api/auth/callback/microsoft&response_type=code&scope=openid+email+profile+offline_access+Calendars.Read+User.Read&state=${state}&prompt=consent`,
-        configured: true
-      });
-    } catch (error) {
-      console.error('Error generating Microsoft OAuth URL:', error);
-      return res.status(500).json({ error: 'Failed to generate Microsoft OAuth URL' });
+// Microsoft OAuth callback handler
+router.get('/microsoft/callback', async (req: Request, res: Response) => {
+  try {
+    const { code, state } = req.query;
+    
+    if (!code || !state) {
+      return res.status(400).send('Missing required parameters');
     }
-  });
-
-  // Store Power Automate URL for Office 365 integration
-  app.post('/api/calendar/powerautomate', async (req: Request, res: Response) => {
-    try {
-      const { url, name = 'Office 365 Calendar' } = req.body;
-      
-      if (!url) {
-        return res.status(400).json({ error: 'Power Automate URL is required' });
-      }
-
-      // In a real implementation, this would store the Power Automate URL in the database
-      // For now, we'll just return success
-      return res.json({ 
-        success: true, 
-        message: 'Power Automate URL saved successfully',
-        calendarSource: {
-          id: `powerautomate-${Date.now()}`,
-          name,
-          type: 'o365',
-          sourceId: 'powerautomate',
-          isEnabled: true,
-          tags: ['work']
-        }
-      });
-    } catch (error) {
-      console.error('Error saving Power Automate URL:', error);
-      return res.status(500).json({ error: 'Failed to save Power Automate URL' });
-    }
-  });
-
-  // Get connected calendar accounts
-  app.get('/api/calendar/accounts', async (req: Request, res: Response) => {
-    try {
-      // In a real implementation, this would fetch connected accounts from the database
-      // For now, we'll return sample data
-      return res.json([
-        {
-          id: 'google-primary',
-          provider: 'google',
-          email: 'user@gmail.com',
-          name: 'Personal Google',
-          isConnected: true,
-          lastSync: new Date().toISOString()
+    
+    // Retrieve user ID from state parameter
+    const userId = parseInt(state as string, 10);
+    
+    // Exchange authorization code for tokens
+    const msalApp = new msal.ConfidentialClientApplication(msalConfig);
+    
+    const tokenResponse = await msalApp.acquireTokenByCode({
+      code: code as string,
+      scopes: msalScopes,
+      redirectUri: msalRedirectUri,
+    });
+    
+    // Get calendar setup from session
+    const calendarSetup = req.session.calendarSetup;
+    
+    // Create calendar source in database
+    if (tokenResponse.account && tokenResponse.accessToken) {
+      await storage.createCalendarSource({
+        userId: userId.toString(),
+        name: calendarSetup?.name || 'Office 365 Calendar',
+        type: 'microsoft',
+        accessToken: tokenResponse.accessToken,
+        refreshToken: tokenResponse.refreshToken || '',
+        expiresAt: new Date(Date.now() + (tokenResponse.expiresOn || 3600) * 1000),
+        settings: {
+          tags: calendarSetup?.tags || [],
+          account: tokenResponse.account,
         },
-        {
-          id: 'microsoft-work',
-          provider: 'microsoft',
-          email: 'user@outlook.com',
-          name: 'Work Microsoft',
-          isConnected: true,
-          lastSync: new Date().toISOString()
-        }
-      ]);
-    } catch (error) {
-      console.error('Error fetching calendar accounts:', error);
-      return res.status(500).json({ error: 'Failed to fetch calendar accounts' });
-    }
-  });
-
-  // Sync calendars manually
-  app.post('/api/calendar/sync', async (req: Request, res: Response) => {
-    try {
-      const { accountIds } = req.body;
-      
-      if (!accountIds || !Array.isArray(accountIds) || accountIds.length === 0) {
-        return res.status(400).json({ error: 'Account IDs are required' });
-      }
-
-      // In a real implementation, this would trigger a sync for the specified accounts
-      // For now, we'll just return success
-      return res.json({ 
-        success: true, 
-        message: `Synced ${accountIds.length} calendar accounts successfully`,
-        syncTime: new Date().toISOString()
+        isEnabled: true,
       });
-    } catch (error) {
-      console.error('Error syncing calendars:', error);
-      return res.status(500).json({ error: 'Failed to sync calendars' });
     }
-  });
-}
+    
+    // Clear calendar setup from session
+    delete req.session.calendarSetup;
+    await req.session.save();
+    
+    // Redirect back to calendar settings
+    res.redirect('/dashboard/settings?tab=integrations');
+  } catch (error) {
+    console.error('Error processing Microsoft callback:', error);
+    res.status(500).send('Failed to process authentication');
+  }
+});
+
+// Route to add a Power Automate URL calendar source
+router.post('/url-source', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const { name, url, tags } = req.body;
+    
+    if (!url) {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+    
+    // Create calendar source in database
+    const calendarSource = await storage.createCalendarSource({
+      userId: user.id.toString(),
+      name: name || 'Power Automate Calendar',
+      type: 'url',
+      accessToken: '',
+      refreshToken: '',
+      expiresAt: new Date(Date.now() + 365 * 24 * 3600 * 1000), // Set expiry far in future
+      settings: {
+        url,
+        tags: tags || [],
+      },
+      isEnabled: true,
+    });
+    
+    res.json(calendarSource);
+  } catch (error) {
+    console.error('Error adding URL source:', error);
+    res.status(500).json({ error: 'Failed to add calendar source' });
+  }
+});
+
+// Route to get calendar sources for current user
+router.get('/sources', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const sources = await storage.getCalendarSources(user.id.toString());
+    
+    // Remove sensitive information
+    const sanitizedSources = sources.map(source => ({
+      id: source.id,
+      name: source.name,
+      type: source.type,
+      isEnabled: source.isEnabled,
+      settings: { 
+        tags: source.settings?.tags || [],
+        url: source.type === 'url' ? source.settings?.url : undefined,
+      },
+    }));
+    
+    res.json(sanitizedSources);
+  } catch (error) {
+    console.error('Error fetching calendar sources:', error);
+    res.status(500).json({ error: 'Failed to fetch calendar sources' });
+  }
+});
+
+// Route to update a calendar source
+router.put('/sources/:id', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, isEnabled, tags } = req.body;
+    
+    const source = await storage.getCalendarSource(parseInt(id, 10));
+    
+    if (!source) {
+      return res.status(404).json({ error: 'Calendar source not found' });
+    }
+    
+    // Ensure user owns this calendar source
+    if (source.userId !== req.user.id.toString()) {
+      return res.status(403).json({ error: 'Not authorized to update this calendar source' });
+    }
+    
+    // Update source
+    const updatedSource = await storage.updateCalendarSource(parseInt(id, 10), {
+      name: name || source.name,
+      isEnabled: isEnabled !== undefined ? isEnabled : source.isEnabled,
+      settings: {
+        ...source.settings,
+        tags: tags || source.settings?.tags || [],
+      },
+    });
+    
+    res.json(updatedSource);
+  } catch (error) {
+    console.error('Error updating calendar source:', error);
+    res.status(500).json({ error: 'Failed to update calendar source' });
+  }
+});
+
+// Route to delete a calendar source
+router.delete('/sources/:id', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const source = await storage.getCalendarSource(parseInt(id, 10));
+    
+    if (!source) {
+      return res.status(404).json({ error: 'Calendar source not found' });
+    }
+    
+    // Ensure user owns this calendar source
+    if (source.userId !== req.user.id.toString()) {
+      return res.status(403).json({ error: 'Not authorized to delete this calendar source' });
+    }
+    
+    // Delete source
+    await storage.deleteCalendarSource(parseInt(id, 10));
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting calendar source:', error);
+    res.status(500).json({ error: 'Failed to delete calendar source' });
+  }
+});
+
+// Route to fetch calendar events
+router.get('/events', isAuthenticated, async (req: Request, res: Response) => {
+  try {
+    const user = req.user;
+    const { timeMin, timeMax } = req.query;
+    
+    // For now, return sample data (we'll implement the real fetching later)
+    const sampleEvents = [
+      {
+        id: '123',
+        calendarId: 'primary',
+        summary: 'Team Meeting',
+        start: { dateTime: '2025-05-15T10:00:00Z' },
+        end: { dateTime: '2025-05-15T11:00:00Z' },
+        source: 'work',
+        calendarName: 'Work Calendar',
+        tags: ['important', 'meeting']
+      },
+      {
+        id: '456',
+        calendarId: 'personal',
+        summary: 'Doctor Appointment',
+        start: { dateTime: '2025-05-20T14:30:00Z' },
+        end: { dateTime: '2025-05-20T15:30:00Z' },
+        source: 'personal',
+        calendarName: 'Personal Calendar',
+        tags: ['health']
+      }
+    ];
+    
+    res.json(sampleEvents);
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    res.status(500).json({ error: 'Failed to fetch calendar events' });
+  }
+});
+
+export default router;

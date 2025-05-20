@@ -1,124 +1,133 @@
-import crypto from 'crypto';
+import { Request, Response, NextFunction } from 'express';
 import { storage } from '../storage';
+import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 
-/**
- * Simple authentication utility for FloHub
- */
-
-// Generate a salt for password hashing
-export function generateSalt(): string {
-  return crypto.randomBytes(16).toString('hex');
-}
-
-// Hash a password with a given salt
-export function hashPassword(password: string, salt: string): string {
-  return crypto
-    .pbkdf2Sync(password, salt, 1000, 64, 'sha512')
-    .toString('hex');
-}
-
-// Verify a password against a hash
-export function verifyPassword(password: string, hash: string, salt: string): boolean {
-  const hashedPassword = hashPassword(password, salt);
-  return hashedPassword === hash;
-}
-
-// Generate a session token
-export function generateSessionToken(): string {
-  return crypto.randomBytes(32).toString('hex');
-}
-
-// Create a new user with hashed password
-export async function createUser(email: string, password: string, firstName?: string, lastName?: string) {
-  const salt = generateSalt();
-  const passwordHash = hashPassword(password, salt);
-  
-  // Check if user already exists
-  const existingUser = await storage.getUserByEmail(email);
-  if (existingUser) {
-    throw new Error('User with this email already exists');
+// Authentication middleware
+export const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+  // Check if user is authenticated
+  if (req.session && req.session.userId) {
+    // Add user to request object
+    storage.getUser(parseInt(req.session.userId, 10))
+      .then(user => {
+        if (user) {
+          req.user = user;
+          next();
+        } else {
+          res.status(401).json({ error: 'Authentication required' });
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching user:', err);
+        res.status(500).json({ error: 'Internal server error' });
+      });
+  } else {
+    res.status(401).json({ error: 'Authentication required' });
   }
-  
-  // Create the user in storage
-  const user = await storage.createUser({
-    email,
-    passwordHash,
-    passwordSalt: salt,
-    firstName: firstName || '',
-    lastName: lastName || '',
-    createdAt: new Date(),
-    updatedAt: new Date()
-  });
-  
-  return user;
-}
+};
 
-// Authenticate user
-export async function authenticateUser(email: string, password: string) {
-  const user = await storage.getUserByEmail(email);
-  
-  if (!user) {
-    return null;
+// Register a new user
+export const registerUser = async (req: Request, res: Response) => {
+  try {
+    const { email, password, name, username } = req.body;
+    
+    // Check if user exists
+    const existingUser = await storage.getUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already in use' });
+    }
+    
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    
+    // Create user
+    const user = await storage.createUser({
+      email,
+      password: hashedPassword,
+      name,
+      username: username || null,
+    });
+    
+    // Create session
+    req.session.userId = user.id.toString();
+    await req.session.save();
+    
+    // Return user info (without password)
+    const { password: _, ...userWithoutPassword } = user;
+    res.status(201).json(userWithoutPassword);
+  } catch (error) {
+    console.error('Error registering user:', error);
+    res.status(500).json({ error: 'Failed to register user' });
   }
-  
-  const isValid = verifyPassword(password, user.passwordHash, user.passwordSalt);
-  
-  if (!isValid) {
-    return null;
-  }
-  
-  return user;
-}
+};
 
-// Create a session for a user
-export async function createSession(userId: number) {
-  const token = generateSessionToken();
-  const session = await storage.createSession({
-    userId,
-    token,
-    createdAt: new Date(),
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-  });
-  
-  return session;
-}
+// Login user
+export const loginUser = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Check if user exists
+    const user = await storage.getUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    
+    // Check password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    
+    // Create session
+    req.session.userId = user.id.toString();
+    await req.session.save();
+    
+    // Return user info (without password)
+    const { password: _, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  } catch (error) {
+    console.error('Error logging in:', error);
+    res.status(500).json({ error: 'Failed to log in' });
+  }
+};
 
-// Validate a session token
-export async function validateSession(token: string) {
-  const session = await storage.getSessionByToken(token);
-  
-  if (!session) {
-    return null;
+// Logout user
+export const logoutUser = async (req: Request, res: Response) => {
+  try {
+    // Destroy session
+    req.session.destroy(err => {
+      if (err) {
+        console.error('Error destroying session:', err);
+        return res.status(500).json({ error: 'Failed to log out' });
+      }
+      
+      res.clearCookie('connect.sid');
+      res.json({ success: true });
+    });
+  } catch (error) {
+    console.error('Error logging out:', error);
+    res.status(500).json({ error: 'Failed to log out' });
   }
-  
-  // Check if session is expired
-  if (new Date() > session.expiresAt) {
-    await storage.deleteSession(session.id);
-    return null;
-  }
-  
-  return session;
-}
+};
 
-// Get user from session token
-export async function getUserFromSession(token: string) {
-  const session = await validateSession(token);
-  
-  if (!session) {
-    return null;
+// Get current user
+export const getCurrentUser = async (req: Request, res: Response) => {
+  try {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
+    const user = await storage.getUser(parseInt(req.session.userId, 10));
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+    
+    // Return user info (without password)
+    const { password: _, ...userWithoutPassword } = user;
+    res.json(userWithoutPassword);
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    res.status(500).json({ error: 'Failed to get current user' });
   }
-  
-  const user = await storage.getUser(session.userId);
-  return user;
-}
-
-// Delete a session
-export async function deleteSession(token: string) {
-  const session = await storage.getSessionByToken(token);
-  
-  if (session) {
-    await storage.deleteSession(session.id);
-  }
-  
-  return true;
-}
+};
