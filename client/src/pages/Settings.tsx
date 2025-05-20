@@ -1,26 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import DashboardLayout from "../../components/dashboard/DashboardLayout";
-import { useAuth } from "../../hooks/useAuth";
+import DashboardLayout from "../components/dashboard/DashboardLayout";
+import { useAuth } from "../hooks/useAuth";
 import { 
   Tabs, 
   TabsContent, 
   TabsList, 
   TabsTrigger 
-} from "../../components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
+} from "../components/ui/tabs";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { 
   Select, 
   SelectContent, 
   SelectItem, 
   SelectTrigger, 
   SelectValue 
-} from "../../components/ui/select";
-import { Switch } from "../../components/ui/switch";
-import { Label } from "../../components/ui/label";
-import { Badge } from "../../components/ui/badge";
+} from "../components/ui/select";
+import { Switch } from "../components/ui/switch";
+import { Label } from "../components/ui/label";
+import { Badge } from "../components/ui/badge";
 import { Calendar, RefreshCw, XCircle, Plus, Save, Loader2, Trash2 } from "lucide-react";
 import CreatableSelect from 'react-select/creatable';
 
