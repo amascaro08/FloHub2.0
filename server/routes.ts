@@ -7,11 +7,15 @@ import { storage } from "./storage";
 import { insertRegistrationSchema, insertUpdateSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { sendRegistrationConfirmation, sendAdminNotification, sendUpdateEmail } from "./utils/emailService";
-import { registerCalendarRoutes } from "./routes/calendar";
+import calendarRoutes from "./routes/improved-calendar";
+import authRoutes from "./routes/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register auth routes
+  app.use('/api/auth', authRoutes);
+  
   // Register calendar routes
-  registerCalendarRoutes(app);
+  app.use('/api/calendar', calendarRoutes);
   // Health check endpoint
   app.get('/health', (_req: Request, res: Response) => {
     res.status(200).send('OK');
