@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,33 +6,50 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface CalendarSource {
-  id: string;
+  id: number;
   name: string;
-  type: 'google' | 'o365' | 'url';
+  type: 'google' | 'o365' | 'microsoft' | 'url';
   isEnabled: boolean;
-  tags: string[];
+  tags: string[] | null;
+  sourceId?: string;
+  url?: string;
+  lastSyncTime?: string | null;
 }
 
 export default function CalendarIntegrationSettings() {
   const { toast } = useToast();
-  const [calendarSources, setCalendarSources] = useState<CalendarSource[]>([
-    {
-      id: '1',
-      name: 'Personal Google Calendar',
-      type: 'google',
-      isEnabled: true,
-      tags: ['personal']
+  const [isLoading, setIsLoading] = useState({
+    fetching: false,
+    google: false,
+    microsoft: false,
+    url: false,
+    toggle: false,
+    remove: false
+  });
+  
+  // Fetch calendar sources from the backend
+  const { data: calendarSources = [], isLoading: isLoadingSources, refetch: refetchSources } = useQuery({
+    queryKey: ['/api/calendar/sources'],
+    queryFn: async () => {
+      setIsLoading(prev => ({ ...prev, fetching: true }));
+      try {
+        const response = await fetch('/api/calendar/sources');
+        if (!response.ok) {
+          throw new Error('Failed to fetch calendar sources');
+        }
+        return await response.json();
+      } catch (error) {
+        console.error('Error fetching calendar sources:', error);
+        return [];
+      } finally {
+        setIsLoading(prev => ({ ...prev, fetching: false }));
+      }
     },
-    {
-      id: '2',
-      name: 'Work Office 365',
-      type: 'o365',
-      isEnabled: true,
-      tags: ['work']
-    }
-  ]);
+    refetchOnWindowFocus: false,
+  });
   const [powerAutomateUrl, setPowerAutomateUrl] = useState('');
 
   // For new calendar sources
@@ -140,6 +157,8 @@ export default function CalendarIntegrationSettings() {
     }
     
     try {
+      setIsLoading(prev => ({ ...prev, url: true }));
+      
       // Save the Power Automate URL to the backend
       const response = await fetch('/api/calendar/url-source', {
         method: 'POST',
@@ -157,16 +176,10 @@ export default function CalendarIntegrationSettings() {
         throw new Error('Failed to save calendar source');
       }
       
-      const newSourceData = await response.json();
-      const newSource: CalendarSource = {
-        id: newSourceData.id || `url-${Date.now()}`,
-        name: newCalendarName || 'Power Automate Calendar',
-        type: 'url',
-        isEnabled: true,
-        tags: newCalendarTags ? newCalendarTags.split(',').map(tag => tag.trim()) : []
-      };
+      // Refresh sources list
+      refetchSources();
       
-      setCalendarSources([...calendarSources, newSource]);
+      // Reset form fields
       setNewCalendarName('');
       setNewCalendarTags('');
       setPowerAutomateUrl('');
@@ -182,23 +195,75 @@ export default function CalendarIntegrationSettings() {
         variant: "destructive",
       });
       console.error('Power Automate save error:', error);
+    } finally {
+      setIsLoading(prev => ({ ...prev, url: false }));
     }
   };
 
-  const toggleCalendarEnabled = (id: string) => {
-    setCalendarSources(sources => 
-      sources.map(source => 
-        source.id === id ? { ...source, isEnabled: !source.isEnabled } : source
-      )
-    );
+  const toggleCalendarEnabled = async (id: string, currentlyEnabled: boolean) => {
+    try {
+      setIsLoading(prev => ({ ...prev, toggle: true }));
+      
+      const response = await fetch(`/api/calendar/sources/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isEnabled: !currentlyEnabled
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update calendar source');
+      }
+      
+      // Refresh sources after update
+      refetchSources();
+      
+      toast({
+        title: "Calendar Source Updated",
+        description: `Calendar source has been ${!currentlyEnabled ? 'enabled' : 'disabled'}`
+      });
+    } catch (error) {
+      console.error('Toggle calendar enabled error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update calendar source",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, toggle: false }));
+    }
   };
 
-  const removeCalendarSource = (id: string) => {
-    setCalendarSources(sources => sources.filter(source => source.id !== id));
-    toast({
-      title: "Calendar Removed",
-      description: "Calendar source has been removed successfully",
-    });
+  const removeCalendarSource = async (id: string) => {
+    try {
+      setIsLoading(prev => ({ ...prev, remove: true }));
+      
+      const response = await fetch(`/api/calendar/sources/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete calendar source');
+      }
+      
+      // Refresh sources after deletion
+      refetchSources();
+      
+      toast({
+        title: "Calendar Removed",
+        description: "Calendar source has been removed successfully",
+      });
+    } catch (error) {
+      console.error('Remove calendar source error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove calendar source",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(prev => ({ ...prev, remove: false }));
+    }
   };
 
   return (
@@ -233,11 +298,11 @@ export default function CalendarIntegrationSettings() {
                           <span className="font-medium">{source.name}</span>
                           <span className="text-sm text-muted-foreground">
                             {source.type === 'google' ? 'Google Calendar' : 
-                             source.type === 'o365' ? 'Office 365' : 'Power Automate URL'}
+                             source.type === 'o365' || source.type === 'microsoft' ? 'Office 365' : 'Power Automate URL'}
                           </span>
-                          {source.tags.length > 0 && (
+                          {source.tags && source.tags.length > 0 && (
                             <div className="flex gap-1 mt-1">
-                              {source.tags.map(tag => (
+                              {source.tags.map((tag: string) => (
                                 <span key={tag} className="px-2 py-0.5 bg-secondary text-secondary-foreground rounded-full text-xs">
                                   {tag}
                                 </span>
@@ -249,7 +314,7 @@ export default function CalendarIntegrationSettings() {
                           <div className="flex items-center gap-2">
                             <Switch
                               checked={source.isEnabled}
-                              onCheckedChange={() => toggleCalendarEnabled(source.id)}
+                              onCheckedChange={() => toggleCalendarEnabled(source.id, source.isEnabled)}
                             />
                             <span className="text-sm">{source.isEnabled ? 'Enabled' : 'Disabled'}</span>
                           </div>
