@@ -24,14 +24,24 @@ const ProtectedRoute = ({ component: Component, ...rest }: any) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is authenticated
-    const user = localStorage.getItem('floHubUser');
-    if (user) {
-      setIsAuthenticated(true);
-    } else {
-      setLocation('/login');
-    }
-    setLoading(false);
+    // Check if user is authenticated via API
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          setIsAuthenticated(true);
+        } else {
+          setLocation('/login');
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        setLocation('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    checkAuth();
   }, [setLocation]);
 
   if (loading) {
