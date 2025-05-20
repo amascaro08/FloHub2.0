@@ -26,7 +26,7 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
       {
         clientID: GOOGLE_CLIENT_ID,
         clientSecret: GOOGLE_CLIENT_SECRET,
-        callbackURL: '/auth/google/callback',
+        callbackURL: 'https://flohub.replit.app/auth/google/callback',
         scope: ['profile', 'email', 'https://www.googleapis.com/auth/calendar.readonly'],
       },
       async (accessToken, refreshToken, profile, done) => {
@@ -100,7 +100,7 @@ export const setupGoogleAuth = (app: any) => {
 
   // Google auth callback route
   app.get(
-    '/auth/google/callback',
+    '/api/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/login' }),
     (req: Request, res: Response) => {
       // Successful authentication, redirect to dashboard
