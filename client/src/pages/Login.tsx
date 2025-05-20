@@ -72,7 +72,8 @@ export default function Login() {
         },
         body: JSON.stringify({
           email: formData.email || 'test@example.com',
-          password: formData.password || 'password123'
+          password: formData.password || 'password123',
+          username: 'testuser'
         }),
       });
       

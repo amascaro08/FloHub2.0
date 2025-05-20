@@ -66,9 +66,18 @@ export const setupAuthRoutes = (app: any) => {
       }
       
       // For testing purposes, we'll allow a direct login with test credentials
-      if (req.body.email === 'test2@example.com' && req.body.password === 'password123') {
-        // Find the test user
-        const user = await storage.getUserByEmail('test2@example.com');
+      if (req.body.email === 'test@example.com' && req.body.password === 'password123') {
+        // Find or create test user
+        let user = await storage.getUserByEmail('test@example.com');
+        
+        if (!user) {
+          user = await storage.createUser({
+            email: 'test@example.com',
+            username: 'testuser',
+            name: 'Test User',
+            password: await bcrypt.hash('password123', 10)
+          });
+        }
         
         if (user) {
           // Store user ID in session
