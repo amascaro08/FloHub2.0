@@ -8,11 +8,11 @@ import { insertRegistrationSchema, insertUpdateSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { sendRegistrationConfirmation, sendAdminNotification, sendUpdateEmail } from "./utils/emailService";
 import calendarRoutes from "./routes/improved-calendar";
-import authRoutes from "./routes/auth";
+import { setupAuthRoutes } from "./routes/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register auth routes
-  app.use('/api/auth', authRoutes);
+  setupAuthRoutes(app);
   
   // Register calendar routes
   app.use('/api/calendar', calendarRoutes);
