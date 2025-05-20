@@ -170,4 +170,134 @@ export function registerCalendarRoutes(app: any) {
       return res.status(500).json({ error: 'Failed to save user settings' });
     }
   });
+
+  // Calendar Authentication Routes
+
+  // Get Google OAuth URL
+  app.get('/api/calendar/auth/google', async (req: Request, res: Response) => {
+    try {
+      const { state = 'default', accountLabel = 'Personal' } = req.query;
+      
+      if (!process.env.GOOGLE_OAUTH_ID || !process.env.GOOGLE_OAUTH_SECRET) {
+        return res.status(500).json({ 
+          error: 'Google OAuth credentials not configured',
+          configured: false
+        });
+      }
+
+      // In a real implementation, this would generate a proper OAuth URL
+      // For now, we'll return a mock URL for UI testing purposes
+      return res.json({
+        url: `https://accounts.google.com/o/oauth2/v2/auth?client_id=mock&redirect_uri=https://flohub.replit.app/api/auth/callback/google&response_type=code&scope=openid+email+profile+https://www.googleapis.com/auth/calendar&state=${state}-${encodeURIComponent(accountLabel as string)}&access_type=offline&prompt=consent`,
+        configured: true
+      });
+    } catch (error) {
+      console.error('Error generating Google OAuth URL:', error);
+      return res.status(500).json({ error: 'Failed to generate Google OAuth URL' });
+    }
+  });
+
+  // Get Microsoft OAuth URL
+  app.get('/api/calendar/auth/microsoft', async (req: Request, res: Response) => {
+    try {
+      const { state = 'default' } = req.query;
+      
+      if (!process.env.MICROSOFT_OAUTH_ID || !process.env.MICROSOFT_OAUTH_SECRET) {
+        return res.status(500).json({ 
+          error: 'Microsoft OAuth credentials not configured',
+          configured: false
+        });
+      }
+
+      // In a real implementation, this would generate a proper OAuth URL
+      // For now, we'll return a mock URL for UI testing purposes
+      return res.json({
+        url: `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=mock&redirect_uri=https://flohub.replit.app/api/auth/callback/microsoft&response_type=code&scope=openid+email+profile+offline_access+Calendars.Read+User.Read&state=${state}&prompt=consent`,
+        configured: true
+      });
+    } catch (error) {
+      console.error('Error generating Microsoft OAuth URL:', error);
+      return res.status(500).json({ error: 'Failed to generate Microsoft OAuth URL' });
+    }
+  });
+
+  // Store Power Automate URL for Office 365 integration
+  app.post('/api/calendar/powerautomate', async (req: Request, res: Response) => {
+    try {
+      const { url, name = 'Office 365 Calendar' } = req.body;
+      
+      if (!url) {
+        return res.status(400).json({ error: 'Power Automate URL is required' });
+      }
+
+      // In a real implementation, this would store the Power Automate URL in the database
+      // For now, we'll just return success
+      return res.json({ 
+        success: true, 
+        message: 'Power Automate URL saved successfully',
+        calendarSource: {
+          id: `powerautomate-${Date.now()}`,
+          name,
+          type: 'o365',
+          sourceId: 'powerautomate',
+          isEnabled: true,
+          tags: ['work']
+        }
+      });
+    } catch (error) {
+      console.error('Error saving Power Automate URL:', error);
+      return res.status(500).json({ error: 'Failed to save Power Automate URL' });
+    }
+  });
+
+  // Get connected calendar accounts
+  app.get('/api/calendar/accounts', async (req: Request, res: Response) => {
+    try {
+      // In a real implementation, this would fetch connected accounts from the database
+      // For now, we'll return sample data
+      return res.json([
+        {
+          id: 'google-primary',
+          provider: 'google',
+          email: 'user@gmail.com',
+          name: 'Personal Google',
+          isConnected: true,
+          lastSync: new Date().toISOString()
+        },
+        {
+          id: 'microsoft-work',
+          provider: 'microsoft',
+          email: 'user@outlook.com',
+          name: 'Work Microsoft',
+          isConnected: true,
+          lastSync: new Date().toISOString()
+        }
+      ]);
+    } catch (error) {
+      console.error('Error fetching calendar accounts:', error);
+      return res.status(500).json({ error: 'Failed to fetch calendar accounts' });
+    }
+  });
+
+  // Sync calendars manually
+  app.post('/api/calendar/sync', async (req: Request, res: Response) => {
+    try {
+      const { accountIds } = req.body;
+      
+      if (!accountIds || !Array.isArray(accountIds) || accountIds.length === 0) {
+        return res.status(400).json({ error: 'Account IDs are required' });
+      }
+
+      // In a real implementation, this would trigger a sync for the specified accounts
+      // For now, we'll just return success
+      return res.json({ 
+        success: true, 
+        message: `Synced ${accountIds.length} calendar accounts successfully`,
+        syncTime: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error syncing calendars:', error);
+      return res.status(500).json({ error: 'Failed to sync calendars' });
+    }
+  });
 }

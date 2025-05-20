@@ -10,6 +10,8 @@ import { sendRegistrationConfirmation, sendAdminNotification, sendUpdateEmail } 
 import { registerCalendarRoutes } from "./routes/calendar";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register calendar routes
+  registerCalendarRoutes(app);
   // Health check endpoint
   app.get('/health', (_req: Request, res: Response) => {
     res.status(200).send('OK');
