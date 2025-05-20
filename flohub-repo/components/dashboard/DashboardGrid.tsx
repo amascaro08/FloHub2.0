@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, memo, useMemo } from "react";
+import { useState, useEffect, useRef, memo, useMemo, lazy, Suspense } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout";
 import "/node_modules/react-grid-layout/css/styles.css";
 import "/node_modules/react-resizable/css/styles.css";
@@ -13,12 +13,22 @@ import {
   // Bug - removed for debug widget
 } from 'lucide-react';
 
-import TaskWidget from "@/components/widgets/TaskWidget";
-import CalendarWidget from "@/components/widgets/CalendarWidget";
-import ChatWidget from "@/components/assistant/ChatWidget";
-import AtAGlanceWidget from "@/components/widgets/AtAGlanceWidget";
-import QuickNoteWidget from "@/components/widgets/QuickNoteWidget";
-// Debug widget import removed
+// Import placeholder loading component
+const WidgetSkeleton = () => (
+  <div className="animate-pulse w-full h-full flex flex-col">
+    <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
+    <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded"></div>
+  </div>
+);
+
+// Lazy load widgets
+const TaskWidget = lazy(() => import("@/components/widgets/TaskWidget"));
+const CalendarWidget = lazy(() => import("@/components/widgets/CalendarWidget"));
+const ChatWidget = lazy(() => import("@/components/assistant/ChatWidget"));
+const AtAGlanceWidget = lazy(() => import("@/components/widgets/AtAGlanceWidget"));
+const QuickNoteWidget = lazy(() => import("@/components/widgets/QuickNoteWidget"));
+const HabitTrackerWidget = lazy(() => import("@/components/widgets/HabitTrackerWidget"));
+
 import { ReactElement } from "react";
 import { useAuth } from "../ui/AuthContext";
 import { db } from "@/lib/firebase";
@@ -30,16 +40,14 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 
 type WidgetType = "tasks" | "calendar" | "ataglance" | "quicknote" | "habit-tracker";
 
-// Define widget components
-import HabitTrackerWidget from "@/components/widgets/HabitTrackerWidget";
-
+// Define widget components with Suspense
 const widgetComponents: Record<WidgetType, ReactElement> = {
-  tasks: <TaskWidget />,
-  calendar: <CalendarWidget />,
-  ataglance: <AtAGlanceWidget />,
-  quicknote: <QuickNoteWidget />,
+  tasks: <Suspense fallback={<WidgetSkeleton />}><TaskWidget /></Suspense>,
+  calendar: <Suspense fallback={<WidgetSkeleton />}><CalendarWidget /></Suspense>,
+  ataglance: <Suspense fallback={<WidgetSkeleton />}><AtAGlanceWidget /></Suspense>,
+  quicknote: <Suspense fallback={<WidgetSkeleton />}><QuickNoteWidget /></Suspense>,
   // debug entry removed
-  "habit-tracker": <HabitTrackerWidget />,
+  "habit-tracker": <Suspense fallback={<WidgetSkeleton />}><HabitTrackerWidget /></Suspense>,
 };
 
 // Helper function to recursively remove undefined values from an object
@@ -84,8 +92,19 @@ const getWidgetIcon = (widgetKey: string) => {
 };
 
 const DashboardGrid = () => {
-  const { data: session } = useSession();
-  const { isLocked } = useAuth();
+  // Check if we're on the client side
+  const isClient = typeof window !== 'undefined';
+  
+  // Use useSession with required: false to handle SSR
+  const { data: session } = useSession({ required: false });
+
+  if (!session) {
+    return <div>Loading...</div>; // Or any other fallback UI
+  }
+  // Safely use useAuth only on client side
+  const auth = isClient ? useAuth() : null;
+  const isLocked = auth?.isLocked || false;
+  
   const [activeWidgets, setActiveWidgets] = useState<string[]>([]);
   
   // Memoize widget components to prevent unnecessary re-renders
@@ -117,11 +136,12 @@ const DashboardGrid = () => {
   };
 
   const [layouts, setLayouts] = useState(defaultLayouts);
+  const [loadedSettings, setLoadedSettings] = useState(false);
   
-  // Fetch user settings to get active widgets
+  // Fetch user settings to get active widgets (client-side only)
   useEffect(() => {
     const fetchUserSettings = async () => {
-      if (session?.user?.email) {
+      if (isClient && session?.user?.email) {
         try {
           const settingsDocRef = doc(db, "users", session.user.email, "settings", "userSettings");
           const docSnap = await getDoc(settingsDocRef);
@@ -138,17 +158,25 @@ const DashboardGrid = () => {
           console.error("[DashboardGrid] Error fetching user settings:", e);
           // Default to standard widgets on error
           setActiveWidgets(["tasks", "calendar", "ataglance", "quicknote", "habit-tracker"]);
+        } finally {
+          setLoadedSettings(true);
         }
       }
     };
     
-    fetchUserSettings();
-  }, [session]);
+    if (isClient) {
+      fetchUserSettings();
+    } else {
+      // For SSR, use default widgets
+      setActiveWidgets(["tasks", "calendar", "ataglance", "quicknote", "habit-tracker"]);
+      setLoadedSettings(true);
+    }
+  }, [session, isClient]);
 
-  // Load layout from Firestore on component mount
+  // Load layout from Firestore on component mount (client-side only)
   useEffect(() => {
     const fetchLayout = async () => {
-      if (session?.user?.email) {
+      if (isClient && session?.user?.email) {
         const layoutRef = doc(db, "users", session.user.email, "settings", "layouts");
         try {
           const docSnap = await getDoc(layoutRef);
@@ -169,8 +197,10 @@ const DashboardGrid = () => {
       }
     };
 
-    fetchLayout();
-  }, [session]);
+    if (isClient) {
+      fetchLayout();
+    }
+  }, [session, isClient]);
 
 
   // Ref to store the timeout ID for debouncing
@@ -227,7 +257,7 @@ const DashboardGrid = () => {
       saveTimeoutRef.current = setTimeout(async () => {
         try {
           console.log("[DashboardGrid] Attempting to save layout...");
-          if (session?.user?.email) {
+          if (isClient && session?.user?.email) {
             const layoutRef = doc(db, "users", session.user.email, "settings", "layouts");
             await setDoc(layoutRef, { layouts: cleanedLayouts }); // Use cleanedLayouts directly
             console.log("[DashboardGrid] Layout saved successfully!");
@@ -240,6 +270,22 @@ const DashboardGrid = () => {
       console.error("[DashboardGrid] Error in onLayoutChange:", err);
     }
   };
+
+  // Show loading state while settings are being fetched
+  if (!loadedSettings) {
+    return (
+      <div className="grid-bg">
+        <div className="grid grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="glass p-5 rounded-xl animate-pulse">
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-4"></div>
+              <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid-bg">

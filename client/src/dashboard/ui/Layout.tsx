@@ -2,8 +2,10 @@
 
 import { ReactNode, useState, useEffect, memo } from 'react'
 import { signOut } from "next-auth/react";
+import { useRouter } from 'next/router';
 import { Menu, Home, ListTodo, Book, Calendar, Settings, LogOut, NotebookPen, UserIcon, NotebookPenIcon, NotepadText } from 'lucide-react' // Import icons
 import Link from 'next/link'
+import Image from 'next/image'
 import ChatWidget from '../assistant/ChatWidget';
 import ThemeToggle from './ThemeToggle'
 import { useAuth } from "./AuthContext";
@@ -17,37 +19,41 @@ const nav = [
   { name: "Journal", href: "/dashboard/journal", icon: NotebookPenIcon }, // Using Calendar icon for Journal for now
   { name: "Calendar", href: "/calendar", icon: Calendar },
   { name: "Meetings", href: "/dashboard/meetings", icon: UserIcon },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  { name: "Feedback", href: "/feedback", icon: NotebookPen },
+  { name: "Settings", href: "/dashboard/settings-modular", icon: Settings },
 ];
 
 const Layout = ({ children }: { children: ReactNode }) => {
+  const router = useRouter();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false); // State for desktop sidebar collapse
-  const { isLocked, toggleLock } = useAuth();
+  const isClient = typeof window !== 'undefined';
+  const auth = isClient ? useAuth() : null;
   const [topInput, setTopInput] = useState('');
   
-  // Get chat state from context
-  // Get chat state from context with error handling
-  const chatContext = useChat();
-  const {
-    history,
-    send,
-    status,
-    loading,
-    input: chatInput,
-    setInput: setChatInput,
-    isChatOpen,
-    setIsChatOpen
-  } = chatContext || {
-    history: [],
-    send: async () => {},
-    status: 'idle',
-    loading: false,
-    input: '',
-    setInput: () => {},
-    isChatOpen: false,
-    setIsChatOpen: () => {}
-  };
+  // Safely destructure auth values with fallbacks for SSR
+  const isLocked = auth?.isLocked || false;
+  const toggleLock = auth?.toggleLock || (() => {});
+  const user = auth?.user || null;
+  
+  // Check if user is admin
+  const isAdmin = user?.email === 'amascaro08@gmail.com';
+  
+  // Create admin navigation item
+  const adminNavItem = { name: "Admin", href: "/dashboard/admin", icon: "Settings" };
+  
+  // Get chat state from context with error handling for SSR
+  const chatContext = isClient && useChat ? useChat() : null;
+  
+  // Safely destructure chat values with fallbacks for SSR
+  const history = chatContext?.history || [];
+  const send = chatContext?.send || (async () => {});
+  const status = chatContext?.status || 'idle';
+  const loading = chatContext?.loading || false;
+  const chatInput = chatContext?.input || '';
+  const setChatInput = chatContext?.setInput || (() => {});
+  const isChatOpen = chatContext?.isChatOpen || false;
+  const setIsChatOpen = chatContext?.setIsChatOpen || (() => {});
 
   const toggleDesktopSidebar = () => {
     setDesktopSidebarCollapsed(!desktopSidebarCollapsed);
@@ -68,7 +74,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
 
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--bg)] text-[var(--fg)]">
+    <div className="flex h-screen bg-[var(--bg)] text-[var(--fg)]">
       {/* backdrop */}
       <div
         className={`
@@ -89,9 +95,17 @@ const Layout = ({ children }: { children: ReactNode }) => {
           border-r border-neutral-200 dark:border-neutral-700
         `}
       >
-        <div className={`p-4 border-b border-neutral-200 dark:border-neutral-700 flex items-center ${desktopSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
+        <div className={`py-[26px] px-4 border-b border-neutral-200 dark:border-neutral-700 flex items-center ${desktopSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!desktopSidebarCollapsed && (
-            <img src="/FloHub_Logo_Transparent.png" alt="FloHub" className="h-10 animate-pulse-subtle"/>
+            <Image
+              src="/FloHub_Logo_Transparent.png"
+              alt="FloHub"
+              width={40}
+              height={40}
+              priority={true}
+              quality={85}
+              className="animate-pulse-subtle"
+            />
           )}
           {/* Toggle button for desktop sidebar */}
           <button
@@ -103,6 +117,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
           </button>
         </div>
         <nav className="p-4 space-y-1">
+          {/* Regular navigation items */}
           {nav.map((x) => (
             <Link
               key={x.href}
@@ -127,6 +142,31 @@ const Layout = ({ children }: { children: ReactNode }) => {
               )}
             </Link>
           ))}
+          
+          {/* Admin navigation item - only visible to admin */}
+          {isAdmin && (
+            <Link
+              href={adminNavItem.href}
+              className={`flex items-center px-3 py-2.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all ${
+                desktopSidebarCollapsed ? 'justify-center' : ''
+              } group`}
+              onClick={(e) => {
+                e.preventDefault();
+                setMobileSidebarOpen(false);
+                // Use Next.js router for client-side navigation
+                window.location.href = adminNavItem.href;
+              }}
+            >
+              <Settings className={`w-5 h-5 text-red-500 group-hover:text-red-600 transition-colors ${
+                !desktopSidebarCollapsed && 'mr-3'
+              }`} />
+              {!desktopSidebarCollapsed && (
+                <span className="font-medium text-neutral-700 dark:text-neutral-300 group-hover:text-neutral-900 dark:group-hover:text-white transition-colors">
+                  {adminNavItem.name}
+                </span>
+              )}
+            </Link>
+          )}
           {/* Sign Out button */}
           <button
             className={`flex items-center w-full text-left px-3 py-2.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all ${
@@ -134,7 +174,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
             } group mt-4`}
             onClick={() => {
               setMobileSidebarOpen(false);
-              signOut();
+              signOut({ callbackUrl: '/' });
             }}
           >
             <LogOut className={`w-5 h-5 text-red-500 group-hover:text-red-600 transition-colors ${
@@ -153,7 +193,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
       </aside>
 
       {/* main */}
-      <div className="flex-1 flex flex-col transition-all duration-300 ease-in-out">
+      <div className="flex-1 flex flex-col transition-all duration-300 ease-in-out overflow-hidden">
         {/* header */}
         <header className="flex items-center justify-between p-4 bg-[var(--surface)] shadow-elevate-sm border-b border-neutral-200 dark:border-neutral-700">
           <div className="flex items-center">
@@ -164,7 +204,15 @@ const Layout = ({ children }: { children: ReactNode }) => {
             >
               <Menu className="w-5 h-5 text-neutral-600 dark:text-neutral-400" />
             </button>
-            <img src="/FloHub_Logo_Transparent.png" alt="FloHub" className="h-8 ml-2 md:hidden" />
+            <Image
+              src="/FloHub_Logo_Transparent.png"
+              alt="FloHub"
+              width={32}
+              height={32}
+              priority={true}
+              quality={85}
+              className="ml-2 md:hidden"
+            />
           </div>
           
           {/* FloCat Chat Bubble */}
@@ -200,21 +248,26 @@ const Layout = ({ children }: { children: ReactNode }) => {
           
           <div className="flex items-center">
             <button
-              className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors ml-2"
+              className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors ml-2 relative group"
               onClick={() => toggleLock()}
-              aria-label="Toggle Lock"
+              aria-label={isLocked ? "Unlock layout" : "Lock layout"}
             >
               {isLocked ? (
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary-500"><rect width="12" height="10" x="6" y="11" rx="2"/><path d="M12 17v-2"/><path d="M8 11V5a4 4 0 0 1 8 0v6"/></svg>
               ) : (
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-500"><rect width="12" height="10" x="6" y="11" rx="2"/><path d="M12 17v-2"/><path d="M16 11V5a4 4 0 0 0-8 0"/></svg>
               )}
+              <span className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                {isLocked ? "Unlock to reorder widgets" : "Lock widget order"}
+              </span>
             </button>
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-4">
-          {children}
+        <main className="flex-1 overflow-auto p-4 max-w-full">
+          <div className="w-full max-w-[100vw]">
+            {children}
+          </div>
         </main>
       </div>
     </div>

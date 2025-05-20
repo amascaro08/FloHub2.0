@@ -11,6 +11,10 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 function TaskWidget() {
   const { data: session, status } = useSession();
+  
+  if (!session) {
+    return <div>Loading...</div>; // Or any other fallback UI
+  }
   const shouldFetch               = status === "authenticated";
   const { data: tasks, mutate }   = useSWR<Task[]>(
     shouldFetch ? "/api/tasks" : null,
@@ -166,9 +170,6 @@ function TaskWidget() {
     setSelectedTags(t.tags || []); // Set tags when editing
   };
 
-  if (status === "loading" || (!tasks && !settingsError && shouldFetch) || (!userSettings && !settingsError && shouldFetch)) { // Add loading checks for settings and tasks
-    return <p>Loading tasks…</p>;
-  }
   if (!session) {
     return <p>Please sign in to see your tasks.</p>;
   }

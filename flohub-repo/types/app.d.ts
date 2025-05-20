@@ -11,6 +11,10 @@ export type UserSettings = {
   globalTags: string[]; // Field for global tags
   activeWidgets?: string[]; // Array of active widget IDs
   calendarSources?: CalendarSource[]; // New field for multiple calendar sources
+  timezone?: string; // User's preferred timezone (e.g., "America/New_York")
+  floCatStyle?: "default" | "more_catty" | "less_catty" | "professional"; // FloCat communication style
+  floCatPersonality?: string[]; // Personality keywords for FloCat (e.g., "humorous", "sarcastic", "serious")
+  preferredName?: string; // User's preferred name for FloCat to use
 };
 
 // Define a type for calendar sources

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 
 interface JournalSummaryProps {
-  // Optional props for future integration
+  refreshTrigger?: number; // Trigger to refresh the summary 
 }
 
 interface MoodData {
@@ -11,11 +11,16 @@ interface MoodData {
   label: string;
 }
 
-const JournalSummary: React.FC<JournalSummaryProps> = () => {
+const JournalSummary: React.FC<JournalSummaryProps> = ({ refreshTrigger = 0 }) => {
   const [moodData, setMoodData] = useState<MoodData[]>([]);
   const [topThemes, setTopThemes] = useState<{theme: string, count: number}[]>([]);
   const [floCatsSummary, setFloCatsSummary] = useState<string>('');
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const { data: session } = useSession();
+
+  if (!session) {
+    return <div>Loading...</div>; // Or any other fallback UI
+  }
 
   useEffect(() => {
     if (typeof window !== 'undefined' && session?.user?.email) {
@@ -71,7 +76,9 @@ const JournalSummary: React.FC<JournalSummaryProps> = () => {
         // Count mood frequencies
         const moodCounts: Record<string, number> = {};
         moodData.forEach(mood => {
-          moodCounts[mood.label] = (moodCounts[mood.label] || 0) + 1;
+          if (mood.label) {
+            moodCounts[mood.label] = (moodCounts[mood.label] || 0) + 1;
+          }
         });
         
         // Find most common mood
@@ -84,32 +91,75 @@ const JournalSummary: React.FC<JournalSummaryProps> = () => {
           }
         });
         
-        // Get recent trend
-        const trend = getMoodTrend();
+        // Calculate mood trend
+        const moodScores: {[key: string]: number} = {
+          'Rad': 5,
+          'Good': 4,
+          'Meh': 3,
+          'Bad': 2,
+          'Awful': 1
+        };
+        
+        const recentMoods = moodData
+          .filter(m => m.label)
+          .map(m => moodScores[m.label] || 3);
+        
+        let trendDescription = "";
+        let trendAdvice = "";
+        if (recentMoods.length >= 3) {
+          // Calculate if trend is improving or declining
+          const firstHalf = recentMoods.slice(0, Math.floor(recentMoods.length / 2));
+          const secondHalf = recentMoods.slice(Math.floor(recentMoods.length / 2));
+          
+          const firstAvg = firstHalf.reduce((sum, val) => sum + val, 0) / firstHalf.length;
+          const secondAvg = secondHalf.reduce((sum, val) => sum + val, 0) / secondHalf.length;
+          
+          if (secondAvg - firstAvg > 0.5) {
+            trendDescription = "Your mood has been improving recently. ";
+            trendAdvice = "Take note of what positive changes you've made and continue building on them. ";
+          } else if (firstAvg - secondAvg > 0.5) {
+            trendDescription = "Your mood has been declining recently. ";
+            trendAdvice = "Consider what factors might be affecting your wellbeing and what small changes could help. ";
+          } else {
+            trendDescription = "Your mood has been relatively stable. ";
+            trendAdvice = "Consider introducing small positive changes to enhance your wellbeing. ";
+          }
+        }
+        
+        // Calculate mood variability
+        let variabilityAdvice = "";
+        if (recentMoods.length >= 5) {
+          const moodVariations = [];
+          for (let i = 1; i < recentMoods.length; i++) {
+            moodVariations.push(Math.abs(recentMoods[i] - recentMoods[i-1]));
+          }
+          
+          const avgVariation = moodVariations.reduce((sum, val) => sum + val, 0) / moodVariations.length;
+          
+          if (avgVariation > 1.5) {
+            variabilityAdvice = "Your mood shows significant day-to-day variations. Establishing consistent routines might help stabilize your emotional wellbeing. ";
+          }
+        }
         
         // Build personalized summary using mood data and themes
-        let summary = `Based on your journal entries, your mood has been predominantly ${mostCommonMood.toLowerCase()} this month`;
-        
-        if (trend !== "Not enough data") {
-          summary += ` and is currently ${trend.toLowerCase()}.`;
-        } else {
-          summary += ".";
-        }
+        let summary = `Based on your journal entries, your mood has been predominantly ${mostCommonMood.toLowerCase()} this month. ${trendDescription}${variabilityAdvice}`;
         
         // Add theme insights if available
         if (topThemes.length > 0) {
-          summary += ` Your entries frequently mention ${topThemes[0].theme}`;
+          summary += `Your entries frequently mention ${topThemes[0].theme}`;
           if (topThemes.length > 1) {
             summary += ` and ${topThemes[1].theme}`;
           }
-          summary += ", which seem to be important in your life right now.";
+          summary += ", which seem to be important in your life right now. ";
         }
         
         // Add personalized advice based on mood
-        if (mostCommonMood === "Sad" || mostCommonMood === "Down") {
-          summary += " Consider activities that have previously improved your mood, like connecting with friends or spending time outdoors.";
-        } else if (mostCommonMood === "Great" || mostCommonMood === "Good") {
-          summary += " Keep up with the positive activities and relationships that are contributing to your wellbeing.";
+        if (mostCommonMood === "Awful" || mostCommonMood === "Bad") {
+          summary += `${trendAdvice}Consider activities that have previously improved your mood, like connecting with friends or spending time outdoors. Small acts of self-care can make a significant difference in how you feel day-to-day.`;
+        } else if (mostCommonMood === "Rad" || mostCommonMood === "Good") {
+          summary += `${trendAdvice}Keep up with the positive activities and relationships that are contributing to your wellbeing. Consider sharing your positive experiences with others to amplify their effect.`;
+        } else {
+          summary += `${trendAdvice}Try to identify patterns in your activities and how they affect your mood to find what brings you joy. Even small positive changes to your daily routine can have a cumulative positive effect on your wellbeing.`;
         }
         
         return summary;
@@ -117,68 +167,26 @@ const JournalSummary: React.FC<JournalSummaryProps> = () => {
       
       setFloCatsSummary(generateFloCatsSummary());
     }
-  }, [session]);
+  }, [session, refreshTrigger]);
 
-  // Helper function to get mood trend description
-  const getMoodTrend = () => {
-    if (moodData.length < 3) return "Not enough data";
-    
-    const labels = ['Sad', 'Down', 'Okay', 'Good', 'Great'];
-    const recentMoods = moodData.slice(-7).map(m => labels.indexOf(m.label));
-    
-    const avgMood = recentMoods.reduce((sum, val) => sum + val, 0) / recentMoods.length;
-    
-    if (avgMood < 1.5) return "Trending downward";
-    if (avgMood < 2.5) return "Stable";
-    if (avgMood < 3.5) return "Slightly improving";
-    return "Trending upward";
-  };
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-md p-6">
-      <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Journal Summary</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Journal Summary</h2>
+        {isGenerating && (
+          <div className="flex items-center">
+            <div className="animate-spin h-4 w-4 border-2 border-teal-500 rounded-full border-t-transparent mr-2"></div>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Updating...</span>
+          </div>
+        )}
+      </div>
       
       <div className="mb-6">
         <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-2">FloCats Summary</h3>
         <p className="text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-700 p-3 rounded-lg">
           {floCatsSummary || "Start journaling to get FloCats insights about your entries."}
         </p>
-      </div>
-      
-      <div className="mb-6">
-        <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-2">Mood Trend</h3>
-        <div className="bg-slate-50 dark:bg-slate-700 p-3 rounded-lg">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-xs text-slate-500 dark:text-slate-400">Last 7 days</span>
-            <span className="text-sm font-medium text-teal-600 dark:text-teal-400">{getMoodTrend()}</span>
-          </div>
-          
-          {/* Simple mood line graph */}
-          <div className="h-16 flex items-end">
-            {moodData.slice(-7).map((mood, index) => {
-              const labels = ['Sad', 'Down', 'Okay', 'Good', 'Great'];
-              const height = ((labels.indexOf(mood.label) + 1) / 5) * 100;
-              
-              return (
-                <div key={index} className="flex-1 flex flex-col items-center">
-                  <div 
-                    className="w-2 bg-teal-500 rounded-t-sm transition-all"
-                    style={{ height: `${height}%` }}
-                  ></div>
-                  <span className="text-xs mt-1">{mood.emoji}</span>
-                </div>
-              );
-            })}
-            
-            {/* Fill empty spaces if less than 7 days of data */}
-            {Array.from({ length: Math.max(0, 7 - moodData.slice(-7).length) }).map((_, index) => (
-              <div key={`empty-${index}`} className="flex-1 flex flex-col items-center">
-                <div className="w-2 bg-slate-200 dark:bg-slate-600 rounded-t-sm h-0"></div>
-                <span className="text-xs mt-1">·</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
       
       <div>
