@@ -34,21 +34,8 @@ export default function AuthButton() {
     setIsLoading(true);
     
     try {
-      // First create test user if needed
-      await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: 'test@example.com',
-          username: 'testuser',
-          name: 'Test User',
-          password: 'password123'
-        }),
-      }).catch(() => {
-        // Ignore if user already exists
-      });
+      // Skip registration for test user since it already exists
+      console.log('Using existing test user');
       
       // Then login
       const response = await fetch('/api/auth/login', {
@@ -57,7 +44,7 @@ export default function AuthButton() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: 'test@example.com',
+          email: 'test2@example.com',
           password: 'password123'
         }),
       });
