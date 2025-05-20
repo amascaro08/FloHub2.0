@@ -49,7 +49,7 @@ const router = Router();
 // Get all calendar sources for the current user
 router.get('/sources', sessionAuth, async (req: any, res: Response) => {
   try {
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     const sources = await storage.getCalendarSources(userId);
     
     // Remove sensitive data
@@ -80,7 +80,7 @@ router.get('/sources', sessionAuth, async (req: any, res: Response) => {
 router.post('/url-source', sessionAuth, async (req: any, res: Response) => {
   try {
     const { name, url, tags } = req.body;
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     
     if (!url) {
       return res.status(400).json({ error: 'URL is required' });
@@ -110,7 +110,7 @@ router.post('/url-source', sessionAuth, async (req: any, res: Response) => {
 router.put('/sources/:id', sessionAuth, async (req: any, res: Response) => {
   try {
     const sourceId = parseInt(req.params.id, 10);
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     const { name, isEnabled, tags } = req.body;
     
     // Get the source
@@ -143,7 +143,7 @@ router.put('/sources/:id', sessionAuth, async (req: any, res: Response) => {
 router.delete('/sources/:id', sessionAuth, async (req: any, res: Response) => {
   try {
     const sourceId = parseInt(req.params.id, 10);
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     
     // Get the source
     const source = await storage.getCalendarSource(sourceId);
@@ -174,7 +174,7 @@ router.delete('/sources/:id', sessionAuth, async (req: any, res: Response) => {
 // Get calendar events from all enabled sources
 router.get('/events', sessionAuth, async (req: any, res: Response) => {
   try {
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     const { timeMin, timeMax } = req.query;
     
     if (!timeMin || !timeMax) {
