@@ -9,6 +9,7 @@ import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import Login from "@/pages/Login";
 import AuthRegister from "@/pages/AuthRegister";
+import GoogleLogin from "@/pages/GoogleLogin";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
       <Route path="/" component={Home} />
       <Route path="/register" component={Register} />
       <Route path="/login" component={Login} />
+      <Route path="/login/google" component={GoogleLogin} />
       <Route path="/auth/register" component={AuthRegister} />
       <Route path="/admin/updates" component={AdminUpdates} />
       <Route path="/updates" component={Updates} />
