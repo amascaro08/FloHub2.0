@@ -9,6 +9,169 @@ interface User {
   email: string;
 }
 
+// Mock widget component for demonstration
+const WidgetCard: React.FC<{
+  title: string;
+  children: React.ReactNode;
+  icon?: React.ReactNode;
+}> = ({ title, children, icon }) => (
+  <div className="bg-white rounded-lg shadow-md overflow-hidden">
+    <div className="px-4 py-3 bg-gradient-to-r from-teal-500 to-teal-600 flex justify-between items-center">
+      <h3 className="text-white font-medium">{title}</h3>
+      {icon && <span className="text-white">{icon}</span>}
+    </div>
+    <div className="p-4">{children}</div>
+  </div>
+);
+
+// FloCat Widget
+const FloCatWidget = () => (
+  <WidgetCard title="FloCat Assistant">
+    <div className="flex flex-col items-center">
+      <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-3">
+        <span className="text-2xl">😺</span>
+      </div>
+      <p className="text-center text-gray-700 mb-3">
+        How can I help you be more productive today?
+      </p>
+      <div className="w-full">
+        <input 
+          type="text" 
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-teal-500" 
+          placeholder="Ask me anything..." 
+        />
+      </div>
+    </div>
+  </WidgetCard>
+);
+
+// Calendar Widget
+const CalendarWidget = () => (
+  <WidgetCard title="Calendar">
+    <div className="space-y-2">
+      <div className="text-sm font-medium text-gray-900">Today's Schedule</div>
+      <div className="border-l-2 border-teal-500 pl-3 py-1">
+        <div className="text-sm font-medium">9:00 AM - Team Standup</div>
+        <div className="text-xs text-gray-500">Google Meet</div>
+      </div>
+      <div className="border-l-2 border-orange-400 pl-3 py-1">
+        <div className="text-sm font-medium">11:30 AM - Product Demo</div>
+        <div className="text-xs text-gray-500">Conference Room A</div>
+      </div>
+      <div className="border-l-2 border-purple-400 pl-3 py-1">
+        <div className="text-sm font-medium">2:00 PM - UX Review</div>
+        <div className="text-xs text-gray-500">Zoom Call</div>
+      </div>
+    </div>
+  </WidgetCard>
+);
+
+// Tasks Widget
+const TasksWidget = () => (
+  <WidgetCard title="Tasks">
+    <div className="space-y-2">
+      <div className="flex items-center">
+        <input type="checkbox" className="mr-2 h-4 w-4 text-teal-600" />
+        <span className="text-sm text-gray-700">Prepare quarterly report</span>
+      </div>
+      <div className="flex items-center">
+        <input type="checkbox" className="mr-2 h-4 w-4 text-teal-600" />
+        <span className="text-sm text-gray-700">Review marketing materials</span>
+      </div>
+      <div className="flex items-center">
+        <input type="checkbox" className="mr-2 h-4 w-4 text-teal-600" checked />
+        <span className="text-sm text-gray-700 line-through">Schedule team meeting</span>
+      </div>
+      <div className="flex items-center">
+        <input type="checkbox" className="mr-2 h-4 w-4 text-teal-600" />
+        <span className="text-sm text-gray-700">Update website content</span>
+      </div>
+      <div className="pt-2">
+        <input 
+          type="text" 
+          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-teal-500" 
+          placeholder="Add a new task..." 
+        />
+      </div>
+    </div>
+  </WidgetCard>
+);
+
+// Notes Widget
+const NotesWidget = () => (
+  <WidgetCard title="Quick Notes">
+    <textarea 
+      className="w-full h-32 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none" 
+      placeholder="Jot down your thoughts..."
+    ></textarea>
+  </WidgetCard>
+);
+
+// Habits Widget
+const HabitsWidget = () => (
+  <WidgetCard title="Habit Tracker">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-gray-700">Daily Meditation</span>
+        <div className="flex items-center space-x-1">
+          {[...Array(7)].map((_, i) => (
+            <div 
+              key={i} 
+              className={`w-4 h-4 rounded-full ${i < 5 ? 'bg-teal-500' : 'bg-gray-200'}`}
+            ></div>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-gray-700">Exercise</span>
+        <div className="flex items-center space-x-1">
+          {[...Array(7)].map((_, i) => (
+            <div 
+              key={i} 
+              className={`w-4 h-4 rounded-full ${i < 3 ? 'bg-teal-500' : 'bg-gray-200'}`}
+            ></div>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-gray-700">Reading</span>
+        <div className="flex items-center space-x-1">
+          {[...Array(7)].map((_, i) => (
+            <div 
+              key={i} 
+              className={`w-4 h-4 rounded-full ${i < 6 ? 'bg-teal-500' : 'bg-gray-200'}`}
+            ></div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </WidgetCard>
+);
+
+// Stats Widget
+const StatsWidget = () => (
+  <WidgetCard title="Productivity Stats">
+    <div className="grid grid-cols-2 gap-2">
+      <div className="text-center p-2 bg-teal-50 rounded-md">
+        <div className="text-2xl font-bold text-teal-600">85%</div>
+        <div className="text-xs text-gray-500">Task Completion</div>
+      </div>
+      <div className="text-center p-2 bg-orange-50 rounded-md">
+        <div className="text-2xl font-bold text-orange-500">12</div>
+        <div className="text-xs text-gray-500">Focus Hours</div>
+      </div>
+      <div className="text-center p-2 bg-purple-50 rounded-md">
+        <div className="text-2xl font-bold text-purple-600">4</div>
+        <div className="text-xs text-gray-500">Meetings</div>
+      </div>
+      <div className="text-center p-2 bg-blue-50 rounded-md">
+        <div className="text-2xl font-bold text-blue-500">92%</div>
+        <div className="text-xs text-gray-500">Habit Streak</div>
+      </div>
+    </div>
+  </WidgetCard>
+);
+
 const Dashboard: React.FC = () => {
   const [, setLocation] = useLocation();
   const [user, setUser] = useState<User | null>(null);
@@ -69,16 +232,21 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <h1 className="text-2xl font-bold text-teal-600">FloHub</h1>
+              <span className="ml-2 text-lg text-orange-500">Dashboard</span>
             </div>
             <div className="flex items-center">
               {user && (
                 <div className="flex items-center space-x-4">
-                  <span className="text-gray-700">Welcome, {user.name}</span>
+                  <div className="text-sm">
+                    <div className="text-gray-700 font-medium">Welcome, {user.name}</div>
+                    <div className="text-gray-500 text-xs">{user.email}</div>
+                  </div>
                   <Button variant="outline" onClick={handleLogout}>
                     Sign out
                   </Button>
@@ -87,7 +255,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
-      </nav>
+      </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
@@ -100,68 +268,14 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6">
-            <h2 className="text-lg leading-6 font-medium text-gray-900">
-              FloHub Dashboard
-            </h2>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">
-              Your personal productivity center
-            </p>
-          </div>
-          <div className="border-t border-gray-200">
-            <div className="bg-gray-50 px-4 py-8 sm:px-6 lg:px-8 text-center">
-              <h3 className="text-xl font-medium text-gray-900 mb-4">Welcome to FloHub</h3>
-              <p className="text-gray-600 mb-6">
-                We're still working on building your personalized dashboard. Check back soon for updates!
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-                {/* Feature cards */}
-                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                  <h3 className="text-lg font-medium text-teal-600 mb-2">Task Management</h3>
-                  <p className="text-gray-600">
-                    Track and organize your tasks with smart prioritization
-                  </p>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                  <h3 className="text-lg font-medium text-teal-600 mb-2">Calendar Integration</h3>
-                  <p className="text-gray-600">
-                    Sync with your Google Calendar to manage appointments
-                  </p>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                  <h3 className="text-lg font-medium text-teal-600 mb-2">FloCat Assistant</h3>
-                  <p className="text-gray-600">
-                    AI-powered assistant to help with your daily activities
-                  </p>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                  <h3 className="text-lg font-medium text-teal-600 mb-2">Note Taking</h3>
-                  <p className="text-gray-600">
-                    Organize your thoughts and ideas in one place
-                  </p>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                  <h3 className="text-lg font-medium text-teal-600 mb-2">Habit Tracking</h3>
-                  <p className="text-gray-600">
-                    Build and maintain positive habits with progress insights
-                  </p>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-                  <h3 className="text-lg font-medium text-teal-600 mb-2">Personalized Insights</h3>
-                  <p className="text-gray-600">
-                    Get analytics about your productivity and habits
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Dashboard Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <FloCatWidget />
+          <CalendarWidget />
+          <TasksWidget />
+          <NotesWidget />
+          <HabitsWidget />
+          <StatsWidget />
         </div>
       </main>
     </div>
