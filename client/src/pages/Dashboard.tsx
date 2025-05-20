@@ -4,6 +4,7 @@ import { FloCatImage } from '@/assets/FloCatImage';
 import { Responsive, WidthProvider } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { 
   Calendar, 
   CheckSquare, 
@@ -46,7 +47,7 @@ const TaskWidget = () => (
       </li>
       <li className="flex items-start">
         <div className="flex items-center h-5 mt-1">
-          <input type="checkbox" className="h-4 w-4 rounded border-gray-300" checked />
+          <input type="checkbox" defaultChecked className="h-4 w-4 rounded border-gray-300" />
         </div>
         <div className="ml-3 text-sm">
           <label className="font-medium text-gray-800 line-through">Send email to client</label>
@@ -409,147 +410,64 @@ const defaultLayouts = {
 };
 
 export default function Dashboard() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [layouts] = useState(defaultLayouts);
   const activeWidgets = ['tasks', 'calendar', 'chat', 'overview', 'notes', 'habits'];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-lg transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:inset-auto md:w-64`}>
-        <div className="flex items-center justify-between h-16 px-4 border-b">
-          <FloHubLogoImage className="h-8 w-auto" />
-          <button 
-            className="md:hidden p-2 rounded-md text-gray-500 hover:text-gray-600 hover:bg-gray-100"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-        <div className="px-4 py-6">
-          <nav className="space-y-8">
-            <div>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Dashboard
-              </h3>
-              <div className="mt-2 space-y-1">
-                <a href="/dashboard" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-teal-600 bg-teal-50">
-                  <Clock className="mr-3 h-6 w-6 text-teal-500" />
-                  Home
-                </a>
-                <a href="/dashboard/tasks" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                  <CheckSquare className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Tasks
-                </a>
-                <a href="/dashboard/meetings" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                  <Calendar className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Meetings
-                </a>
-                <a href="/dashboard/notes" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                  <FileText className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Notes
-                </a>
-                <a href="/dashboard/journal" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                  <FileText className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Journal
-                </a>
-                <a href="#" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                  <CheckSquare className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Habit Tracker
-                </a>
+    <DashboardLayout title="Dashboard">
+      <div className="widget-grid">
+        <div className="mb-4 flex justify-between items-center">
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search..."
+                className="pl-8 pr-4 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                </svg>
               </div>
             </div>
-            <div>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Settings
-              </h3>
-              <div className="mt-2 space-y-1">
-                <a href="#" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                  <User className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Profile
-                </a>
-                <a href="/dashboard/settings" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                  <Settings className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Settings
-                </a>
-              </div>
-            </div>
-          </nav>
-        </div>
-        <div className="absolute bottom-0 w-full p-4 border-t">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <FloCatImage className="h-10 w-10 rounded-full" />
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-700">Jane Smith</p>
-              <p className="text-xs font-medium text-gray-500">Premium Plan</p>
-            </div>
+            <button className="bg-teal-600 text-white px-4 py-2 rounded-md hover:bg-teal-700">
+              + Add Widget
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top navigation */}
-        <header className="bg-white shadow-sm z-10">
-          <div className="px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex">
-                <div className="flex-shrink-0 flex items-center md:hidden">
-                  <button 
-                    className="p-2 rounded-md text-gray-500 hover:text-gray-600 hover:bg-gray-100"
-                    onClick={() => setSidebarOpen(true)}
-                  >
-                    <Menu className="h-6 w-6" />
+        <ResponsiveGridLayout
+          className="layout"
+          layouts={layouts}
+          breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+          cols={{ lg: 9, md: 8, sm: 6, xs: 4, xxs: 2 }}
+          rowHeight={50}
+          isDraggable={true}
+          isResizable={true}
+          margin={[16, 16]}
+        >
+          {activeWidgets.map((widgetKey) => (
+            <div key={widgetKey} className="widget bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="widget-header px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                <div className="flex items-center">
+                  {getWidgetIcon(widgetKey)}
+                  <h3 className="ml-2 font-medium text-gray-700 capitalize">{widgetKey}</h3>
+                </div>
+                <div className="flex space-x-1">
+                  <button className="p-1 text-gray-400 hover:text-gray-600 rounded-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                    </svg>
                   </button>
                 </div>
-                <div className="hidden sm:ml-6 sm:flex sm:items-center">
-                  <div className="text-xl font-semibold text-gray-800">Dashboard</div>
-                </div>
               </div>
-              <div className="flex items-center">
-                <button className="p-1 rounded-full text-gray-500 hover:text-gray-600 hover:bg-gray-100">
-                  <Settings className="h-6 w-6" />
-                </button>
-                <button className="ml-3 p-1 rounded-full text-gray-500 hover:text-gray-600 hover:bg-gray-100">
-                  <MessageSquare className="h-6 w-6" />
-                </button>
+              <div className="widget-body p-4 h-full">
+                {widgetComponents[widgetKey as WidgetType]}
               </div>
             </div>
-          </div>
-        </header>
-
-        {/* Dashboard content */}
-        <main className="flex-1 overflow-auto p-4 bg-gray-50">
-          <div className="grid-bg">
-            <ResponsiveGridLayout
-              className="layout"
-              layouts={layouts}
-              breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
-              cols={{ lg: 12, md: 8, sm: 6, xs: 4, xxs: 2 }}
-              rowHeight={30}
-              isDraggable={true}
-              isResizable={true}
-              margin={[16, 16]}
-            >
-              {activeWidgets.map((key) => (
-                <div key={key} className="bg-white p-5 rounded-xl shadow-sm flex flex-col">
-                  <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
-                    {getWidgetIcon(key)}
-                    <span className="ml-2">
-                      {key === "overview" ? "Your Day at a Glance" : key.charAt(0).toUpperCase() + key.slice(1)}
-                    </span>
-                  </h2>
-                  <div className="flex-grow overflow-hidden">
-                    {widgetComponents[key as WidgetType]}
-                  </div>
-                </div>
-              ))}
-            </ResponsiveGridLayout>
-          </div>
-        </main>
+          ))}
+        </ResponsiveGridLayout>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
