@@ -1,124 +1,144 @@
-import { Router, Request, Response } from 'express';
+import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { storage } from '../storage';
-import { insertUserSchema } from '@shared/schema';
-import { ZodError } from 'zod';
+import { z } from 'zod';
 
-const router = Router();
-
-// Register a new user
-router.post('/register', async (req: Request, res: Response) => {
-  try {
-    const userData = insertUserSchema.parse(req.body);
-    
-    // Check if user with this email already exists
-    const existingUser = await storage.getUserByEmail(userData.email);
-    if (existingUser) {
-      return res.status(400).json({ error: 'User with this email already exists' });
-    }
-    
-    // Hash password
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
-    
-    // Create user with hashed password
-    const newUser = await storage.createUser({
-      ...userData,
-      password: hashedPassword
-    });
-    
-    // Remove password from response
-    const { password, ...userWithoutPassword } = newUser;
-    
-    // Store user ID in session
-    req.session.userId = String(newUser.id);
-    
-    res.status(201).json(userWithoutPassword);
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return res.status(400).json({ error: 'Invalid user data', details: error.issues });
-    }
-    
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Failed to register user' });
-  }
+// Login validation schema
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
 });
 
-// Login
-router.post('/login', async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-    
-    // Find user by email
-    const user = await storage.getUserByEmail(email);
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
-    
-    // Check password
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
-    
-    // Store user ID in session
-    req.session.userId = String(user.id);
-    
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
-    
-    res.json({
-      user: userWithoutPassword,
-      message: 'Login successful'
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'An error occurred during login' });
-  }
+// Registration validation schema
+const registerSchema = z.object({
+  email: z.string().email(),
+  username: z.string().min(3),
+  name: z.string().optional(),
+  password: z.string().min(6),
 });
 
-// Get current user
-router.get('/me', async (req: Request, res: Response) => {
-  try {
-    // Check if user is logged in
-    const userId = req.session.userId;
-    if (!userId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-    
-    // Get user from database
-    const user = await storage.getUser(userId);
-    if (!user) {
-      // Clear invalid session
-      req.session.destroy((err) => {
-        if (err) console.error('Error destroying session:', err);
+export const setupAuthRoutes = (app: any) => {
+  // Registration endpoint
+  app.post('/api/auth/register', async (req: Request, res: Response) => {
+    try {
+      // Validate request
+      const validation = registerSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: 'Invalid registration data', details: validation.error.format() });
+      }
+      
+      const { email, username, name, password } = req.body;
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ error: 'User with this email already exists' });
+      }
+      
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // Create user
+      const user = await storage.createUser({
+        email,
+        username,
+        name,
+        password: hashedPassword,
       });
-      return res.status(401).json({ error: 'User not found' });
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      console.error('Registration error:', error);
+      res.status(500).json({ error: 'Registration failed' });
     }
-    
-    // Remove password from response
-    const { password, ...userWithoutPassword } = user;
-    
-    res.json(userWithoutPassword);
-  } catch (error) {
-    console.error('Get current user error:', error);
-    res.status(500).json({ error: 'Failed to get user information' });
-  }
-});
-
-// Logout
-router.post('/logout', (req: Request, res: Response) => {
-  req.session.destroy((err) => {
-    if (err) {
-      console.error('Logout error:', err);
-      return res.status(500).json({ error: 'Failed to logout' });
-    }
-    
-    res.json({ message: 'Logged out successfully' });
   });
-});
+  
+  // Login endpoint
+  app.post('/api/auth/login', async (req: Request, res: Response) => {
+    try {
+      // Validate request
+      const validation = loginSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: 'Invalid login data', details: validation.error.format() });
+      }
+      
+      const { email, password } = req.body;
+      
+      // Find user
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+      
+      // Compare password
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      if (!passwordMatch) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+      
+      // Store user ID in session
+      req.session.userId = String(user.id);
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ error: 'Login failed' });
+    }
+  });
+  
+  // Logout endpoint
+  app.post('/api/auth/logout', (req: Request, res: Response) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Logout failed' });
+      }
+      res.json({ message: 'Logged out successfully' });
+    });
+  });
+  
+  // Get current user endpoint
+  app.get('/api/auth/me', async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        req.session.destroy(() => {});
+        return res.status(401).json({ error: 'User not found' });
+      }
+      
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error('Auth error:', error);
+      res.status(500).json({ error: 'Authentication check failed' });
+    }
+  });
+  
+  // Authentication middleware
+  app.use('/api/calendar', (req: Request, res: Response, next: any) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    next();
+  });
+};
 
-export default router;
+// Middleware for requiring authentication
+export const requireAuth = (req: Request, res: Response, next: any) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  next();
+};
