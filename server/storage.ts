@@ -2,34 +2,29 @@ import {
   users, type User, type InsertUser, 
   registrations, type Registration, type InsertRegistration, 
   updates, type Update, type InsertUpdate,
-  sessions, type Session, type InsertSession,
+  sessions, type Session,
   userSettings, type UserSettings, type InsertUserSettings,
   calendarSources, type CalendarSource, type InsertCalendarSource
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
-// modify the interface with any CRUD methods
-// you might need
+// Interface for storage operations
 
 export interface IStorage {
   // User operations
-  getUser(id: number): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
-  // Session operations
-  createSession(session: InsertSession): Promise<Session>;
-  getSessionByToken(token: string): Promise<Session | undefined>;
-  deleteSession(id: number): Promise<boolean>;
+  upsertUser(user: InsertUser): Promise<User>;
   
   // User settings operations
-  getUserSettings(userId: number): Promise<UserSettings | undefined>;
+  getUserSettings(userId: string): Promise<UserSettings | undefined>;
   createUserSettings(settings: InsertUserSettings): Promise<UserSettings>;
-  updateUserSettings(userId: number, settings: Partial<InsertUserSettings>): Promise<UserSettings | undefined>;
+  updateUserSettings(userId: string, settings: Partial<InsertUserSettings>): Promise<UserSettings | undefined>;
   
   // Calendar sources operations
-  getCalendarSources(userId: number): Promise<CalendarSource[]>;
+  getCalendarSources(userId: string): Promise<CalendarSource[]>;
   getCalendarSource(id: number): Promise<CalendarSource | undefined>;
   createCalendarSource(source: InsertCalendarSource): Promise<CalendarSource>;
   updateCalendarSource(id: number, source: Partial<InsertCalendarSource>): Promise<CalendarSource | undefined>;
@@ -50,7 +45,7 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   // User operations
-  async getUser(id: number): Promise<User | undefined> {
+  async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
@@ -68,27 +63,23 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
   
-  // Session operations
-  async createSession(session: InsertSession): Promise<Session> {
-    const [newSession] = await db
-      .insert(sessions)
-      .values(session)
+  async upsertUser(userData: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
       .returning();
-    return newSession;
-  }
-  
-  async getSessionByToken(token: string): Promise<Session | undefined> {
-    const [session] = await db.select().from(sessions).where(eq(sessions.token, token));
-    return session || undefined;
-  }
-  
-  async deleteSession(id: number): Promise<boolean> {
-    await db.delete(sessions).where(eq(sessions.id, id));
-    return true;
+    return user;
   }
   
   // User settings operations
-  async getUserSettings(userId: number): Promise<UserSettings | undefined> {
+  async getUserSettings(userId: string): Promise<UserSettings | undefined> {
     const [settings] = await db.select().from(userSettings).where(eq(userSettings.userId, userId));
     return settings || undefined;
   }
@@ -101,7 +92,7 @@ export class DatabaseStorage implements IStorage {
     return newSettings;
   }
   
-  async updateUserSettings(userId: number, settings: Partial<InsertUserSettings>): Promise<UserSettings | undefined> {
+  async updateUserSettings(userId: string, settings: Partial<InsertUserSettings>): Promise<UserSettings | undefined> {
     const [updatedSettings] = await db
       .update(userSettings)
       .set({ ...settings, updatedAt: new Date() })
@@ -111,7 +102,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   // Calendar sources operations
-  async getCalendarSources(userId: number): Promise<CalendarSource[]> {
+  async getCalendarSources(userId: string): Promise<CalendarSource[]> {
     return await db.select().from(calendarSources).where(eq(calendarSources.userId, userId));
   }
   
