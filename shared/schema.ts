@@ -36,7 +36,7 @@ export type Session = typeof sessions.$inferSelect;
 
 export const userSettings = pgTable("user_settings", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: text("user_id").notNull().references(() => users.id),
   selectedCals: text("selected_cals").array().default([]),
   defaultView: text("default_view").default("month"),
   lastSyncTime: timestamp("last_sync_time"),
@@ -59,7 +59,7 @@ export type UserSettings = typeof userSettings.$inferSelect;
 
 export const calendarSources = pgTable("calendar_sources", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: text("user_id").notNull().references(() => users.id),
   name: text("name").notNull(),
   type: text("type").notNull(), // 'google', 'o365', 'other'
   sourceId: text("source_id").notNull(),
