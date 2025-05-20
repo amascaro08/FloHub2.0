@@ -17,11 +17,36 @@ import Notes from "@/pages/dashboard/Notes";
 import Meetings from "@/pages/dashboard/Meetings";
 import Settings from "@/pages/dashboard/Settings";
 
+// Protected route component
+const ProtectedRoute = ({ component: Component, ...rest }: any) => {
+  const [, setLocation] = useLocation();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check if user is authenticated
+    const user = localStorage.getItem('floHubUser');
+    if (user) {
+      setIsAuthenticated(true);
+    } else {
+      setLocation('/login');
+    }
+    setLoading(false);
+  }, [setLocation]);
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  }
+
+  return isAuthenticated ? <Component {...rest} /> : null;
+};
+
 function App() {
   return (
     <Switch>
       {/* Marketing/Landing Pages */}
       <Route path="/" component={Home} />
+      <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/admin/updates" component={AdminUpdates} />
       <Route path="/updates" component={Updates} />
@@ -29,12 +54,24 @@ function App() {
       <Route path="/terms-of-service" component={TermsOfService} />
       
       {/* Dashboard/Application Pages */}
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/dashboard/journal" component={Journal} />
-      <Route path="/dashboard/tasks" component={Tasks} />
-      <Route path="/dashboard/notes" component={Notes} />
-      <Route path="/dashboard/meetings" component={Meetings} />
-      <Route path="/dashboard/settings" component={Settings} />
+      <Route path="/dashboard">
+        <ProtectedRoute component={Dashboard} />
+      </Route>
+      <Route path="/dashboard/journal">
+        <ProtectedRoute component={Journal} />
+      </Route>
+      <Route path="/dashboard/tasks">
+        <ProtectedRoute component={Tasks} />
+      </Route>
+      <Route path="/dashboard/notes">
+        <ProtectedRoute component={Notes} />
+      </Route>
+      <Route path="/dashboard/meetings">
+        <ProtectedRoute component={Meetings} />
+      </Route>
+      <Route path="/dashboard/settings">
+        <ProtectedRoute component={Settings} />
+      </Route>
       
       {/* 404 Page */}
       <Route component={NotFound} />

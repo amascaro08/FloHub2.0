@@ -1,171 +1,138 @@
-import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
-import CalendarSettings from '@/components/calendar/CalendarSettings';
-import { User, Settings as SettingsIcon, Bell, Key, Shield, Layout, Calendar } from 'lucide-react';
+import { useState } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import CalendarIntegrationSettings from '@/components/calendar/CalendarIntegrationSettings';
 
-const Settings = () => {
-  const [activeTab, setActiveTab] = useState('calendar');
+export default function Settings() {
+  const { toast } = useToast();
+  const [darkMode, setDarkMode] = useState(false);
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [username, setUsername] = useState(() => {
+    const userData = localStorage.getItem('floHubUser');
+    if (userData) {
+      const user = JSON.parse(userData);
+      return user.email || '';
+    }
+    return '';
+  });
+  const [displayName, setDisplayName] = useState('Test User');
+
+  const handleSaveProfile = () => {
+    toast({
+      title: "Profile Updated",
+      description: "Your profile has been successfully updated"
+    });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('floHubUser');
+    window.location.href = '/login';
+  };
 
   return (
-    <DashboardLayout title="Settings">
-      <div className="container mx-auto py-6 space-y-6 max-w-6xl">
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">
-          Customize your FloHub experience and manage your integrations
-        </p>
-
-        <div className="flex flex-col md:flex-row gap-6">
-          <div className="md:w-1/4">
-            <Card className="sticky top-6">
-              <CardContent className="p-4">
-                <Tabs 
-                  value={activeTab} 
-                  onValueChange={setActiveTab}
-                  orientation="vertical" 
-                  className="w-full"
-                >
-                  <TabsList className="flex flex-col h-auto items-stretch bg-transparent space-y-1">
-                    <TabsTrigger 
-                      value="profile" 
-                      className="justify-start py-2"
-                    >
-                      <User className="h-4 w-4 mr-2" />
-                      Profile
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="calendar" 
-                      className="justify-start py-2"
-                    >
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Calendar
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="appearance" 
-                      className="justify-start py-2"
-                    >
-                      <Layout className="h-4 w-4 mr-2" />
-                      Appearance
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="notifications" 
-                      className="justify-start py-2"
-                    >
-                      <Bell className="h-4 w-4 mr-2" />
-                      Notifications
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="security" 
-                      className="justify-start py-2"
-                    >
-                      <Shield className="h-4 w-4 mr-2" />
-                      Security
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="api" 
-                      className="justify-start py-2"
-                    >
-                      <Key className="h-4 w-4 mr-2" />
-                      API
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
+    <div className="container p-6 space-y-8">
+      <h1 className="text-3xl font-bold">Settings</h1>
+      
+      <Tabs defaultValue="profile" className="space-y-6">
+        <TabsList className="grid grid-cols-3 w-full max-w-md">
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="account">Account</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="profile">
+          <div className="grid gap-6 max-w-2xl">
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile Information</CardTitle>
+                <CardDescription>
+                  Update your personal information and how others see you on the platform
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="username">Email</Label>
+                  <Input 
+                    id="username" 
+                    value={username} 
+                    onChange={(e) => setUsername(e.target.value)}
+                    readOnly 
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="display-name">Display Name</Label>
+                  <Input 
+                    id="display-name" 
+                    value={displayName} 
+                    onChange={(e) => setDisplayName(e.target.value)} 
+                  />
+                </div>
+                <Button onClick={handleSaveProfile}>Save Changes</Button>
               </CardContent>
             </Card>
           </div>
-
-          <div className="md:w-3/4">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsContent value="profile" className="mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Profile Settings</CardTitle>
-                    <CardDescription>
-                      Manage your account information and preferences
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground text-center py-12">
-                      Profile settings will be available in a future update.
+        </TabsContent>
+        
+        <TabsContent value="account">
+          <div className="grid gap-6 max-w-2xl">
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Preferences</CardTitle>
+                <CardDescription>
+                  Manage your account settings and preferences
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Dark Mode</p>
+                    <p className="text-sm text-muted-foreground">
+                      Toggle between light and dark themes
                     </p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="calendar" className="mt-0">
-                <CalendarSettings />
-              </TabsContent>
-
-              <TabsContent value="appearance" className="mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Appearance Settings</CardTitle>
-                    <CardDescription>
-                      Customize how FloHub looks and feels
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground text-center py-12">
-                      Appearance settings will be available in a future update.
+                  </div>
+                  <Switch 
+                    checked={darkMode} 
+                    onCheckedChange={setDarkMode} 
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Email Notifications</p>
+                    <p className="text-sm text-muted-foreground">
+                      Receive notifications about your account activity
                     </p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="notifications" className="mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Notification Settings</CardTitle>
-                    <CardDescription>
-                      Manage how and when you receive notifications
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground text-center py-12">
-                      Notification settings will be available in a future update.
-                    </p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="security" className="mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Security Settings</CardTitle>
-                    <CardDescription>
-                      Manage your security preferences and connected devices
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground text-center py-12">
-                      Security settings will be available in a future update.
-                    </p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="api" className="mt-0">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>API Settings</CardTitle>
-                    <CardDescription>
-                      Manage API keys and integrations
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground text-center py-12">
-                      API settings will be available in a future update.
-                    </p>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+                  </div>
+                  <Switch 
+                    checked={emailNotifications} 
+                    onCheckedChange={setEmailNotifications} 
+                  />
+                </div>
+                
+                <hr className="my-4" />
+                
+                <Button 
+                  variant="destructive" 
+                  onClick={handleLogout}
+                >
+                  Sign Out
+                </Button>
+              </CardContent>
+            </Card>
           </div>
-        </div>
-      </div>
-    </DashboardLayout>
+        </TabsContent>
+        
+        <TabsContent value="integrations">
+          <div className="grid gap-6">
+            <CalendarIntegrationSettings />
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
-};
-
-export default Settings;
+}
