@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -88,7 +88,7 @@ export default function Login() {
       });
       
       // Redirect to dashboard
-      navigate('/dashboard');
+      setLocation('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
       toast({
