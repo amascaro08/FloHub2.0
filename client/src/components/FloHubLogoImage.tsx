@@ -1,14 +1,11 @@
 import React from 'react';
 
-interface FloHubLogoImageProps {
-  className?: string;
-}
-
-export const FloHubLogoImage: React.FC<FloHubLogoImageProps> = ({ className }) => {
+export function FloHubLogoImage({ className = "h-10", alt = "FloHub Logo" }) {
   return (
-    <div className={`text-3xl font-bold ${className}`}>
-      <span className="text-teal-600">Flo</span>
-      <span className="text-orange-500">Hub</span>
-    </div>
+    <img
+      src="/attached_assets/FloHub_Logo_Transparent.png"
+      alt={alt}
+      className={className}
+    />
   );
-};
+}

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { WidgetGrid } from '@/components/widgets/WidgetGrid';
-import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
+import WidgetGrid from '../components/widgets/WidgetGrid';
+import DashboardLayout from '../components/dashboard/DashboardLayout';
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
@@ -54,9 +54,30 @@ export default function Dashboard() {
     image: null
   };
   
+  // Dashboard is a placeholder since the real dashboard requires authentication
   return (
-    <DashboardLayout>
-      <WidgetGrid />
-    </DashboardLayout>
+    <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white dark:from-primary-950 dark:to-neutral-900 p-4">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center py-8">
+          <img
+            src="/attached_assets/FloHub_Logo_Transparent.png"
+            alt="FloHub Logo"
+            className="h-16 mx-auto mb-4"
+          />
+          <h1 className="text-3xl font-bold text-primary-700 dark:text-primary-400 mb-4">
+            FloHub Dashboard
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Beta testing will begin in July 2025. Please check back later.
+          </p>
+          <a 
+            href="/"
+            className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          >
+            Return to Home
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
