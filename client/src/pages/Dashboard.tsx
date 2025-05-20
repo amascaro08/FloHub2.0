@@ -404,7 +404,7 @@ const availableWidgets = [
   {id: 'habits', name: 'Habit Tracker', icon: <CheckSquare className="w-5 h-5" />}
 ];
 
-// Define dashboard layout
+// Define dashboard layout with consistent naming across breakpoints
 const defaultLayouts = {
   lg: [
     { i: "tasks", x: 0, y: 0, w: 3, h: 5 },
@@ -429,6 +429,22 @@ const defaultLayouts = {
     { i: "notes", x: 0, y: 15, w: 6, h: 5 },
     { i: "habits", x: 0, y: 20, w: 6, h: 5 },
     { i: "chat", x: 0, y: 25, w: 6, h: 5 },
+  ],
+  xs: [
+    { i: "tasks", x: 0, y: 0, w: 4, h: 5 },
+    { i: "calendar", x: 0, y: 5, w: 4, h: 5 },
+    { i: "overview", x: 0, y: 10, w: 4, h: 5 },
+    { i: "notes", x: 0, y: 15, w: 4, h: 5 },
+    { i: "habits", x: 0, y: 20, w: 4, h: 5 },
+    { i: "chat", x: 0, y: 25, w: 4, h: 5 },
+  ],
+  xxs: [
+    { i: "tasks", x: 0, y: 0, w: 2, h: 5 },
+    { i: "calendar", x: 0, y: 5, w: 2, h: 5 },
+    { i: "overview", x: 0, y: 10, w: 2, h: 5 },
+    { i: "notes", x: 0, y: 15, w: 2, h: 5 },
+    { i: "habits", x: 0, y: 20, w: 2, h: 5 },
+    { i: "chat", x: 0, y: 25, w: 2, h: 5 },
   ],
 };
 
@@ -476,8 +492,18 @@ export default function Dashboard() {
     
     saveTimeoutRef.current = setTimeout(() => {
       try {
-        localStorage.setItem('dashboard-layout', JSON.stringify(allLayouts));
-        setLayouts(allLayouts);
+        // Get the current layouts from localStorage if they exist
+        const existingLayoutsJson = localStorage.getItem('dashboard-layout');
+        let existingLayouts = existingLayoutsJson ? JSON.parse(existingLayoutsJson) : {};
+        
+        // Merge the new layouts with existing layouts
+        // This ensures we only update the breakpoints that have changed
+        // and preserve layouts for breakpoints that weren't modified
+        const mergedLayouts = { ...existingLayouts, ...allLayouts };
+        
+        // Save all layouts back to localStorage
+        localStorage.setItem('dashboard-layout', JSON.stringify(mergedLayouts));
+        setLayouts(mergedLayouts);
       } catch (error) {
         console.error("Failed to save layout:", error);
       }
