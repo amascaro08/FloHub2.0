@@ -128,3 +128,34 @@ export const insertUpdateSchema = createInsertSchema(updates).pick({
 
 export type InsertUpdate = z.infer<typeof insertUpdateSchema>;
 export type Update = typeof updates.$inferSelect;
+
+// Schema for tasks
+export const tasks = pgTable("tasks", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  text: text("text").notNull(),
+  done: boolean("done").default(false).notNull(),
+  dueDate: timestamp("due_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  source: text("source").default("personal"), // "personal" or "work"
+  tags: text("tags").array().default([]),
+  priority: text("priority").default("medium"), // "low", "medium", "high"
+  notes: text("notes"),
+  firebaseId: text("firebase_id"), // To maintain compatibility with Firestore
+});
+
+export const insertTaskSchema = createInsertSchema(tasks).pick({
+  userId: true,
+  text: true,
+  done: true,
+  dueDate: true,
+  source: true,
+  tags: true,
+  priority: true,
+  notes: true,
+  firebaseId: true,
+});
+
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type Task = typeof tasks.$inferSelect;

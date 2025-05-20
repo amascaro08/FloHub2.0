@@ -1,0 +1,216 @@
+// server/services/taskService.ts
+import { storage } from '../storage';
+import { firestore } from '../firebase';
+import { InsertTask, Task } from '@shared/schema';
+import { v4 as uuidv4 } from 'uuid';
+
+export interface TaskService {
+  getUserTasks(userId: string): Promise<Task[]>;
+  createTask(userId: string, task: Omit<InsertTask, 'userId' | 'firebaseId'>): Promise<Task>;
+  updateTask(taskId: number, userId: string, updates: Partial<Task>): Promise<Task | null>;
+  deleteTask(taskId: number, userId: string): Promise<boolean>;
+  toggleTaskCompletion(taskId: number, userId: string): Promise<Task | null>;
+}
+
+export class FirebaseTaskService implements TaskService {
+  async getUserTasks(userId: string): Promise<Task[]> {
+    try {
+      // Get tasks from PostgreSQL
+      const pgTasks = await storage.getTasks(userId);
+      
+      // Get tasks from Firestore
+      const firebaseTasksSnapshot = await firestore
+        .collection('users')
+        .doc(userId)
+        .collection('tasks')
+        .get();
+      
+      if (firebaseTasksSnapshot.empty) {
+        return pgTasks;
+      }
+      
+      // Combine tasks and remove duplicates
+      const firebaseTasks = firebaseTasksSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: 0, // Will be updated if we find a matching task in PG
+          userId,
+          text: data.text,
+          done: data.done,
+          dueDate: data.dueDate ? new Date(data.dueDate.toDate()) : null,
+          createdAt: data.createdAt ? new Date(data.createdAt.toDate()) : new Date(),
+          updatedAt: new Date(),
+          source: data.source || 'personal',
+          tags: data.tags || [],
+          priority: data.priority || 'medium',
+          notes: data.notes || null,
+          firebaseId: doc.id
+        };
+      });
+      
+      // Check for tasks that exist in Firebase but not in PostgreSQL
+      const newTasks: Task[] = [];
+      for (const fbTask of firebaseTasks) {
+        const matchingPgTask = pgTasks.find(pgTask => pgTask.firebaseId === fbTask.firebaseId);
+        
+        if (matchingPgTask) {
+          // Task exists in both - we'll use the PostgreSQL version
+          continue;
+        } else {
+          // Task only exists in Firebase - add to PostgreSQL
+          const newTask = await storage.createTask({
+            userId,
+            text: fbTask.text,
+            done: fbTask.done,
+            dueDate: fbTask.dueDate,
+            source: fbTask.source as string,
+            tags: fbTask.tags as string[],
+            priority: fbTask.priority as string,
+            notes: fbTask.notes as string,
+            firebaseId: fbTask.firebaseId
+          });
+          
+          newTasks.push(newTask);
+        }
+      }
+      
+      // Return the combined list
+      return [...pgTasks, ...newTasks];
+    } catch (error) {
+      console.error('Error getting tasks:', error);
+      // Fallback to PostgreSQL only
+      return storage.getTasks(userId);
+    }
+  }
+  
+  async createTask(userId: string, task: Omit<InsertTask, 'userId' | 'firebaseId'>): Promise<Task> {
+    try {
+      // Generate a Firebase ID
+      const firebaseId = uuidv4();
+      
+      // Create in PostgreSQL
+      const newTask = await storage.createTask({
+        userId,
+        ...task,
+        firebaseId
+      });
+      
+      // Create in Firebase
+      await firestore
+        .collection('users')
+        .doc(userId)
+        .collection('tasks')
+        .doc(firebaseId)
+        .set({
+          text: task.text,
+          done: task.done ?? false,
+          dueDate: task.dueDate ? new Date(task.dueDate) : null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          source: task.source || 'personal',
+          tags: task.tags || [],
+          priority: task.priority || 'medium',
+          notes: task.notes || null
+        });
+      
+      return newTask;
+    } catch (error) {
+      console.error('Error creating task:', error);
+      // If Firebase fails, at least return the PostgreSQL task
+      return storage.createTask({
+        userId,
+        ...task,
+        firebaseId: uuidv4()
+      });
+    }
+  }
+  
+  async updateTask(taskId: number, userId: string, updates: Partial<Task>): Promise<Task | null> {
+    try {
+      // Get the task to update
+      const task = await storage.getTask(taskId);
+      
+      if (!task || task.userId !== userId) {
+        return null;
+      }
+      
+      // Update in PostgreSQL
+      const updatedTask = await storage.updateTask(taskId, {
+        ...updates,
+        updatedAt: new Date()
+      });
+      
+      // Update in Firebase if firebaseId exists
+      if (task.firebaseId) {
+        await firestore
+          .collection('users')
+          .doc(userId)
+          .collection('tasks')
+          .doc(task.firebaseId)
+          .update({
+            ...updates,
+            updatedAt: new Date()
+          });
+      }
+      
+      return updatedTask;
+    } catch (error) {
+      console.error('Error updating task:', error);
+      // If Firebase fails, at least return the PostgreSQL task
+      return storage.updateTask(taskId, updates);
+    }
+  }
+  
+  async deleteTask(taskId: number, userId: string): Promise<boolean> {
+    try {
+      // Get the task to delete
+      const task = await storage.getTask(taskId);
+      
+      if (!task || task.userId !== userId) {
+        return false;
+      }
+      
+      // Delete from PostgreSQL
+      const result = await storage.deleteTask(taskId);
+      
+      // Delete from Firebase if firebaseId exists
+      if (task.firebaseId) {
+        await firestore
+          .collection('users')
+          .doc(userId)
+          .collection('tasks')
+          .doc(task.firebaseId)
+          .delete();
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      // If Firebase fails, at least return the PostgreSQL result
+      return storage.deleteTask(taskId);
+    }
+  }
+  
+  async toggleTaskCompletion(taskId: number, userId: string): Promise<Task | null> {
+    try {
+      // Get the task
+      const task = await storage.getTask(taskId);
+      
+      if (!task || task.userId !== userId) {
+        return null;
+      }
+      
+      // Toggle the completion status
+      const updatedTask = await this.updateTask(taskId, userId, {
+        done: !task.done
+      });
+      
+      return updatedTask;
+    } catch (error) {
+      console.error('Error toggling task completion:', error);
+      return null;
+    }
+  }
+}
+
+export const taskService = new FirebaseTaskService();
