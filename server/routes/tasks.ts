@@ -49,10 +49,17 @@ router.post("/api/tasks", isAuthenticated, async (req: any, res) => {
       });
     }
 
+    // Process the validated data
     const taskData = validationResult.data;
     
+    // Convert string date to Date object if present
+    const processedTaskData = {
+      ...taskData,
+      dueDate: taskData.dueDate ? new Date(taskData.dueDate) : null
+    };
+    
     // Create the task
-    const newTask = await taskService.createTask(userId, taskData);
+    const newTask = await taskService.createTask(userId, processedTaskData);
     return res.status(201).json(newTask);
   } catch (error) {
     console.error("Error creating task:", error);
@@ -82,10 +89,20 @@ router.put("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
       });
     }
 
+    // Process the validated data
     const taskData = validationResult.data;
     
+    // Process the data - convert string date to Date object if present
+    const processedTaskData = {
+      ...taskData,
+      // Only convert dueDate if it's present in the update
+      dueDate: taskData.dueDate !== undefined 
+        ? (taskData.dueDate ? new Date(taskData.dueDate) : null) 
+        : undefined
+    };
+    
     // Update the task
-    const updatedTask = await taskService.updateTask(taskId, userId, taskData);
+    const updatedTask = await taskService.updateTask(taskId, userId, processedTaskData);
     if (!updatedTask) {
       return res.status(404).json({ error: "Task not found or you don't have permission to edit it" });
     }
