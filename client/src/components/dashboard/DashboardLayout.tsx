@@ -1,6 +1,6 @@
 import React, { useState, ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
-import AuthButton from '@/components/AuthButton';
+import QuickLogin from '@/components/QuickLogin';
 import { 
   Calendar, 
   CheckSquare, 
@@ -101,7 +101,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="mb-6 flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-            <AuthButton />
+            <QuickLogin />
           </div>
           {children}
         </main>
