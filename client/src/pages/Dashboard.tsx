@@ -84,7 +84,7 @@ const CalendarWidget = () => (
         {Array.from({ length: 31 }, (_, i) => (
           <div 
             key={i} 
-            className={`text-center p-1 rounded-full ${i+1 === 15 ? 'bg-teal-500 text-white font-bold' : 'hover:bg-gray-100'}`}
+            className={`text-center p-1 rounded-full ${i+1 === 20 ? 'bg-teal-500 text-white font-bold' : 'hover:bg-gray-100'}`}
           >
             {i+1}
           </div>
@@ -103,93 +103,7 @@ const CalendarWidget = () => (
   </div>
 );
 
-const ChatWidget = () => (
-  <div className="h-full flex flex-col">
-    <div className="overflow-y-auto flex-1 mb-4">
-      <div className="bg-gray-100 p-3 rounded-lg mb-3 max-w-[80%]">
-        <p className="text-sm">How can I help you today?</p>
-        <p className="text-xs text-gray-500 mt-1">FloCat Assistant - 10:30 AM</p>
-      </div>
-      <div className="bg-teal-100 p-3 rounded-lg mb-3 max-w-[80%] ml-auto">
-        <p className="text-sm">I need help organizing my tasks for the week.</p>
-        <p className="text-xs text-gray-500 mt-1">You - 10:31 AM</p>
-      </div>
-      <div className="bg-gray-100 p-3 rounded-lg max-w-[80%]">
-        <p className="text-sm">I can help with that! Would you like me to create a task schedule based on priority?</p>
-        <p className="text-xs text-gray-500 mt-1">FloCat Assistant - 10:32 AM</p>
-      </div>
-    </div>
-    <div className="mt-auto flex">
-      <input 
-        type="text" 
-        placeholder="Type your message..." 
-        className="flex-1 rounded-l-md border-gray-300 shadow-sm focus:border-teal-300 focus:ring focus:ring-teal-200 focus:ring-opacity-50"
-      />
-      <button className="bg-teal-500 text-white px-4 py-2 rounded-r-md">
-        Send
-      </button>
-    </div>
-  </div>
-);
-
-const OverviewWidget = () => (
-  <div className="h-full overflow-auto">
-    <div>
-      <h3 className="text-sm font-medium text-gray-700 mb-2">Focus for Today</h3>
-      <div className="bg-teal-50 p-3 rounded-md mb-4">
-        <p className="text-sm">Complete project proposal draft</p>
-      </div>
-    </div>
-    <div>
-      <h3 className="text-sm font-medium text-gray-700 mb-2">Activity</h3>
-      <div className="space-y-2">
-        <div className="flex items-center">
-          <div className="w-2 h-2 bg-teal-500 rounded-full mr-2"></div>
-          <span className="text-xs text-gray-600">3 tasks completed today</span>
-        </div>
-        <div className="flex items-center">
-          <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
-          <span className="text-xs text-gray-600">2 meetings scheduled</span>
-        </div>
-        <div className="flex items-center">
-          <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
-          <span className="text-xs text-gray-600">5 new notes created</span>
-        </div>
-      </div>
-    </div>
-    <div className="mt-4">
-      <h3 className="text-sm font-medium text-gray-700 mb-2">Progress</h3>
-      <div className="h-2 w-full bg-gray-200 rounded-full">
-        <div className="h-2 bg-teal-500 rounded-full" style={{ width: '60%' }}></div>
-      </div>
-      <div className="text-xs text-gray-600 mt-1">60% of weekly goals completed</div>
-    </div>
-  </div>
-);
-
-const NotesWidget = () => (
-  <div className="h-full overflow-auto">
-    <textarea 
-      className="w-full h-32 p-2 border border-gray-300 rounded-md mb-2 focus:border-teal-300 focus:ring focus:ring-teal-200 focus:ring-opacity-50" 
-      placeholder="Write a quick note..."
-    ></textarea>
-    <div className="space-y-3 mt-4">
-      <div className="bg-yellow-50 p-3 rounded-md">
-        <h3 className="text-sm font-medium text-gray-800">Meeting Notes</h3>
-        <p className="text-xs text-gray-600 mt-1">Created yesterday</p>
-        <p className="text-sm mt-2">Discuss project timeline with team. Need to follow up on resources.</p>
-      </div>
-      <div className="bg-blue-50 p-3 rounded-md">
-        <h3 className="text-sm font-medium text-gray-800">Ideas for Presentation</h3>
-        <p className="text-xs text-gray-600 mt-1">Created 2 days ago</p>
-        <p className="text-sm mt-2">Include case studies and client testimonials.</p>
-      </div>
-    </div>
-  </div>
-);
-
-// Enhanced widget with AI capabilities for the chat widget
-const EnhancedChatWidget = () => {
+const ChatWidget = () => {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -277,7 +191,102 @@ const EnhancedChatWidget = () => {
   );
 };
 
-// Habit Tracker Widget inspired by FloHub repository
+const OverviewWidget = () => {
+  // Get current date
+  const today = new Date();
+  const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+  const currentDate = today.toLocaleDateString('en-US', dateOptions as any);
+  
+  return (
+    <div className="h-full overflow-auto">
+      <div className="mb-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Today: {currentDate}</h3>
+        <div className="bg-teal-50 p-3 rounded-md">
+          <p className="text-sm">Complete project proposal draft</p>
+        </div>
+      </div>
+      
+      <div>
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Activity</h3>
+        <div className="space-y-2">
+          <div className="flex items-center">
+            <div className="w-2 h-2 bg-teal-500 rounded-full mr-2"></div>
+            <span className="text-xs text-gray-600">3 tasks completed today</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
+            <span className="text-xs text-gray-600">2 meetings scheduled</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+            <span className="text-xs text-gray-600">5 new notes created</span>
+          </div>
+        </div>
+      </div>
+      
+      <div className="mt-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Progress</h3>
+        <div className="h-2 w-full bg-gray-200 rounded-full">
+          <div className="h-2 bg-teal-500 rounded-full" style={{ width: '60%' }}></div>
+        </div>
+        <div className="text-xs text-gray-600 mt-1">60% of weekly goals completed</div>
+      </div>
+      
+      <div className="mt-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Weather</h3>
+        <div className="flex items-center">
+          <div className="text-2xl mr-2">☀️</div>
+          <div>
+            <div className="text-sm font-medium">72°F</div>
+            <div className="text-xs text-gray-600">Sunny, New York</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const NotesWidget = () => {
+  const [note, setNote] = useState('');
+  
+  return (
+    <div className="h-full overflow-auto">
+      <textarea 
+        className="w-full h-32 p-2 border border-gray-300 rounded-md mb-2 focus:border-teal-300 focus:ring focus:ring-teal-200 focus:ring-opacity-50" 
+        placeholder="Write a quick note..."
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+      ></textarea>
+      <div className="flex justify-end mb-4">
+        <button 
+          className="px-3 py-1 bg-teal-600 text-white rounded-md hover:bg-teal-700 text-sm"
+          onClick={() => {
+            if (note.trim()) {
+              alert('Note saved!');
+              setNote('');
+            }
+          }}
+        >
+          Save Note
+        </button>
+      </div>
+      <div className="space-y-3 mt-4">
+        <div className="bg-yellow-50 p-3 rounded-md">
+          <h3 className="text-sm font-medium text-gray-800">Meeting Notes</h3>
+          <p className="text-xs text-gray-600 mt-1">Created yesterday</p>
+          <p className="text-sm mt-2">Discuss project timeline with team. Need to follow up on resources.</p>
+        </div>
+        <div className="bg-blue-50 p-3 rounded-md">
+          <h3 className="text-sm font-medium text-gray-800">Ideas for Presentation</h3>
+          <p className="text-xs text-gray-600 mt-1">Created 2 days ago</p>
+          <p className="text-sm mt-2">Include case studies and client testimonials.</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Habit Tracker Widget
 const HabitTrackerWidget = () => {
   const [habits, setHabits] = useState([
     { id: 1, name: "Exercise", streak: 3, target: 5, completedToday: false },
@@ -359,7 +368,7 @@ const HabitTrackerWidget = () => {
 const widgetComponents: Record<WidgetType, React.ReactNode> = {
   tasks: <TaskWidget />,
   calendar: <CalendarWidget />,
-  chat: <EnhancedChatWidget />,
+  chat: <ChatWidget />,
   overview: <OverviewWidget />,
   notes: <NotesWidget />,
   habits: <HabitTrackerWidget />
@@ -385,6 +394,16 @@ const getWidgetIcon = (widgetKey: string) => {
   }
 };
 
+// Available widgets for adding to dashboard
+const availableWidgets = [
+  {id: 'tasks', name: 'Tasks', icon: <CheckSquare className="w-5 h-5" />},
+  {id: 'calendar', name: 'Calendar', icon: <Calendar className="w-5 h-5" />},
+  {id: 'chat', name: 'Chat Assistant', icon: <MessageSquare className="w-5 h-5" />},
+  {id: 'overview', name: 'At A Glance', icon: <Clock className="w-5 h-5" />},
+  {id: 'notes', name: 'Quick Notes', icon: <FileText className="w-5 h-5" />},
+  {id: 'habits', name: 'Habit Tracker', icon: <CheckSquare className="w-5 h-5" />}
+];
+
 // Define dashboard layout
 const defaultLayouts = {
   lg: [
@@ -392,8 +411,8 @@ const defaultLayouts = {
     { i: "calendar", x: 3, y: 0, w: 3, h: 5 },
     { i: "overview", x: 0, y: 5, w: 3, h: 5 },
     { i: "notes", x: 3, y: 5, w: 3, h: 5 },
-    { i: "habits", x: 6, y: 0, w: 3, h: 10 },
-    { i: "chat", x: 0, y: 10, w: 9, h: 5 },
+    { i: "habits", x: 6, y: 0, w: 3, h: 5 },
+    { i: "chat", x: 6, y: 5, w: 3, h: 5 },
   ],
   md: [
     { i: "tasks", x: 0, y: 0, w: 4, h: 5 },
@@ -418,7 +437,7 @@ export default function Dashboard() {
   const [isLocked, setIsLocked] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddWidgetModal, setShowAddWidgetModal] = useState(false);
-  const activeWidgets = ['tasks', 'calendar', 'chat', 'overview', 'notes', 'habits'];
+  const [activeWidgets, setActiveWidgets] = useState(['tasks', 'calendar', 'chat', 'overview', 'notes', 'habits']);
   
   // Reference for debouncing layout saves
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -430,13 +449,18 @@ export default function Dashboard() {
       if (savedLayout) {
         setLayouts(JSON.parse(savedLayout));
       }
+      
+      const savedWidgets = localStorage.getItem('dashboard-widgets');
+      if (savedWidgets) {
+        setActiveWidgets(JSON.parse(savedWidgets));
+      }
     } catch (error) {
-      console.error("Failed to load layout:", error);
+      console.error("Failed to load dashboard state:", error);
     }
   }, []);
   
   // Handle layout changes and save to localStorage
-  const handleLayoutChange = (_, allLayouts) => {
+  const handleLayoutChange = (_: any, allLayouts: any) => {
     // Debounce saving to localStorage to prevent excessive writes
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -456,6 +480,65 @@ export default function Dashboard() {
   const toggleLock = () => {
     setIsLocked(!isLocked);
   };
+
+  // Add a widget to the dashboard
+  const addWidget = (widgetId: string) => {
+    if (!activeWidgets.includes(widgetId)) {
+      const newActiveWidgets = [...activeWidgets, widgetId];
+      setActiveWidgets(newActiveWidgets);
+      localStorage.setItem('dashboard-widgets', JSON.stringify(newActiveWidgets));
+      setShowAddWidgetModal(false);
+    }
+  };
+
+  // Remove a widget from the dashboard
+  const removeWidget = (widgetId: string) => {
+    const newActiveWidgets = activeWidgets.filter(id => id !== widgetId);
+    setActiveWidgets(newActiveWidgets);
+    localStorage.setItem('dashboard-widgets', JSON.stringify(newActiveWidgets));
+  };
+
+  // Add Widget Modal Component
+  const AddWidgetModal = () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+        <div className="flex justify-between items-center p-4 border-b">
+          <h3 className="text-lg font-medium">Add Widget</h3>
+          <button onClick={() => setShowAddWidgetModal(false)} className="text-gray-500 hover:text-gray-700">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="p-4">
+          <p className="text-sm text-gray-600 mb-4">Select widgets to add to your dashboard:</p>
+          <div className="grid grid-cols-2 gap-3">
+            {availableWidgets.map(widget => (
+              <button
+                key={widget.id}
+                onClick={() => addWidget(widget.id)}
+                disabled={activeWidgets.includes(widget.id)}
+                className={`flex items-center p-3 rounded-md border ${
+                  activeWidgets.includes(widget.id)
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'hover:bg-gray-50'
+                }`}
+              >
+                <span className="mr-2 text-teal-500">{widget.icon}</span>
+                <span>{widget.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="p-4 border-t flex justify-end">
+          <button
+            onClick={() => setShowAddWidgetModal(false)}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <DashboardLayout title="Dashboard">
@@ -517,10 +600,12 @@ export default function Dashboard() {
                   </h3>
                 </div>
                 <div className="flex space-x-1">
-                  <button className="p-1 text-gray-400 hover:text-gray-600 rounded-md">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                    </svg>
+                  <button 
+                    className="p-1 text-gray-400 hover:text-red-500 rounded-md"
+                    onClick={() => removeWidget(widgetKey)}
+                    title="Remove widget"
+                  >
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               </div>
@@ -531,6 +616,9 @@ export default function Dashboard() {
           ))}
         </ResponsiveGridLayout>
       </div>
+
+      {/* Add Widget Modal */}
+      {showAddWidgetModal && <AddWidgetModal />}
     </DashboardLayout>
   );
 }
