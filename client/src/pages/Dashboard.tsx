@@ -5,7 +5,7 @@ import { Responsive, WidthProvider } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import CalendarWidgetComponent from '@/components/calendar/CalendarWidget';
+import EnhancedCalendarWidget from '@/components/calendar/EnhancedCalendarWidget';
 import { 
   Calendar, 
   CheckSquare, 
@@ -627,7 +627,7 @@ const HabitTrackerWidget = () => {
 // Define widget components
 const widgetComponents: Record<WidgetType, React.ReactNode> = {
   tasks: <TaskWidget />,
-  calendar: <CalendarWidgetComponent />,
+  calendar: <EnhancedCalendarWidget />,
   chat: <ChatWidget />,
   overview: <OverviewWidget />,
   notes: <NotesWidget />,
