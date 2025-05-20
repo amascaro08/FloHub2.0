@@ -54,7 +54,17 @@ const CalendarWidget = () => {
   // Fetch user settings
   const { data: settings, isLoading: isLoadingSettings } = useQuery<UserSettings>({
     queryKey: ['/api/userSettings'],
-    retry: 1
+    retry: 1,
+    // Provide default settings to prevent type errors
+    placeholderData: {
+      selectedCals: [],
+      defaultView: 'month',
+      customRange: {
+        start: new Date().toISOString().slice(0, 10),
+        end: new Date().toISOString().slice(0, 10),
+      },
+      calendarSources: []
+    }
   });
 
   // Fetch calendar events for the current month
