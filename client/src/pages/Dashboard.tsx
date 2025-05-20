@@ -51,7 +51,21 @@ const Dashboard: React.FC = () => {
   const handleLogin = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      // Add scopes for additional access
+      provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+      provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+      provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+      
+      const result = await signInWithPopup(auth, provider);
+      
+      // This gives you a Google Access Token - you can use it to access the Google API
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential?.accessToken;
+      
+      // The signed-in user info
+      const user = result.user;
+      console.log("Logged in with Google:", user.displayName);
+      
     } catch (error) {
       console.error('Error logging in with Google:', error);
     }
