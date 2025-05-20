@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef, memo, useMemo, lazy, Suspense } from "react";
 import { Responsive, WidthProvider } from "react-grid-layout";
-import "/node_modules/react-grid-layout/css/styles.css";
-import "/node_modules/react-resizable/css/styles.css";
+// CSS imports moved to main.tsx
 import {
   CheckSquare,
   Calendar,

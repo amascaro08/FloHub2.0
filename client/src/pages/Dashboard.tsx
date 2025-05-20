@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
-import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
-import { MobileDashboard } from '@/components/dashboard/MobileDashboard';
+import DashboardGrid from '@/components/dashboard/DashboardGrid';
+import MobileDashboard from '@/components/dashboard/MobileDashboard';
 
 export default function Dashboard() {
   const [isMobile, setIsMobile] = useState(false);
