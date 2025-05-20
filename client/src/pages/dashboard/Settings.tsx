@@ -99,7 +99,6 @@ export default function SettingsPage() {
   return (
     <DashboardLayout title="Settings">
       <div className="max-w-6xl mx-auto">
-
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {/* Sidebar */}
           <div className="md:col-span-1">

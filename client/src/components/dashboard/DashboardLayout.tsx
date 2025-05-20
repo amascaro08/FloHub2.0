@@ -1,135 +1,162 @@
-import React, { useState } from 'react';
-import { FloHubLogoImage } from '@/assets/FloHubLogoImage';
-import { FloCatImage } from '@/assets/FloCatImage';
-import { 
-  Calendar, 
-  CheckSquare, 
-  Clock, 
-  FileText, 
-  MessageSquare,
-  Menu,
-  X,
-  Settings,
-  User
-} from 'lucide-react';
+import React, { useState, ReactNode } from 'react';
+import { Link, useLocation } from 'wouter';
 
 interface DashboardLayoutProps {
-  children: React.ReactNode;
-  title?: string;
+  children: ReactNode;
+  title: string;
 }
 
-export default function DashboardLayout({ children, title = 'Dashboard' }: DashboardLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+export default function DashboardLayout({ children, title }: DashboardLayoutProps) {
+  const [location] = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Navigation items
+  const navItems = [
+    { name: 'Dashboard', href: '/dashboard', icon: '📊' },
+    { name: 'Journal', href: '/dashboard/journal', icon: '📔' },
+    { name: 'Tasks', href: '/dashboard/tasks', icon: '✅' },
+    { name: 'Notes', href: '/dashboard/notes', icon: '📝' },
+    { name: 'Meetings', href: '/dashboard/meetings', icon: '📆' },
+    { name: 'Settings', href: '/dashboard/settings', icon: '⚙️' },
+  ];
+
+  // Check if a nav item is active
+  const isActive = (path: string) => {
+    return location === path;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-lg transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:inset-auto md:w-64`}>
-        <div className="flex items-center justify-between h-16 px-4 border-b">
-          <FloHubLogoImage className="h-8 w-auto" />
-          <button 
-            className="md:hidden p-2 rounded-md text-gray-500 hover:text-gray-600 hover:bg-gray-100"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-        <div className="px-4 py-6">
-          <nav className="space-y-8">
-            <div>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Dashboard
-              </h3>
-              <div className="mt-2 space-y-1">
-                <a href="/dashboard" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-teal-600 bg-teal-50">
-                  <Clock className="mr-3 h-6 w-6 text-teal-500" />
-                  Home
-                </a>
-                <a href="/dashboard/tasks" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                  <CheckSquare className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Tasks
-                </a>
-                <a href="/dashboard/meetings" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                  <Calendar className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Meetings
-                </a>
-                <a href="/dashboard/notes" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                  <FileText className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Notes
-                </a>
-                <a href="/dashboard/journal" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                  <FileText className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Journal
-                </a>
-                <a href="#" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                  <CheckSquare className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Habit Tracker
-                </a>
+      {/* Sidebar (desktop) */}
+      <div className="hidden md:flex md:flex-shrink-0">
+        <div className="flex flex-col w-64 border-r border-gray-200 bg-white">
+          <div className="h-16 flex items-center px-6 border-b border-gray-200">
+            <Link to="/">
+              <span className="text-2xl font-bold text-teal-600">FloHub</span>
+            </Link>
+          </div>
+          <div className="flex-1 flex flex-col overflow-y-auto pt-5 pb-4">
+            <nav className="flex-1 px-3 space-y-2">
+              {navItems.map((item) => (
+                <Link 
+                  key={item.name} 
+                  to={item.href}
+                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${
+                    isActive(item.href)
+                      ? 'bg-teal-50 text-teal-700'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="mr-3">{item.icon}</span>
+                  {item.name}
+                </Link>
+              ))}
+            </nav>
+          </div>
+          <div className="p-4 border-t border-gray-200">
+            <div className="flex items-center">
+              <div className="h-8 w-8 rounded-full bg-teal-100 text-teal-500 flex items-center justify-center">
+                JS
               </div>
-            </div>
-            <div>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Settings
-              </h3>
-              <div className="mt-2 space-y-1">
-                <a href="#" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                  <User className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Profile
-                </a>
-                <a href="/dashboard/settings" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                  <Settings className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Settings
-                </a>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-gray-700">Jane Smith</p>
+                <p className="text-xs text-gray-500">View profile</p>
               </div>
-            </div>
-          </nav>
-        </div>
-        <div className="absolute bottom-0 w-full p-4 border-t">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <FloCatImage className="h-10 w-10 rounded-full" />
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-700">Jane Smith</p>
-              <p className="text-xs font-medium text-gray-500">Premium Plan</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top navigation */}
-        <header className="bg-white shadow-sm z-10">
-          <div className="px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex">
-                <div className="flex-shrink-0 flex items-center md:hidden">
-                  <button 
-                    className="p-2 rounded-md text-gray-500 hover:text-gray-600 hover:bg-gray-100"
-                    onClick={() => setSidebarOpen(true)}
-                  >
-                    <Menu className="h-6 w-6" />
-                  </button>
-                </div>
-                <div className="hidden sm:ml-6 sm:flex sm:items-center">
-                  <div className="text-xl font-semibold text-gray-800">{title}</div>
-                </div>
+      {/* Mobile menu */}
+      <div className="md:hidden">
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-40 flex">
+            {/* Overlay */}
+            <div 
+              className="fixed inset-0 bg-gray-600 bg-opacity-75"
+              onClick={() => setIsMobileMenuOpen(false)}
+            ></div>
+            
+            {/* Sidebar */}
+            <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
+              <div className="h-16 flex items-center px-6 border-b border-gray-200">
+                <Link to="/">
+                  <span className="text-2xl font-bold text-teal-600">FloHub</span>
+                </Link>
               </div>
-              <div className="flex items-center">
-                <button className="p-1 rounded-full text-gray-500 hover:text-gray-600 hover:bg-gray-100">
-                  <Settings className="h-6 w-6" />
-                </button>
-                <button className="ml-3 p-1 rounded-full text-gray-500 hover:text-gray-600 hover:bg-gray-100">
-                  <MessageSquare className="h-6 w-6" />
-                </button>
+              <div className="flex-1 flex flex-col overflow-y-auto pt-5 pb-4">
+                <nav className="flex-1 px-3 space-y-2">
+                  {navItems.map((item) => (
+                    <Link 
+                      key={item.name} 
+                      to={item.href}
+                      className={`flex items-center px-4 py-2 text-sm font-medium rounded-md ${
+                        isActive(item.href)
+                          ? 'bg-teal-50 text-teal-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <span className="mr-3">{item.icon}</span>
+                      {item.name}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+              <div className="p-4 border-t border-gray-200">
+                <div className="flex items-center">
+                  <div className="h-8 w-8 rounded-full bg-teal-100 text-teal-500 flex items-center justify-center">
+                    JS
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-700">Jane Smith</p>
+                    <p className="text-xs text-gray-500">View profile</p>
+                  </div>
+                </div>
               </div>
             </div>
+            
+            <div className="flex-shrink-0 w-14"></div>
           </div>
-        </header>
+        )}
+      </div>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-auto p-4 bg-gray-50">
+      {/* Main content */}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Top navigation */}
+        <div className="md:hidden">
+          <div className="bg-white px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+            <div className="flex-1 flex">
+              <button
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-teal-500 md:hidden"
+              >
+                <span className="sr-only">Open sidebar</span>
+                <svg 
+                  className="h-6 w-6" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth="2" 
+                    d="M4 6h16M4 12h16M4 18h16" 
+                  />
+                </svg>
+              </button>
+              <Link to="/">
+                <span className="text-xl font-bold text-teal-600 ml-2">FloHub</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <main className="flex-1 overflow-auto p-4 md:p-6">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+          </div>
           {children}
         </main>
       </div>
