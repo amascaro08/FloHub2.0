@@ -457,8 +457,46 @@ export default function EnhancedCalendarWidget({ isMinimized = false }: Enhanced
               {selectedEvent.description && (
                 <div className="mt-4">
                   <div className="font-medium">Description:</div>
-                  <div className="text-sm mt-1 whitespace-pre-line">
-                    {selectedEvent.description}
+                  <div className="text-sm mt-1">
+                    {selectedEvent.description.includes('<html') || selectedEvent.description.includes('&lt;') ? (
+                      <div className="border rounded p-3 mt-1 space-y-2">
+                        {/* Parse and display email-like content from HTML descriptions */}
+                        {selectedEvent.description.includes('From:') && (
+                          <div><span className="font-medium">From:</span> {selectedEvent.description.match(/From:<\/b>\s*([^<]+)/)?.[1] || 'Unknown'}</div>
+                        )}
+                        {selectedEvent.description.includes('To:') && (
+                          <div><span className="font-medium">To:</span> {selectedEvent.description.match(/To:<\/b>\s*([^<]+)/)?.[1] || 'Unknown'}</div>
+                        )}
+                        {selectedEvent.description.includes('Subject:') && (
+                          <div><span className="font-medium">Subject:</span> {selectedEvent.description.match(/Subject:<\/b>\s*([^<]+)/)?.[1] || 'Unknown'}</div>
+                        )}
+                        {selectedEvent.description.includes('When:') && (
+                          <div><span className="font-medium">When:</span> {selectedEvent.description.match(/When:<\/b>\s*([^<]+)/)?.[1] || 'Unknown'}</div>
+                        )}
+                        {selectedEvent.description.includes('Where:') && (
+                          <div><span className="font-medium">Where:</span> {selectedEvent.description.match(/Where:<\/b>\s*([^<]+)/)?.[1] || 'Unknown'}</div>
+                        )}
+                        {selectedEvent.description.includes('Meeting ID') && (
+                          <div><span className="font-medium">Meeting ID:</span> {selectedEvent.description.match(/Meeting ID:.*?([a-zA-Z0-9]+)/)?.[1] || 'Unknown'}</div>
+                        )}
+                        {selectedEvent.description.includes('join the meeting now') && (
+                          <div className="mt-3">
+                            <a 
+                              href={selectedEvent.description.match(/href="([^"]+)"/)?.[1] || '#'} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              Join meeting
+                            </a>
+                          </div>
+                        )}
+                      </div>  
+                    ) : (
+                      <div className="whitespace-pre-line">
+                        {selectedEvent.description}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
