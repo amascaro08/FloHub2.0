@@ -261,7 +261,23 @@ async function fetchEventsFromUrl(url: string, timeMin: string, timeMax: string)
       // Handle different response formats
       if (Array.isArray(data)) {
         console.log('Data is an array of events');
-        return data as CalendarEvent[];
+        
+        // Convert the format from Power Automate (startTime/endTime) to the format our app expects (start/end)
+        return data.map((event: any) => {
+          // Check if we need to convert from startTime/endTime to start/end object format
+          if (event.startTime && !event.start) {
+            console.log('Converting startTime/endTime format to start/end format');
+            return {
+              id: event.id || `event-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+              title: event.title || event.summary || 'Untitled Event',
+              description: event.description || '',
+              start: { dateTime: event.startTime },
+              end: { dateTime: event.endTime },
+              location: event.location || '',
+            };
+          }
+          return event;
+        });
       } else if ('events' in data && Array.isArray(data.events)) {
         console.log('Data has events property');
         return data.events;
