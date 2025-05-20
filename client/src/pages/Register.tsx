@@ -1,54 +1,30 @@
-import React, { useState } from 'react';
-import { useLocation } from 'wouter';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Button } from '@/components/ui/button';
-import { FloHubLogoImage } from '@/assets/FloHubLogoImage';
-import { FloCatImage } from '@/assets/FloCatImage';
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation } from 'wouter';
 
-// Form validation schema
-const registerSchema = z.object({
-  firstName: z.string().min(2, 'First name must be at least 2 characters'),
-  email: z.string().email('Please enter a valid email'),
-  hasGmail: z.boolean().default(false),
-  gmailAccount: z.string().optional(),
-  devices: z.array(z.string()).min(1, 'Please select at least one device'),
-  role: z.string().min(1, 'Please select your role'),
-  why: z.string().min(10, 'Please tell us a bit more about why you want to join')
-});
-
-type RegisterFormValues = z.infer<typeof registerSchema>;
-
-const Register: React.FC = () => {
+export default function Register() {
   const [, setLocation] = useLocation();
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [device, setDevice] = useState('');
+  const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors },
-  } = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      firstName: '',
-      email: '',
-      hasGmail: false,
-      gmailAccount: '',
-      devices: [],
-      role: '',
-      why: ''
-    },
-  });
+  useEffect(() => {
+    document.title = "Register for Beta - FloHub";
+  }, []);
 
-  const hasGmail = watch('hasGmail');
-
-  const onSubmit = async (data: RegisterFormValues) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate email is Gmail
+    if (!email.toLowerCase().endsWith('@gmail.com')) {
+      setError('Please use a Gmail address for the beta program');
+      return;
+    }
+    
     setLoading(true);
-    setError(null);
+    setError('');
     
     try {
       const response = await fetch('/api/register', {
@@ -56,301 +32,184 @@ const Register: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          name,
+          email,
+          device,
+        }),
       });
       
       if (response.ok) {
-        setSuccess(true);
+        setSubmitted(true);
       } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Registration failed. Please try again.');
+        const data = await response.json();
+        setError(data.message || 'Registration failed. Please try again.');
       }
     } catch (err) {
-      setError('An error occurred during registration. Please try again.');
+      setError('An error occurred. Please try again later.');
       console.error('Registration error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  if (success) {
+  if (submitted) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="flex justify-center">
-            <FloHubLogoImage className="h-16 w-auto" />
+      <div className="min-h-screen flex flex-col justify-center bg-gradient-to-b from-primary-50 to-white dark:from-primary-950 dark:to-neutral-900 p-4">
+        <div className="max-w-md w-full mx-auto bg-white dark:bg-neutral-800 rounded-lg shadow-xl overflow-hidden">
+          <div className="px-6 py-8">
+            <div className="text-center mb-6">
+              <img
+                src="/attached_assets/FloHub_Logo_Transparent.png"
+                alt="FloHub Logo"
+                className="h-16 mx-auto mb-4"
+              />
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Registration Successful!</h2>
+              <div className="flex justify-center mt-6 mb-4">
+                <svg className="h-16 w-16 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+            
+            <div className="space-y-4 text-center">
+              <p className="text-gray-700 dark:text-gray-300">
+                Thank you for registering for the FloHub beta program! We've sent a confirmation email to <span className="font-medium">{email}</span>.
+              </p>
+              
+              <div className="bg-primary-50 dark:bg-primary-900/20 rounded-md p-4 mt-4">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  <strong>Important:</strong> Please check your spam folder if you don't see the email in your inbox.
+                </p>
+              </div>
+              
+              <p className="text-gray-700 dark:text-gray-300 mt-4">
+                The beta testing program will begin in July 2025. We'll notify you with full details before the launch.
+              </p>
+              
+              <p className="text-gray-700 dark:text-gray-300 mt-2">
+                Be sure to check out our <Link href="/updates"><a className="text-primary-600 dark:text-primary-400 font-medium hover:underline">updates page</a></Link> for the latest news about FloHub.
+              </p>
+            </div>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Registration Successful!
-          </h2>
         </div>
-
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 text-center">
-            <div className="mb-6">
-              <FloCatImage className="h-24 w-auto mx-auto" />
-            </div>
-            
-            <p className="text-lg text-gray-700 mb-4">
-              Thank you for registering for FloHub!
-            </p>
-            
-            <p className="text-sm text-gray-600 mb-6">
-              We've sent a confirmation email to your inbox. Beta testing will begin in July 2025.
-              Please check your spam folder if you don't see the email.
-            </p>
-            
-            <p className="text-sm text-gray-600 mb-6">
-              Stay updated on our progress by visiting the <a href="/updates" className="text-teal-600 hover:text-teal-500 font-medium">updates page</a>.
-            </p>
-            
-            <div className="mt-6">
-              <Button
-                className="w-full"
-                onClick={() => setLocation('/')}
-              >
-                Return to Home
-              </Button>
-            </div>
-          </div>
+        
+        <div className="mt-8 text-center">
+          <Link href="/">
+            <a className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400">
+              ← Back to home
+            </a>
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <FloHubLogoImage className="h-16 w-auto" />
-        </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Register for FloHub Beta
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Join our exclusive beta testing program
-        </p>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {error && (
-            <div className="mb-4 rounded-md bg-red-50 p-4">
-              <div className="flex">
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Error</h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>{error}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-            <div>
-              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                Your Name
-              </label>
-              <div className="mt-1">
-                <input
-                  id="firstName"
-                  type="text"
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
-                  placeholder="John Doe"
-                  {...register('firstName')}
-                />
-                {errors.firstName && (
-                  <p className="mt-1 text-sm text-red-600">{errors.firstName.message}</p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Address
-              </label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
-                  placeholder="you@example.com"
-                  {...register('email')}
-                />
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center">
-                <input
-                  id="hasGmail"
-                  type="checkbox"
-                  className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
-                  {...register('hasGmail')}
-                />
-                <label htmlFor="hasGmail" className="ml-2 block text-sm text-gray-700">
-                  I have a Gmail account
-                </label>
-              </div>
-            </div>
-
-            {hasGmail && (
-              <div>
-                <label htmlFor="gmailAccount" className="block text-sm font-medium text-gray-700">
-                  Your Gmail Address
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="gmailAccount"
-                    type="email"
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
-                    placeholder="you@gmail.com"
-                    {...register('gmailAccount')}
-                  />
-                </div>
+    <div className="min-h-screen flex flex-col justify-center bg-gradient-to-b from-primary-50 to-white dark:from-primary-950 dark:to-neutral-900 p-4">
+      <div className="max-w-md w-full mx-auto bg-white dark:bg-neutral-800 rounded-lg shadow-xl overflow-hidden">
+        <div className="px-6 py-8">
+          <div className="text-center mb-8">
+            <img
+              src="/attached_assets/FloHub_Logo_Transparent.png"
+              alt="FloHub Logo"
+              className="h-16 mx-auto mb-4"
+            />
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Register for Beta Access</h2>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">Join our beta testing program</p>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 p-3 rounded-md text-sm">
+                {error}
               </div>
             )}
-
+            
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Which devices do you use?
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Your Name
               </label>
-              <div className="mt-2 space-y-2">
-                <div className="flex items-center">
-                  <input
-                    id="device-desktop"
-                    type="checkbox"
-                    value="desktop"
-                    className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
-                    {...register('devices')}
-                  />
-                  <label htmlFor="device-desktop" className="ml-2 block text-sm text-gray-700">
-                    Desktop Computer
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    id="device-laptop"
-                    type="checkbox"
-                    value="laptop"
-                    className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
-                    {...register('devices')}
-                  />
-                  <label htmlFor="device-laptop" className="ml-2 block text-sm text-gray-700">
-                    Laptop
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    id="device-tablet"
-                    type="checkbox"
-                    value="tablet"
-                    className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
-                    {...register('devices')}
-                  />
-                  <label htmlFor="device-tablet" className="ml-2 block text-sm text-gray-700">
-                    Tablet
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    id="device-phone"
-                    type="checkbox"
-                    value="phone"
-                    className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
-                    {...register('devices')}
-                  />
-                  <label htmlFor="device-phone" className="ml-2 block text-sm text-gray-700">
-                    Smartphone
-                  </label>
-                </div>
-              </div>
-              {errors.devices && (
-                <p className="mt-1 text-sm text-red-600">{errors.devices.message}</p>
-              )}
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-neutral-700 dark:text-white"
+                placeholder="Jane Doe"
+                required
+              />
             </div>
-
+            
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                What best describes you?
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Gmail Address
               </label>
-              <div className="mt-1">
-                <select
-                  id="role"
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
-                  {...register('role')}
-                >
-                  <option value="">Select your role</option>
-                  <option value="student">Student</option>
-                  <option value="professional">Professional</option>
-                  <option value="entrepreneur">Entrepreneur</option>
-                  <option value="educator">Educator</option>
-                  <option value="other">Other</option>
-                </select>
-                {errors.role && (
-                  <p className="mt-1 text-sm text-red-600">{errors.role.message}</p>
-                )}
-              </div>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-neutral-700 dark:text-white"
+                placeholder="your.name@gmail.com"
+                required
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Gmail required for Google integration features
+              </p>
             </div>
-
+            
             <div>
-              <label htmlFor="why" className="block text-sm font-medium text-gray-700">
-                Why are you interested in FloHub?
+              <label htmlFor="device" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Primary Device
               </label>
-              <div className="mt-1">
-                <textarea
-                  id="why"
-                  rows={4}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
-                  placeholder="Tell us why you're excited to try FloHub..."
-                  {...register('why')}
-                ></textarea>
-                {errors.why && (
-                  <p className="mt-1 text-sm text-red-600">{errors.why.message}</p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <Button
-                type="submit"
-                className="w-full flex justify-center py-2 px-4"
-                disabled={loading}
+              <select
+                id="device"
+                value={device}
+                onChange={(e) => setDevice(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-neutral-700 dark:text-white"
+                required
               >
-                {loading ? 'Submitting...' : 'Register for Beta Access'}
-              </Button>
+                <option value="">Select your primary device</option>
+                <option value="Android Phone">Android Phone</option>
+                <option value="iPhone">iPhone</option>
+                <option value="iPad">iPad</option>
+                <option value="Mac">Mac</option>
+                <option value="Windows PC">Windows PC</option>
+                <option value="Linux">Linux</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
+            
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-70"
+            >
+              {loading ? 'Registering...' : 'Register for Beta'}
+            </button>
+            
+            <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-4">
+              By registering, you agree to our{' '}
+              <Link href="/terms-of-service">
+                <a className="text-primary-600 dark:text-primary-400 hover:underline">Terms of Service</a>
+              </Link>{' '}
+              and{' '}
+              <Link href="/privacy-policy">
+                <a className="text-primary-600 dark:text-primary-400 hover:underline">Privacy Policy</a>
+              </Link>
+            </p>
           </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or</span>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setLocation('/')}
-              >
-                Back to Home
-              </Button>
-            </div>
-          </div>
         </div>
+      </div>
+      
+      <div className="mt-8 text-center">
+        <Link href="/">
+          <a className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400">
+            ← Back to home
+          </a>
+        </Link>
       </div>
     </div>
   );
-};
-
-export default Register;
+}

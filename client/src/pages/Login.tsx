@@ -1,189 +1,78 @@
-import React, { useState } from 'react';
-import { useLocation } from 'wouter';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Button } from '@/components/ui/button';
-import { FloHubLogoImage } from '@/assets/FloHubLogoImage';
-import { FloCatImage } from '@/assets/FloCatImage';
-import { apiRequest } from '@/lib/queryClient';
+import React, { useEffect } from 'react';
+import { Link, useLocation } from 'wouter';
 
-// Form validation schema
-const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email'),
-  password: z.string().min(1, 'Password is required'),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
-
-const Login: React.FC = () => {
+export default function Login() {
   const [, setLocation] = useLocation();
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  });
+  useEffect(() => {
+    document.title = "Login - FloHub";
+  }, []);
 
-  const onSubmit = async (data: LoginFormValues) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-      
-      if (response.ok) {
-        // Redirect to dashboard on successful login
-        setLocation('/dashboard');
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || 'Login failed. Please check your credentials.');
-      }
-    } catch (err) {
-      setError('An error occurred during login. Please try again.');
-      console.error('Login error:', err);
-    } finally {
-      setLoading(false);
-    }
+  const handleGoogleLogin = () => {
+    window.location.href = '/api/auth/google';
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center">
-          <FloHubLogoImage className="h-16 w-auto" />
-        </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Sign in to your account
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Access your FloHub dashboard
-        </p>
-      </div>
-
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {error && (
-            <div className="mb-4 rounded-md bg-red-50 p-4">
-              <div className="flex">
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Error</h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>{error}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
-                  {...register('email')}
-                />
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
-                  {...register('password')}
-                />
-                {errors.password && (
-                  <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <Button
-                type="submit"
-                className="w-full flex justify-center py-2 px-4"
-                disabled={loading}
-              >
-                {loading ? 'Signing in...' : 'Sign in'}
-              </Button>
-            </div>
-          </form>
-
-          <div className="mt-6">
+    <div className="min-h-screen flex flex-col justify-center bg-gradient-to-b from-primary-50 to-white dark:from-primary-950 dark:to-neutral-900 p-4">
+      <div className="max-w-md w-full mx-auto bg-white dark:bg-neutral-800 rounded-lg shadow-xl overflow-hidden">
+        <div className="px-6 py-8">
+          <div className="text-center mb-8">
+            <img
+              src="/attached_assets/FloHub_Logo_Transparent.png"
+              alt="FloHub Logo"
+              className="h-16 mx-auto mb-4"
+            />
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Login to FloHub</h2>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">Beta testing program currently closed</p>
+          </div>
+          
+          <div className="space-y-4">
+            <button
+              onClick={handleGoogleLogin}
+              className="w-full flex items-center justify-center py-3 px-4 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-70 disabled:cursor-not-allowed"
+              disabled
+            >
+              <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+                <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
+                  <path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z" />
+                  <path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z" />
+                  <path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z" />
+                  <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z" />
+                </g>
+              </svg>
+              <span className="text-gray-700">Sign in with Google (Coming Soon)</span>
+            </button>
+            
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
+                <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Don't have an account?</span>
+                <span className="px-2 bg-white dark:bg-neutral-800 text-gray-500 dark:text-gray-400">Beta Test Notification</span>
               </div>
             </div>
-
-            <div className="mt-6">
-              <Button
-                variant="outline"
-                className="w-full flex items-center justify-center"
-                onClick={() => window.location.href = `/api/auth/google`}
-              >
-                <svg
-                  className="mr-2 h-5 w-5"
-                  aria-hidden="true"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" />
-                </svg>
-                Sign in with Google
-              </Button>
-
-              <div className="mt-4">
-                <Button
-                  variant="link"
-                  className="w-full text-gray-600"
-                  onClick={() => setLocation('/register')}
-                >
-                  Register for Testing
-                </Button>
-              </div>
+            
+            <div className="bg-primary-50 dark:bg-primary-900/20 rounded-md p-4 text-center">
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                FloHub's beta testing program will begin in July 2025. 
+                <Link href="/register">
+                  <a className="text-primary-600 dark:text-primary-400 font-medium hover:underline ml-1">
+                    Register for early access
+                  </a>
+                </Link>
+              </p>
             </div>
-          </div>
-
-          <div className="mt-8 flex justify-center">
-            <FloCatImage className="h-20 w-auto" />
           </div>
         </div>
+      </div>
+      
+      <div className="mt-8 text-center">
+        <Link href="/">
+          <a className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400">
+            ← Back to home
+          </a>
+        </Link>
       </div>
     </div>
   );
-};
-
-export default Login;
+}
