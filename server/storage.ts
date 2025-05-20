@@ -1,4 +1,11 @@
-import { users, type User, type InsertUser, registrations, type Registration, type InsertRegistration, updates, type Update, type InsertUpdate } from "@shared/schema";
+import { 
+  users, type User, type InsertUser, 
+  registrations, type Registration, type InsertRegistration, 
+  updates, type Update, type InsertUpdate,
+  sessions, type Session, type InsertSession,
+  userSettings, type UserSettings, type InsertUserSettings,
+  calendarSources, type CalendarSource, type InsertCalendarSource
+} from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
@@ -42,13 +49,14 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // User operations
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     return user || undefined;
   }
 
@@ -58,6 +66,80 @@ export class DatabaseStorage implements IStorage {
       .values(insertUser)
       .returning();
     return user;
+  }
+  
+  // Session operations
+  async createSession(session: InsertSession): Promise<Session> {
+    const [newSession] = await db
+      .insert(sessions)
+      .values(session)
+      .returning();
+    return newSession;
+  }
+  
+  async getSessionByToken(token: string): Promise<Session | undefined> {
+    const [session] = await db.select().from(sessions).where(eq(sessions.token, token));
+    return session || undefined;
+  }
+  
+  async deleteSession(id: number): Promise<boolean> {
+    await db.delete(sessions).where(eq(sessions.id, id));
+    return true;
+  }
+  
+  // User settings operations
+  async getUserSettings(userId: number): Promise<UserSettings | undefined> {
+    const [settings] = await db.select().from(userSettings).where(eq(userSettings.userId, userId));
+    return settings || undefined;
+  }
+  
+  async createUserSettings(settings: InsertUserSettings): Promise<UserSettings> {
+    const [newSettings] = await db
+      .insert(userSettings)
+      .values(settings)
+      .returning();
+    return newSettings;
+  }
+  
+  async updateUserSettings(userId: number, settings: Partial<InsertUserSettings>): Promise<UserSettings | undefined> {
+    const [updatedSettings] = await db
+      .update(userSettings)
+      .set({ ...settings, updatedAt: new Date() })
+      .where(eq(userSettings.userId, userId))
+      .returning();
+    return updatedSettings || undefined;
+  }
+  
+  // Calendar sources operations
+  async getCalendarSources(userId: number): Promise<CalendarSource[]> {
+    return await db.select().from(calendarSources).where(eq(calendarSources.userId, userId));
+  }
+  
+  async getCalendarSource(id: number): Promise<CalendarSource | undefined> {
+    const [source] = await db.select().from(calendarSources).where(eq(calendarSources.id, id));
+    return source || undefined;
+  }
+  
+  async createCalendarSource(source: InsertCalendarSource): Promise<CalendarSource> {
+    const [newSource] = await db
+      .insert(calendarSources)
+      .values(source)
+      .returning();
+    return newSource;
+  }
+  
+  async updateCalendarSource(id: number, source: Partial<InsertCalendarSource>): Promise<CalendarSource | undefined> {
+    const [updatedSource] = await db
+      .update(calendarSources)
+      .set({ ...source, updatedAt: new Date() })
+      .where(eq(calendarSources.id, id))
+      .returning();
+    return updatedSource || undefined;
+  }
+  
+  async deleteCalendarSource(id: number): Promise<boolean> {
+    await db.delete(calendarSources).where(eq(calendarSources.id, id));
+    return true;
   }
   
   async createRegistration(registration: InsertRegistration): Promise<Registration> {
