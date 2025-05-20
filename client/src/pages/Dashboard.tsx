@@ -20,7 +20,7 @@ import {
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 // Widget types
-type WidgetType = 'tasks' | 'calendar' | 'chat' | 'overview' | 'notes';
+type WidgetType = 'tasks' | 'calendar' | 'chat' | 'overview' | 'notes' | 'habits';
 
 // Simplified demo widgets
 const TaskWidget = () => (
@@ -183,13 +183,181 @@ const NotesWidget = () => (
   </div>
 );
 
+// Enhanced widget with AI capabilities for the chat widget
+const EnhancedChatWidget = () => {
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content: "How can I help you today?",
+      timestamp: "10:30 AM"
+    },
+    {
+      role: "user",
+      content: "I need help organizing my tasks for the week.",
+      timestamp: "10:31 AM"
+    },
+    {
+      role: "assistant",
+      content: "I can help with that! Would you like me to create a task schedule based on priority?",
+      timestamp: "10:32 AM"
+    }
+  ]);
+  
+  const [newMessage, setNewMessage] = useState("");
+  
+  const handleSendMessage = () => {
+    if (!newMessage.trim()) return;
+    
+    // Add user message
+    setMessages([
+      ...messages,
+      {
+        role: "user",
+        content: newMessage,
+        timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+      }
+    ]);
+    
+    // Simulate AI response
+    setTimeout(() => {
+      setMessages(prev => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "I'll help you organize that. Let me analyze your calendar and existing tasks to create an optimal schedule.",
+          timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+        }
+      ]);
+    }, 1000);
+    
+    setNewMessage("");
+  };
+  
+  return (
+    <div className="h-full flex flex-col">
+      <div className="overflow-y-auto flex-1 mb-4">
+        {messages.map((msg, index) => (
+          <div 
+            key={index}
+            className={`${
+              msg.role === "assistant" 
+                ? "bg-gray-100" 
+                : "bg-teal-100 ml-auto"
+            } p-3 rounded-lg mb-3 max-w-[80%]`}
+          >
+            <p className="text-sm">{msg.content}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              {msg.role === "assistant" ? "FloCat Assistant" : "You"} - {msg.timestamp}
+            </p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-auto flex">
+        <input 
+          type="text" 
+          placeholder="Type your message..." 
+          className="flex-1 rounded-l-md border-gray-300 shadow-sm focus:border-teal-300 focus:ring focus:ring-teal-200 focus:ring-opacity-50"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+        />
+        <button 
+          className="bg-teal-500 text-white px-4 py-2 rounded-r-md"
+          onClick={handleSendMessage}
+        >
+          Send
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Habit Tracker Widget inspired by FloHub repository
+const HabitTrackerWidget = () => {
+  const [habits, setHabits] = useState([
+    { id: 1, name: "Exercise", streak: 3, target: 5, completedToday: false },
+    { id: 2, name: "Read", streak: 7, target: 7, completedToday: true },
+    { id: 3, name: "Meditate", streak: 1, target: 3, completedToday: false },
+    { id: 4, name: "Journal", streak: 5, target: 5, completedToday: true }
+  ]);
+  
+  const toggleHabit = (id: number) => {
+    setHabits(habits.map(habit => 
+      habit.id === id 
+        ? { ...habit, completedToday: !habit.completedToday } 
+        : habit
+    ));
+  };
+  
+  const addHabit = () => {
+    const habitName = prompt("Enter new habit name:");
+    if (habitName) {
+      const newId = Math.max(...habits.map(h => h.id)) + 1;
+      setHabits([...habits, { 
+        id: newId, 
+        name: habitName, 
+        streak: 0, 
+        target: 3, 
+        completedToday: false 
+      }]);
+    }
+  };
+  
+  return (
+    <div className="h-full overflow-auto">
+      <div className="mb-4">
+        <div className="text-sm text-gray-500 mb-2">Your progress this week</div>
+        <div className="h-2 w-full bg-gray-200 rounded-full">
+          <div className="h-2 bg-teal-500 rounded-full" style={{ 
+            width: `${(habits.filter(h => h.completedToday).length / habits.length) * 100}%` 
+          }}></div>
+        </div>
+      </div>
+      
+      <div className="space-y-3">
+        {habits.map(habit => (
+          <div key={habit.id} className="flex items-center justify-between p-2 rounded-md hover:bg-gray-50">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                checked={habit.completedToday}
+                onChange={() => toggleHabit(habit.id)}
+                className="h-4 w-4 text-teal-600 focus:ring-teal-500 rounded mr-3"
+              />
+              <div>
+                <p className="text-sm font-medium text-gray-700">{habit.name}</p>
+                <p className="text-xs text-gray-500">
+                  {habit.streak} day streak {habit.completedToday ? '(completed today)' : ''}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="text-xs font-medium px-2 py-1 rounded-full bg-teal-100 text-teal-800">
+                {habit.streak}/{habit.target} days
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      <button 
+        onClick={addHabit}
+        className="mt-4 text-teal-600 hover:text-teal-800 text-sm font-medium flex items-center"
+      >
+        <span className="mr-1">+</span> Add new habit
+      </button>
+    </div>
+  );
+};
+
 // Define widget components
 const widgetComponents: Record<WidgetType, React.ReactNode> = {
   tasks: <TaskWidget />,
   calendar: <CalendarWidget />,
-  chat: <ChatWidget />,
+  chat: <EnhancedChatWidget />,
   overview: <OverviewWidget />,
-  notes: <NotesWidget />
+  notes: <NotesWidget />,
+  habits: <HabitTrackerWidget />
 };
 
 // Helper function to get the appropriate icon for each widget
@@ -205,6 +373,8 @@ const getWidgetIcon = (widgetKey: string) => {
       return <Clock className="w-5 h-5" />;
     case 'notes':
       return <FileText className="w-5 h-5" />;
+    case 'habits':
+      return <CheckSquare className="w-5 h-5" />;
     default:
       return null;
   }
@@ -217,28 +387,31 @@ const defaultLayouts = {
     { i: "calendar", x: 3, y: 0, w: 3, h: 5 },
     { i: "overview", x: 0, y: 5, w: 3, h: 5 },
     { i: "notes", x: 3, y: 5, w: 3, h: 5 },
-    { i: "chat", x: 0, y: 10, w: 6, h: 5 },
+    { i: "habits", x: 6, y: 0, w: 3, h: 10 },
+    { i: "chat", x: 0, y: 10, w: 9, h: 5 },
   ],
   md: [
     { i: "tasks", x: 0, y: 0, w: 4, h: 5 },
     { i: "calendar", x: 4, y: 0, w: 4, h: 5 },
     { i: "overview", x: 0, y: 5, w: 4, h: 5 },
     { i: "notes", x: 4, y: 5, w: 4, h: 5 },
-    { i: "chat", x: 0, y: 10, w: 8, h: 5 },
+    { i: "habits", x: 0, y: 10, w: 8, h: 5 },
+    { i: "chat", x: 0, y: 15, w: 8, h: 5 },
   ],
   sm: [
     { i: "tasks", x: 0, y: 0, w: 6, h: 5 },
     { i: "calendar", x: 0, y: 5, w: 6, h: 5 },
     { i: "overview", x: 0, y: 10, w: 6, h: 5 },
     { i: "notes", x: 0, y: 15, w: 6, h: 5 },
-    { i: "chat", x: 0, y: 20, w: 6, h: 5 },
+    { i: "habits", x: 0, y: 20, w: 6, h: 5 },
+    { i: "chat", x: 0, y: 25, w: 6, h: 5 },
   ],
 };
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [layouts] = useState(defaultLayouts);
-  const activeWidgets = ['tasks', 'calendar', 'chat', 'overview', 'notes'];
+  const activeWidgets = ['tasks', 'calendar', 'chat', 'overview', 'notes', 'habits'];
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -275,6 +448,10 @@ export default function Dashboard() {
                 <a href="#" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
                   <FileText className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
                   Notes
+                </a>
+                <a href="#" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                  <CheckSquare className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
+                  Habit Tracker
                 </a>
               </div>
             </div>
