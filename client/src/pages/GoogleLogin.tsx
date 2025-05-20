@@ -1,43 +1,56 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { auth } from '@/lib/firebase';
-import { 
-  useAuthState, 
-  useSignInWithGoogle 
-} from 'react-firebase-hooks/auth';
+import { auth, googleProvider } from '@/lib/firebase';
+import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth'; 
 import { FloHubLogoImage } from '@/components/FloHubLogoImage';
 import { FloCatImage } from '@/components/FloCatImage';
 import { Button } from '@/components/ui/button';
 
 const GoogleLogin: React.FC = () => {
   const [, setLocation] = useLocation();
-  const [user, loading] = useAuthState(auth);
-  const [signInWithGoogle, googleUser, googleLoading, googleError] = useSignInWithGoogle(auth);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Check for user authentication state
   useEffect(() => {
-    // If user is already logged in, redirect to dashboard
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Redirect to dashboard if logged in
+  useEffect(() => {
     if (user) {
       setLocation('/dashboard');
     }
   }, [user, setLocation]);
 
-  useEffect(() => {
-    if (googleError) {
-      setError(googleError.message);
-    }
-  }, [googleError]);
-
   const handleGoogleLogin = async () => {
     try {
-      await signInWithGoogle();
-    } catch (error) {
+      setLoading(true);
+      const result = await signInWithPopup(auth, googleProvider);
+      
+      // This gives you a Google Access Token
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential?.accessToken;
+      
+      // The signed-in user info
+      const user = result.user;
+      console.log("Successfully signed in with Google:", user.displayName);
+      
+      // Redirect will happen automatically via the useEffect
+    } catch (error: any) {
       console.error('Error during Google login:', error);
-      setError('Failed to sign in with Google');
+      setError(error.message || 'Failed to sign in with Google');
+      setLoading(false);
     }
   };
 
-  if (loading || googleLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
