@@ -445,14 +445,22 @@ export default function Dashboard() {
   // Load saved layout from localStorage on component mount
   useEffect(() => {
     try {
+      // Load saved layout
       const savedLayout = localStorage.getItem('dashboard-layout');
       if (savedLayout) {
         setLayouts(JSON.parse(savedLayout));
       }
       
+      // Load saved widgets
       const savedWidgets = localStorage.getItem('dashboard-widgets');
       if (savedWidgets) {
         setActiveWidgets(JSON.parse(savedWidgets));
+      }
+      
+      // Load saved lock state
+      const savedLockState = localStorage.getItem('dashboard-locked');
+      if (savedLockState) {
+        setIsLocked(JSON.parse(savedLockState));
       }
     } catch (error) {
       console.error("Failed to load dashboard state:", error);
@@ -478,7 +486,9 @@ export default function Dashboard() {
   
   // Toggle lock/unlock dashboard editing
   const toggleLock = () => {
-    setIsLocked(!isLocked);
+    const newLockState = !isLocked;
+    setIsLocked(newLockState);
+    localStorage.setItem('dashboard-locked', JSON.stringify(newLockState));
   };
 
   // Add a widget to the dashboard
