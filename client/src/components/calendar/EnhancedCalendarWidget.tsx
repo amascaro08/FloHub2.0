@@ -142,7 +142,7 @@ export default function EnhancedCalendarWidget({ isMinimized = false }: Enhanced
   };
 
   const formatEventTime = (event: CalendarEventNormalized) => {
-    if (!event.start) return 'All day';
+    if (!event || !event.start) return 'All day';
     
     const startDate = event.start.dateTime 
       ? new Date(event.start.dateTime) 
@@ -163,8 +163,13 @@ export default function EnhancedCalendarWidget({ isMinimized = false }: Enhanced
       return 'All day';
     }
     
-    // Format time
-    return `${startDate ? format(startDate, 'h:mm a') : ''} - ${endDate ? format(endDate, 'h:mm a') : ''}`;
+    // Format time with safety checks
+    try {
+      return `${startDate ? format(startDate, 'h:mm a') : ''} - ${endDate ? format(endDate, 'h:mm a') : ''}`;
+    } catch (error) {
+      console.error('Error formatting event time:', error);
+      return 'Time format error';
+    }
   };
   
   const handleEventClick = (event: CalendarEventNormalized) => {
@@ -176,6 +181,9 @@ export default function EnhancedCalendarWidget({ isMinimized = false }: Enhanced
     const dayEnd = new Date(date.setHours(23, 59, 59, 999));
     
     return events.filter(event => {
+      // Add safety checks for event.start
+      if (!event || !event.start) return false;
+      
       const eventStart = event.start.dateTime 
         ? new Date(event.start.dateTime) 
         : event.start.date 
