@@ -8,6 +8,8 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import WidgetGrid from '@/components/widgets/WidgetGrid';
 import FloCatWidget from '@/components/widgets/FloCatWidget';
+import CalendarWidget from '@/components/widgets/CalendarWidget';
+import TaskWidget from '@/components/widgets/TaskWidget';
 
 // Interface for API user data
 interface ApiUser {
@@ -134,7 +136,8 @@ const Dashboard: React.FC = () => {
       
       <WidgetGrid>
         <FloCatWidget userId={userId} />
-        {/* Add more widgets here as they are implemented */}
+        <CalendarWidget userId={userId} />
+        <TaskWidget userId={userId} />
       </WidgetGrid>
     </DashboardLayout>
   );
