@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 
 interface JournalEntry {
   id: number;
@@ -209,10 +210,8 @@ const OnThisDay = () => {
 // Journal page component
 export default function JournalPage() {
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <DashboardLayout title="Journal">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Journal</h1>
-        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Main journal area - takes up 2 columns on medium screens */}
           <div className="md:col-span-2 space-y-6">
@@ -227,6 +226,6 @@ export default function JournalPage() {
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

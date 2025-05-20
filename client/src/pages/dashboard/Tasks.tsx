@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 
 // Task type definition
 interface Task {
@@ -167,10 +168,9 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <DashboardLayout title="Tasks">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
           <button
             className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
             onClick={() => setShowAddTask(!showAddTask)}
