@@ -7,7 +7,7 @@ import { storage } from "./storage";
 import { insertRegistrationSchema, insertUpdateSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { sendRegistrationConfirmation, sendAdminNotification, sendUpdateEmail } from "./utils/emailService";
-import calendarRoutes from "./routes/improved-calendar";
+import calendarRoutes from "./routes/calendar";
 import { setupAuthRoutes } from "./routes/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
