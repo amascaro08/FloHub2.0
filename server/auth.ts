@@ -7,7 +7,8 @@ import { z } from "zod";
 export const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  name: z.string().min(2)
+  name: z.string().min(2),
+  username: z.string().optional()
 });
 
 // User login schema
@@ -48,6 +49,7 @@ export const registerUser = async (req: Request, res: Response) => {
     
     // Create user
     const user = await storage.createUser({
+      username: validatedData.username || validatedData.email.split('@')[0],
       email: validatedData.email,
       password: hashedPassword,
       name: validatedData.name,
@@ -55,11 +57,13 @@ export const registerUser = async (req: Request, res: Response) => {
     });
     
     // Create session
-    req.session.user = {
-      id: user.id,
-      email: user.email,
-      name: user.name
-    };
+    if (req.session) {
+      req.session.user = {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      };
+    }
     
     res.status(201).json({ 
       message: "User created successfully",
@@ -97,11 +101,13 @@ export const loginUser = async (req: Request, res: Response) => {
     }
     
     // Create session
-    req.session.user = {
-      id: user.id,
-      email: user.email,
-      name: user.name
-    };
+    if (req.session) {
+      req.session.user = {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      };
+    }
     
     res.status(200).json({ 
       message: "Login successful",
@@ -123,13 +129,17 @@ export const loginUser = async (req: Request, res: Response) => {
 
 // Logout user
 export const logoutUser = (req: Request, res: Response) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ message: "Logout failed" });
-    }
-    res.clearCookie("connect.sid");
-    res.status(200).json({ message: "Logged out successfully" });
-  });
+  if (req.session) {
+    req.session.destroy((err: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      res.clearCookie("connect.sid");
+      res.status(200).json({ message: "Logged out successfully" });
+    });
+  } else {
+    res.status(200).json({ message: "Already logged out" });
+  }
 };
 
 // Get current user
