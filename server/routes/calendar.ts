@@ -130,13 +130,86 @@ export function registerCalendarRoutes(app: any) {
   // Get available calendars
   app.get('/api/calendar/list', async (req: Request, res: Response) => {
     try {
-      // In a real implementation, this would fetch from Google/Microsoft APIs
-      // This requires proper authentication with the calendar provider
-      const calendars = [
-        { id: 'primary', summary: 'Personal Calendar', primary: true },
-        { id: 'work', summary: 'Work Calendar' },
-        { id: 'family', summary: 'Family Calendar' }
-      ];
+      const userId = req.user?.id || '1'; // In a real app, this would be the authenticated user's ID
+
+      // Get user settings to retrieve calendar sources
+      // In a real implementation, this would fetch from the database
+      const userSettings = {
+        calendarSources: [
+          {
+            id: 'google-primary',
+            name: 'Personal Google Calendar',
+            type: 'google' as const,
+            sourceId: 'primary',
+            isEnabled: true,
+            userId,
+            tags: ['personal'],
+            connectionData: {
+              // This would contain tokens in a real implementation
+              access_token: process.env.GOOGLE_ACCESS_TOKEN,
+              refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+              expiry_date: Date.now() + 3600000 // 1 hour from now
+            }
+          },
+          {
+            id: 'microsoft-work',
+            name: 'Work Office 365 Calendar',
+            type: 'o365' as const,
+            sourceId: 'primary',
+            isEnabled: true,
+            userId,
+            tags: ['work'],
+            connectionData: {
+              // This would contain tokens in a real implementation
+              access_token: process.env.MICROSOFT_ACCESS_TOKEN,
+              refresh_token: process.env.MICROSOFT_REFRESH_TOKEN,
+              expires_at: Date.now() + 3600000 // 1 hour from now
+            }
+          }
+        ]
+      };
+
+      // Check if we have API keys/tokens for the calendar services
+      const hasGoogleAuth = !!process.env.GOOGLE_ACCESS_TOKEN;
+      const hasMicrosoftAuth = !!process.env.MICROSOFT_ACCESS_TOKEN;
+
+      let calendars: any[] = [];
+
+      // Attempt to fetch real calendar data if we have the auth tokens
+      if (hasGoogleAuth) {
+        try {
+          const googleSource = userSettings.calendarSources.find(s => s.type === 'google');
+          if (googleSource && googleSource.connectionData) {
+            const googleCalendars = await listGoogleCalendars(googleSource.connectionData, userId);
+            calendars.push(...googleCalendars);
+          }
+        } catch (error) {
+          console.error('Error fetching Google calendars:', error);
+          // Continue even if Google fetch fails
+        }
+      }
+
+      if (hasMicrosoftAuth) {
+        try {
+          const microsoftSource = userSettings.calendarSources.find(s => s.type === 'o365');
+          if (microsoftSource && microsoftSource.connectionData) {
+            const microsoftCalendars = await listMicrosoftCalendars(microsoftSource.connectionData, userId);
+            calendars.push(...microsoftCalendars);
+          }
+        } catch (error) {
+          console.error('Error fetching Microsoft calendars:', error);
+          // Continue even if Microsoft fetch fails
+        }
+      }
+
+      // If we couldn't fetch any real calendars, use sample data
+      if (calendars.length === 0) {
+        calendars = [
+          { id: 'primary', summary: 'Personal Calendar', primary: true },
+          { id: 'work', summary: 'Work Calendar' },
+          { id: 'family', summary: 'Family Calendar' }
+        ];
+      }
 
       return res.json(calendars);
     } catch (error) {
