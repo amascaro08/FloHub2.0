@@ -1,15 +1,13 @@
 import React, { useEffect } from 'react';
-import { Link } from 'wouter';
 
 export default function Home() {
   const handleLogin = () => {
-    // Will update this with proper authentication
     window.location.href = '/login';
   };
 
   useEffect(() => {
     // Update document title and meta tags
-    document.title = "FloHub - Your all-in-one purrfect LifeOS";
+    document.title = "FloHub - Streamline Your Day";
     
     // Set meta description
     let metaDescription = document.querySelector('meta[name="description"]');
@@ -32,17 +30,16 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-between bg-gradient-to-b from-primary-50 to-white dark:from-primary-950 dark:to-neutral-900 p-4">
-
       <main className="flex flex-col items-center justify-center w-full max-w-5xl px-4">
         <div className="flex flex-col md:flex-row items-center justify-between w-full mb-16">
           <div className="md:w-1/2 mb-8 md:mb-0 md:pr-8">
             <img
-              src="/attached_assets/20250510_221117_0000.png"
-              alt="FloHub Logo"
-              className="w-64 mb-6 animate-pulse-subtle"
+              src="/attached_assets/FloHub_Logo_Transparent.png"
+              alt="FlowHub Logo"
+              className="w-48 mb-6 animate-pulse-subtle"
             />
             <h1 className="text-4xl md:text-5xl font-bold text-primary-700 dark:text-primary-400 mb-4">
-              Your all-in-one purrfect LifeOS
+              Streamline Your Day
             </h1>
             <p className="text-lg md:text-xl text-gray-700 dark:text-gray-300 mb-8">
               FloHub combines tasks, notes, and calendar in one seamless interface.
@@ -51,14 +48,13 @@ export default function Home() {
             <button
               onClick={handleLogin}
               className="px-8 py-3 text-lg font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-300 shadow-lg hover:shadow-xl"
-              disabled
             >
-              Beta Test Starting Soon
+              Login to FloHub
             </button>
           </div>
           <div className="md:w-1/2">
             <img
-              src="/attached_assets/Screenshot_20250510-222111.png"
+              src="/public/attached_assets/file_00000000e9c861f88107f89411768c87.png"
               alt="FloHub Interface"
               className="rounded-lg shadow-2xl"
             />
@@ -90,24 +86,30 @@ export default function Home() {
             </p>
           </div>
           <div className="flex space-x-6">
-            <Link
-              href="/"
+            <a
+              href="https://flohub.replit.app"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
             >
               Homepage
-            </Link>
-            <Link
-              href="/privacy-policy"
+            </a>
+            <a
+              href="https://flohub.replit.app/privacy-policy"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
             >
               Privacy Policy
-            </Link>
-            <Link
-              href="/terms-of-service"
+            </a>
+            <a
+              href="https://flohub.replit.app/terms-of-service"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
             >
               Terms of Service
-            </Link>
+            </a>
           </div>
         </div>
       </footer>
