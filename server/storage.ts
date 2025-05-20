@@ -4,7 +4,8 @@ import {
   updates, type Update, type InsertUpdate,
   sessions, type Session,
   userSettings, type UserSettings, type InsertUserSettings,
-  calendarSources, type CalendarSource, type InsertCalendarSource
+  calendarSources, type CalendarSource, type InsertCalendarSource,
+  tasks, type Task, type InsertTask
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
@@ -41,6 +42,13 @@ export interface IStorage {
   getUpdate(id: number): Promise<Update | undefined>;
   updateUpdate(id: number, updateData: Partial<InsertUpdate>): Promise<Update | undefined>;
   deleteUpdate(id: number): Promise<boolean>;
+  
+  // Task operations
+  getTasks(userId: string): Promise<Task[]>;
+  getTask(id: number): Promise<Task | undefined>;
+  createTask(task: InsertTask): Promise<Task>;
+  updateTask(id: number, taskData: Partial<InsertTask>): Promise<Task | undefined>;
+  deleteTask(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -204,6 +212,51 @@ export class DatabaseStorage implements IStorage {
       .delete(updates)
       .where(eq(updates.id, id))
       .returning({ id: updates.id });
+    return result.length > 0;
+  }
+
+  // Task operations
+  async getTasks(userId: string): Promise<Task[]> {
+    return await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.userId, userId))
+      .orderBy(desc(tasks.createdAt));
+  }
+
+  async getTask(id: number): Promise<Task | undefined> {
+    const [task] = await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.id, id));
+    return task || undefined;
+  }
+
+  async createTask(task: InsertTask): Promise<Task> {
+    const [newTask] = await db
+      .insert(tasks)
+      .values(task)
+      .returning();
+    return newTask;
+  }
+
+  async updateTask(id: number, taskData: Partial<InsertTask>): Promise<Task | undefined> {
+    const [updatedTask] = await db
+      .update(tasks)
+      .set({
+        ...taskData,
+        updatedAt: new Date()
+      })
+      .where(eq(tasks.id, id))
+      .returning();
+    return updatedTask || undefined;
+  }
+
+  async deleteTask(id: number): Promise<boolean> {
+    const result = await db
+      .delete(tasks)
+      .where(eq(tasks.id, id))
+      .returning({ id: tasks.id });
     return result.length > 0;
   }
 }

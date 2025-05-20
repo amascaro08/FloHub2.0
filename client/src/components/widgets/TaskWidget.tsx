@@ -1,37 +1,85 @@
 // components/widgets/TaskWidget.tsx
-"use client";
+import { useState, FormEvent, useMemo, memo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from "date-fns";
+import { CalendarIcon, PlusIcon, Trash2, Pencil, Tag, X } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
+import CreatableSelect from 'react-select/creatable';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import confetti from 'canvas-confetti';
 
-import { useSession } from "next-auth/react";
-import useSWR         from "swr";
-import { useState, FormEvent, useMemo, memo } from "react"; // Import useMemo and memo
-import CreatableSelect from 'react-select/creatable'; // Import CreatableSelect
-import type { Task, UserSettings } from "@/types/app"; // Import Task and UserSettings types
+interface Task {
+  id: number;
+  text: string;
+  done: boolean;
+  dueDate: string | null;
+  source: string; 
+  tags: string[];
+  createdAt: string;
+  priority?: string;
+  notes?: string;
+}
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+interface UserSettings {
+  id: number;
+  userId: string;
+  globalTags: string[];
+  selectedCals: string[];
+  defaultView: string;
+  activeWidgets: string[];
+}
 
 function TaskWidget() {
-  const { data: session, status } = useSession();
-  const shouldFetch               = status === "authenticated";
-  const { data: tasks, mutate }   = useSWR<Task[]>(
-    shouldFetch ? "/api/tasks" : null,
-    fetcher
-  );
+  const { user, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+  
+  // Task data fetching
+  const { data: tasks = [] } = useQuery({
+    queryKey: ['/api/tasks'],
+    queryFn: () => fetch('/api/tasks').then(res => res.json()),
+    enabled: isAuthenticated,
+  });
+  
+  // User settings for global tags
+  const { data: userSettings } = useQuery({
+    queryKey: ['/api/auth/settings'],
+    queryFn: () => fetch('/api/auth/settings').then(res => res.json()),
+    enabled: isAuthenticated,
+  });
 
-  // Fetch user settings to get global tags
-  const { data: userSettings, error: settingsError } = useSWR<UserSettings>(
-    shouldFetch ? "/api/userSettings" : null,
-    fetcher
-  );
-
-  const [input, setInput]         = useState("");
-  const [due, setDue]             = useState<"today"|"tomorrow"|"custom">("today");
-  const [customDate, setCustomDate] = useState(
-    new Date().toISOString().slice(0, 10)
-  );
-  const [editing, setEditing]     = useState<Task | null>(null);
-  const [celebrating, setCelebrating] = useState(false); // State for celebration
-  const [taskSource, setTaskSource] = useState<"personal" | "work">("personal"); // State for task source
-  const [selectedTags, setSelectedTags] = useState<string[]>([]); // State for selected tags
+  // State
+  const [input, setInput] = useState("");
+  const [dueDate, setDueDate] = useState<Date | undefined>(new Date());
+  const [dueDateOpen, setDueDateOpen] = useState(false);
+  const [editing, setEditing] = useState<Task | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [taskSource, setTaskSource] = useState<string>("personal");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [priority, setPriority] = useState<string>("medium");
+  const [notes, setNotes] = useState<string>("");
 
   // Combine unique tags from tasks and global tags from settings
   const allAvailableTags = useMemo(() => {
@@ -39,299 +87,428 @@ function TaskWidget() {
     const globalTags = userSettings?.globalTags || [];
     const combinedTags = [...taskTags, ...globalTags];
     return Array.from(new Set(combinedTags)).sort();
-  }, [tasks, userSettings]); // Add userSettings to dependency array
+  }, [tasks, userSettings]);
 
   const tagOptions = allAvailableTags.map(tag => ({ value: tag, label: tag }));
 
-  const handleTagChange = (selectedOptions: any) => {
-    setSelectedTags(Array.isArray(selectedOptions) ? selectedOptions.map(option => option.value) : []);
-  };
+  // Mutations
+  const createTaskMutation = useMutation({
+    mutationFn: (newTask: Omit<Task, 'id' | 'createdAt'>) => 
+      fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTask)
+      }).then(res => res.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      setInput("");
+      setSelectedTags([]);
+      setDueDate(new Date());
+    }
+  });
 
+  const updateTaskMutation = useMutation({
+    mutationFn: ({ id, ...task }: Partial<Task> & { id: number }) => 
+      fetch(`/api/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(task)
+      }).then(res => res.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      setEditDialogOpen(false);
+      setEditing(null);
+    }
+  });
 
-  // Friendly formatter: "Jan 5"
-  const fmt = (iso: string | null) => {
-    if (!iso) return "No due";
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return "Invalid date";
-    return d.toLocaleDateString(undefined, {
-      month: "short",
-      day:   "numeric",
-    });
-  };
+  const toggleTaskMutation = useMutation({
+    mutationFn: (id: number) => 
+      fetch(`/api/tasks/${id}/toggle`, {
+        method: 'PATCH',
+      }).then(res => res.json()),
+    onSuccess: (data, id) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      
+      // Find the task that was toggled
+      const task = tasks.find(t => t.id === id);
+      if (task && !task.done) {
+        // Task was marked as complete, trigger celebration
+        triggerCelebration();
+      }
+    }
+  });
 
-  const addOrUpdate = async (e: FormEvent) => {
+  const deleteTaskMutation = useMutation({
+    mutationFn: (id: number) => 
+      fetch(`/api/tasks/${id}`, {
+        method: 'DELETE',
+      }).then(res => {
+        if (!res.ok) throw new Error('Failed to delete task');
+        return true;
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+    }
+  });
+
+  // Event handlers
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
+    if (!user) return;
 
-    // Determine the ISO dueDate string
-    let dueISO: string | null = null;
-    if (due === "today" || due === "tomorrow") {
-      const d = new Date();
-      if (due === "tomorrow") d.setDate(d.getDate() + 1);
-      d.setHours(0, 0, 0, 0);
-      dueISO = d.toISOString();
-    }
-    if (due === "custom") {
-      const d = new Date(customDate);
-      d.setHours(0, 0, 0, 0);
-      dueISO = d.toISOString();
-    }
-
-    // Build payload
-    const payload: Partial<Task> = { // Use Partial<Task> since not all fields are required for create/update
-      text:    input.trim(),
-      dueDate: dueISO,
-      source:  taskSource, // Include task source
-      tags: selectedTags, // Include selected tags
+    const newTask = {
+      text: input,
+      done: false,
+      dueDate: dueDate ? dueDate.toISOString() : null,
+      source: taskSource,
+      tags: selectedTags,
+      priority,
+      notes
     };
-    // If you're editing, send PATCH; else POST
-    const method = editing ? "PATCH" : "POST";
 
-    // For PATCH, include id & done
-    if (editing) {
-      payload.id   = editing.id;
-      payload.done = editing.done;
-      // If editing, don't change source unless explicitly added to form
-      if (taskSource !== (editing.source || "personal")) { // Check if source changed from original
-         payload.source = taskSource;
-      } else {
-         delete payload.source; // Don't send source if it's the same as original or default
+    createTaskMutation.mutate(newTask);
+  };
+
+  const handleEdit = (task: Task) => {
+    setEditing(task);
+    setInput(task.text);
+    setDueDate(task.dueDate ? new Date(task.dueDate) : undefined);
+    setTaskSource(task.source || "personal");
+    setSelectedTags(task.tags || []);
+    setPriority(task.priority || "medium");
+    setNotes(task.notes || "");
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editing) return;
+    
+    updateTaskMutation.mutate({
+      id: editing.id,
+      text: input,
+      dueDate: dueDate ? dueDate.toISOString() : null,
+      source: taskSource,
+      tags: selectedTags,
+      priority,
+      notes
+    });
+  };
+
+  const handleTagChange = (newValue: any) => {
+    setSelectedTags(newValue ? newValue.map((item: any) => item.value) : []);
+  };
+
+  // Celebration animation
+  const triggerCelebration = () => {
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+  };
+
+  // Filter and sort tasks
+  const sortedTasks = useMemo(() => {
+    // Sort: incomplete first, then by due date (nearest first), then by creation date
+    return [...tasks].sort((a, b) => {
+      // First by completion status
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      
+      // Then by due date (if available)
+      if (a.dueDate && b.dueDate) {
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
       }
-      // If editing, don't change tags unless explicitly changed in form (more complex, skip for now)
-      // For simplicity, we'll always send the selectedTags from the form on edit
-    }
-
-    console.log("Payload:", payload);
-    await fetch("/api/tasks", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(payload),
+      
+      // Tasks with due dates come before tasks without
+      if (a.dueDate && !b.dueDate) return -1;
+      if (!a.dueDate && b.dueDate) return 1;
+      
+      // Finally by creation date (newest first)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-
-    // Reset form
-    setInput("");
-    setDue("today");
-    setCustomDate(new Date().toISOString().slice(0, 10));
-    setEditing(null);
-    setTaskSource("personal"); // Reset source to default
-    setSelectedTags([]); // Clear selected tags
-    mutate();
-  };
-
-  const toggleComplete = async (t: Task) => {
-    // Optimistically update the UI by filtering out completed tasks
-    if (tasks) {
-      mutate(tasks.filter(task => task.id !== t.id), false);
-    }
-
-    // Trigger celebration
-    setCelebrating(true);
-    setTimeout(() => setCelebrating(false), 3000); // Hide celebration after 3 seconds
-
-    // Send API request
-    await fetch("/api/tasks", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ id: t.id, done: !t.done }),
-    });
-
-    // Revalidate data after API call
-    mutate();
-  };
-
-  const remove = async (id: string) => {
-     // Optimistically update the UI
-     if (tasks) {
-      mutate(tasks.filter(task => task.id !== id), false); // Remove task and don't revalidate yet
-    }
-
-    await fetch("/api/tasks", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ id }),
-    });
-
-    // Revalidate data after API call
-    mutate();
-  };
-
-  const startEdit = (t: Task) => {
-    setEditing(t);
-    setInput(t.text);
-    setDue(t.dueDate ? "custom" : "today");
-    if (t.dueDate) {
-      setCustomDate(t.dueDate.slice(0, 10));
-    }
-    setTaskSource(t.source || "personal"); // Set source when editing
-    setSelectedTags(t.tags || []); // Set tags when editing
-  };
-
-  if (status === "loading" || (!tasks && !settingsError && shouldFetch) || (!userSettings && !settingsError && shouldFetch)) { // Add loading checks for settings and tasks
-    return <p>Loading tasks…</p>;
-  }
-  if (!session) {
-    return <p>Please sign in to see your tasks.</p>;
-  }
-
-  if (settingsError) { // Add error check for settings
-    return <p>Error loading settings.</p>;
-  }
-
-
-  // Filter out completed tasks for display
-  const incompleteTasks = tasks ? tasks.filter(task => !task.done) : [];
+  }, [tasks]);
 
   return (
-    <div className="relative"> {/* Removed glass class as it's now in the parent */}
-      {/* Celebration Message */}
-      {celebrating && (
-        <div className="absolute inset-0 flex items-center justify-center bg-green-500 bg-opacity-75 text-white text-2xl font-bold z-10 rounded-xl animate-fade-in">
-          Task Complete! 🎉
-        </div>
-      )}
-
-      <form onSubmit={addOrUpdate} className="flex flex-col gap-3 mb-5">
-        {/* Task input and date selection - responsive layout */}
-        <div className="flex flex-col md:flex-row gap-2">
-          <input
+    <div className="border rounded-lg p-4 shadow-sm h-full bg-card">
+      <h3 className="text-lg font-semibold mb-3">Tasks</h3>
+      
+      {/* Task Input Form */}
+      <form onSubmit={handleSubmit} className="mb-4 flex flex-col gap-2">
+        <div className="flex gap-2">
+          <Input
             type="text"
-            className="input-modern flex-1 order-1"
-            placeholder="New task…"
+            placeholder="Add a new task..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            className="flex-1"
           />
-
-          <div className="flex gap-2 order-2 md:order-1 w-full md:w-auto">
-            <select
-              value={due}
-              onChange={(e) => setDue(e.target.value as "today" | "tomorrow" | "custom")}
-              className="input-modern w-auto min-w-[100px] md:min-w-0 flex-shrink-0"
-            >
-              <option value="today">Today</option>
-              <option value="tomorrow">Tomorrow</option>
-              <option value="custom">Custom</option>
-            </select>
-
-            {due === "custom" && (
-              <input
-                type="date"
-                className="input-modern w-auto flex-shrink-0"
-                value={customDate}
-                onChange={(e) => setCustomDate(e.target.value)}
+          <Button type="submit" size="sm">
+            <PlusIcon className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        <div className="flex flex-wrap gap-2 items-center text-sm">
+          {/* Due Date Picker */}
+          <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "justify-start text-left font-normal",
+                  !dueDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dueDate ? format(dueDate, "PPP") : "Pick a date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={dueDate}
+                onSelect={(date) => {
+                  setDueDate(date);
+                  setDueDateOpen(false);
+                }}
+                initialFocus
               />
-            )}
-          </div>
+            </PopoverContent>
+          </Popover>
+          
+          {/* Task Source */}
+          <Select value={taskSource} onValueChange={setTaskSource}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="personal">Personal</SelectItem>
+              <SelectItem value="work">Work</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {/* Priority */}
+          <Select value={priority} onValueChange={setPriority}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Low</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-
-        {/* Source and Tags */}
-        <div className="flex flex-row gap-2 items-center w-full">
-           <div className="flex items-center">
-             <label className="text-sm font-medium mr-2">Source:</label>
-             <select
-               value={taskSource}
-               onChange={(e) => setTaskSource(e.target.value as "personal" | "work")}
-               className="input-modern w-auto py-1"
-             >
-               <option value="personal">Personal</option>
-               <option value="work">Work</option>
-             </select>
-           </div>
-
-           {/* Tags Input */}
-           <div className="flex-1 flex-grow">
-             <label htmlFor="task-tags" className="sr-only">Tags</label>
-             <CreatableSelect
-               isMulti
-               options={tagOptions}
-               onChange={handleTagChange}
-               placeholder="Select or create tags..."
-               isDisabled={false}
-               isSearchable
-               value={selectedTags.map(tag => ({ value: tag, label: tag }))}
-               classNamePrefix="react-select"
-               theme={(theme) => ({
-                 ...theme,
-                 colors: {
-                   ...theme.colors,
-                   primary: '#14B8A6',
-                   primary25: '#99F6E4',
-                 },
-               })}
-             />
-           </div>
+        
+        {/* Tags Input */}
+        <div className="w-full">
+          <CreatableSelect
+            isMulti
+            placeholder="Add tags..."
+            options={tagOptions}
+            className="text-sm"
+            onChange={handleTagChange}
+            value={selectedTags.map(tag => ({ value: tag, label: tag }))}
+          />
         </div>
-
-        <button
-          type="submit"
-          className="btn-primary self-end"
-        >
-          {editing ? "Save" : "Add Task"}
-        </button>
       </form>
-
-      <ul className="space-y-3">
-        {incompleteTasks.length > 0 ? (
-          incompleteTasks.map((t) => (
-            <li
-              key={t.id}
-              className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+      
+      {/* Task List */}
+      <div className="space-y-2 overflow-y-auto" style={{ maxHeight: "calc(100% - 180px)" }}>
+        {sortedTasks.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No tasks yet. Add your first task above!
+          </div>
+        ) : (
+          sortedTasks.map((task) => (
+            <div
+              key={task.id}
+              className={cn(
+                "flex items-start gap-2 p-2 rounded hover:bg-muted transition-colors",
+                task.done && "opacity-60"
+              )}
             >
-              <div className="flex items-center flex-wrap">
-                <div className="flex items-center min-w-0">
-                  <input
-                    type="checkbox"
-                    checked={t.done}
-                    onChange={() => toggleComplete(t)}
-                    className="mr-3 h-5 w-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                  />
-                  <span className="font-medium truncate">
-                    {t.text}
-                  </span>
+              <Checkbox
+                checked={task.done}
+                onCheckedChange={() => toggleTaskMutation.mutate(task.id)}
+                className="mt-1"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <p className={cn("break-words", task.done && "line-through text-muted-foreground")}>
+                    {task.text}
+                  </p>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleEdit(task)}
+                      className="h-7 w-7"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => deleteTaskMutation.mutate(task.id)}
+                      className="h-7 w-7 text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
                 
-                <div className="flex flex-wrap items-center ml-2 mt-1">
-                  {/* Display task source tag */}
-                  {t.source && (
-                    <span className={`tag ${t.source === "work" ? "tag-work" : "tag-personal"} mr-1`}>
-                      {t.source === "work" ? "Work" : "Personal"}
+                {/* Task metadata */}
+                <div className="text-xs flex flex-wrap gap-x-2 gap-y-1 mt-1 text-muted-foreground">
+                  {task.dueDate && (
+                    <span className="flex items-center">
+                      <CalendarIcon className="mr-1 h-3 w-3" />
+                      {format(new Date(task.dueDate), "MMM d")}
                     </span>
                   )}
                   
-                  {/* Display task tags */}
-                  {t.tags && t.tags.map(tag => (
-                    <span key={tag} className="tag mr-1 mb-1">
-                      {tag}
+                  {task.source && (
+                    <span className={cn(
+                      "px-1.5 py-0.5 rounded-sm",
+                      task.source === "work" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"
+                    )}>
+                      {task.source}
                     </span>
-                  ))}
+                  )}
                   
-                  <span className="text-neutral-500 text-sm ml-1">
-                    ({fmt(t.dueDate)})
-                  </span>
+                  {task.priority && (
+                    <span className={cn(
+                      "px-1.5 py-0.5 rounded-sm",
+                      task.priority === "high" ? "bg-red-100 text-red-800" : 
+                      task.priority === "medium" ? "bg-amber-100 text-amber-800" : 
+                      "bg-gray-100 text-gray-800"
+                    )}>
+                      {task.priority}
+                    </span>
+                  )}
                 </div>
+                
+                {/* Task tags */}
+                {task.tags && task.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {task.tags.map((tag) => (
+                      <span 
+                        key={tag} 
+                        className="inline-flex items-center text-xs px-1.5 py-0.5 rounded-sm bg-purple-100 text-purple-800"
+                      >
+                        <Tag className="h-2.5 w-2.5 mr-1" />
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      
+      {/* Edit Task Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            <Input
+              placeholder="Task description"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+            />
+            
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Due Date</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "justify-start text-left font-normal",
+                      !dueDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dueDate ? format(dueDate, "PPP") : "No date set"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={dueDate}
+                    onSelect={setDueDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="text-sm font-medium">Source</label>
+                <Select value={taskSource} onValueChange={setTaskSource}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="personal">Personal</SelectItem>
+                    <SelectItem value="work">Work</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
-              <div className="flex gap-2 ml-2 shrink-0">
-                <button
-                  onClick={() => startEdit(t)}
-                  className="text-sm text-primary-500 hover:text-primary-700 transition-colors"
-                  aria-label="Edit task"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                </button>
-                <button
-                  onClick={() => remove(t.id)}
-                  className="text-sm text-red-500 hover:text-red-700 transition-colors"
-                  aria-label="Delete task"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                </button>
+              <div className="flex-1">
+                <label className="text-sm font-medium">Priority</label>
+                <Select value={priority} onValueChange={setPriority}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </li>
-          ))
-        ) : (
-          <li className="text-neutral-500 text-center py-4">No tasks yet. Add one above!</li>
-        )}
-      </ul>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium">Tags</label>
+              <CreatableSelect
+                isMulti
+                options={tagOptions}
+                className="mt-1"
+                onChange={handleTagChange}
+                value={selectedTags.map(tag => ({ value: tag, label: tag }))}
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium">Notes</label>
+              <Input 
+                placeholder="Add notes..."
+                value={notes} 
+                onChange={(e) => setNotes(e.target.value)} 
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
