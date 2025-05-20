@@ -73,7 +73,12 @@ export class DatabaseStorage implements IStorage {
       // Update user
       const [updatedUser] = await db
         .update(users)
-        .set(userData)
+        .set({
+          username: userData.username,
+          name: userData.name,
+          // Only update password if provided
+          ...(userData.password ? { password: userData.password } : {})
+        })
         .where(eq(users.id, existingUser.id))
         .returning();
       return updatedUser;
@@ -100,7 +105,7 @@ export class DatabaseStorage implements IStorage {
   async updateUserSettings(userId: string, settings: Partial<InsertUserSettings>): Promise<UserSettings | undefined> {
     const [updatedSettings] = await db
       .update(userSettings)
-      .set({ ...settings, updatedAt: new Date() })
+      .set(settings)
       .where(eq(userSettings.userId, userId))
       .returning();
     return updatedSettings || undefined;
@@ -127,7 +132,7 @@ export class DatabaseStorage implements IStorage {
   async updateCalendarSource(id: number, source: Partial<InsertCalendarSource>): Promise<CalendarSource | undefined> {
     const [updatedSource] = await db
       .update(calendarSources)
-      .set({ ...source, updatedAt: new Date() })
+      .set(source)
       .where(eq(calendarSources.id, id))
       .returning();
     return updatedSource || undefined;
