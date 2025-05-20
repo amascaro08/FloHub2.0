@@ -152,7 +152,9 @@ const Login: React.FC = () => {
               <Button
                 variant="outline"
                 className="w-full flex items-center justify-center"
-                onClick={() => window.location.href = `/api/auth/google`}
+                onClick={() => window.location.href = window.location.origin.includes('replit') ? 
+                  `https://flow-hubdev.vercel.app/login` : 
+                  `/dashboard`}
               >
                 <svg
                   className="mr-2 h-5 w-5"
