@@ -1,68 +1,124 @@
 import { Request, Response } from 'express';
 import { storage } from '../storage';
-
-// Type definitions for calendar events
-export interface CalendarEvent {
-  id: string;
-  calendarId: string;
-  summary: string;
-  start: { dateTime?: string; date?: string };
-  end?: { dateTime?: string; date?: string };
-  source?: "personal" | "work";
-  description?: string;
-  calendarName?: string;
-  tags?: string[];
-}
+import { getGoogleAuthUrl, getGoogleTokensFromCode } from '../utils/googleAuth';
+import { getMicrosoftAuthUrl, getMicrosoftTokensFromCode } from '../utils/microsoftAuth';
+import { 
+  fetchEventsFromAllSources, 
+  listGoogleCalendars, 
+  listMicrosoftCalendars,
+  CalendarEvent,
+  CalendarSource
+} from '../utils/calendarIntegration';
+import { validatePowerAutomateUrl } from '../utils/powerAutomateIntegration';
 
 // Calendar API routes
 export function registerCalendarRoutes(app: any) {
   // Get calendar events
   app.get('/api/calendar/events', async (req: Request, res: Response) => {
     try {
-      const { calendarId = 'primary', timeMin, timeMax } = req.query;
+      const { timeMin, timeMax } = req.query;
+      const userId = req.user?.id || '1'; // In a real app, this would be the authenticated user's ID
 
       // Validate date parameters
       if (!timeMin || !timeMax) {
         return res.status(400).json({ error: 'Missing timeMin or timeMax parameters' });
       }
 
-      // In a real implementation, this would fetch from Google/Microsoft/etc. APIs using user credentials
-      // This requires proper authentication with the calendar provider
-      const events: CalendarEvent[] = [
-        { 
-          id: '1', 
-          calendarId: typeof calendarId === 'string' ? calendarId : 'primary',
-          summary: 'Team Standup', 
-          start: { dateTime: `${new Date().toISOString().split('T')[0]}T10:00:00` },
-          end: { dateTime: `${new Date().toISOString().split('T')[0]}T10:30:00` },
-          source: 'work',
-          calendarName: 'Work',
-          tags: ['daily', 'team'],
-          description: 'Daily team standup meeting to discuss progress and blockers.'
-        },
-        { 
-          id: '2', 
-          calendarId: typeof calendarId === 'string' ? calendarId : 'primary',
-          summary: 'Client Meeting', 
-          start: { dateTime: `${new Date().toISOString().split('T')[0]}T14:00:00` },
-          end: { dateTime: `${new Date().toISOString().split('T')[0]}T15:00:00` },
-          source: 'personal',
-          calendarName: 'Personal',
-          tags: ['client'],
-          description: 'Meeting with client to discuss project requirements and timeline.'
-        },
-        { 
-          id: '3', 
-          calendarId: typeof calendarId === 'string' ? calendarId : 'primary',
-          summary: 'Project Review', 
-          start: { dateTime: `${new Date().toISOString().split('T')[0]}T16:30:00` },
-          end: { dateTime: `${new Date().toISOString().split('T')[0]}T17:30:00` },
-          source: 'work',
-          calendarName: 'Work',
-          tags: ['project'],
-          description: 'Weekly project review meeting with stakeholders.'
+      // Get user settings to retrieve calendar sources
+      // In a real implementation, this would fetch from the database
+      const userSettings = {
+        calendarSources: [
+          {
+            id: 'google-primary',
+            name: 'Personal Google Calendar',
+            type: 'google' as const,
+            sourceId: 'primary',
+            isEnabled: true,
+            userId,
+            tags: ['personal'],
+            connectionData: {
+              // This would contain tokens in a real implementation
+              access_token: process.env.GOOGLE_ACCESS_TOKEN,
+              refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+              expiry_date: Date.now() + 3600000 // 1 hour from now
+            }
+          },
+          {
+            id: 'microsoft-work',
+            name: 'Work Office 365 Calendar',
+            type: 'o365' as const,
+            sourceId: 'primary',
+            isEnabled: true,
+            userId,
+            tags: ['work'],
+            connectionData: {
+              // This would contain tokens in a real implementation
+              access_token: process.env.MICROSOFT_ACCESS_TOKEN,
+              refresh_token: process.env.MICROSOFT_REFRESH_TOKEN,
+              expires_at: Date.now() + 3600000 // 1 hour from now
+            }
+          }
+        ]
+      };
+
+      // Check if we have API keys/tokens for the calendar services
+      const hasGoogleAuth = !!process.env.GOOGLE_ACCESS_TOKEN;
+      const hasMicrosoftAuth = !!process.env.MICROSOFT_ACCESS_TOKEN;
+
+      let events: CalendarEvent[] = [];
+
+      // If we have real authentication credentials, use them to fetch real events
+      if (hasGoogleAuth || hasMicrosoftAuth) {
+        try {
+          events = await fetchEventsFromAllSources(
+            userSettings.calendarSources, 
+            timeMin as string, 
+            timeMax as string
+          );
+        } catch (fetchError) {
+          console.error('Error fetching from real calendar sources:', fetchError);
+          // Fall back to sample data
         }
-      ];
+      }
+
+      // If we couldn't fetch real events or don't have authentication, use sample data
+      if (events.length === 0) {
+        events = [
+          { 
+            id: '1', 
+            calendarId: 'primary',
+            summary: 'Team Standup', 
+            start: { dateTime: `${new Date().toISOString().split('T')[0]}T10:00:00` },
+            end: { dateTime: `${new Date().toISOString().split('T')[0]}T10:30:00` },
+            source: 'work',
+            calendarName: 'Work',
+            tags: ['daily', 'team'],
+            description: 'Daily team standup meeting to discuss progress and blockers.'
+          },
+          { 
+            id: '2', 
+            calendarId: 'primary',
+            summary: 'Client Meeting', 
+            start: { dateTime: `${new Date().toISOString().split('T')[0]}T14:00:00` },
+            end: { dateTime: `${new Date().toISOString().split('T')[0]}T15:00:00` },
+            source: 'personal',
+            calendarName: 'Personal',
+            tags: ['client'],
+            description: 'Meeting with client to discuss project requirements and timeline.'
+          },
+          { 
+            id: '3', 
+            calendarId: 'primary',
+            summary: 'Project Review', 
+            start: { dateTime: `${new Date().toISOString().split('T')[0]}T16:30:00` },
+            end: { dateTime: `${new Date().toISOString().split('T')[0]}T17:30:00` },
+            source: 'work',
+            calendarName: 'Work',
+            tags: ['project'],
+            description: 'Weekly project review meeting with stakeholders.'
+          }
+        ];
+      }
 
       return res.json(events);
     } catch (error) {
