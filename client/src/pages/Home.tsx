@@ -54,7 +54,7 @@ export default function Home() {
           </div>
           <div className="md:w-1/2">
             <img
-              src="/public/attached_assets/file_00000000e9c861f88107f89411768c87.png"
+              src="/attached_assets/file_00000000e9c861f88107f89411768c87.png"
               alt="FloHub Interface"
               className="rounded-lg shadow-2xl"
             />
