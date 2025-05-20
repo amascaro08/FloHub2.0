@@ -3,11 +3,11 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Firebase configuration using environment variables
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDbMbGj1knfXUFlZvyjXI4_BpXbXX9ccVg",
   authDomain: "flowpilot-45d37.firebaseapp.com",
-  projectId: process.env.FIREBASE_PROJECT_ID || "flowpilot-45d37",
+  projectId: "flowpilot-45d37",
   storageBucket: "flowpilot-45d37.firebasestorage.app",
   messagingSenderId: "130364100922",
   appId: "1:130364100922:web:2d1df024de1ffe24bac003",
