@@ -130,7 +130,7 @@ function TaskWidget() {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       
       // Find the task that was toggled
-      const task = tasks.find(t => t.id === id);
+      const task = tasks.find((t: Task) => t.id === id);
       if (task && !task.done) {
         // Task was marked as complete, trigger celebration
         triggerCelebration();
@@ -208,10 +208,37 @@ function TaskWidget() {
     });
   };
 
+  // State for filtering and search
+  const [hideCompleted, setHideCompleted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
   // Filter and sort tasks
-  const sortedTasks = useMemo(() => {
-    // Sort: incomplete first, then by due date (nearest first), then by creation date
-    return [...tasks].sort((a, b) => {
+  const filteredTasks = useMemo(() => {
+    if (!tasks) return [];
+    
+    // First filter the tasks
+    return tasks.filter((t: Task) => {
+      // Filter out completed tasks if hideCompleted is true
+      if (hideCompleted && t.done) return false;
+      
+      // If no search query, include all tasks
+      if (!searchQuery) return true;
+      
+      // Search by text content
+      if (t.text.toLowerCase().includes(searchQuery.toLowerCase())) return true;
+      
+      // Search by tags
+      if (t.tags && t.tags.some((tag: string) => tag.toLowerCase().includes(searchQuery.toLowerCase()))) return true;
+      
+      // Search by source
+      if (t.source && t.source.toLowerCase().includes(searchQuery.toLowerCase())) return true;
+      
+      // Search by priority
+      if (t.priority && t.priority.toLowerCase().includes(searchQuery.toLowerCase())) return true;
+      
+      // No match
+      return false;
+    }).sort((a: Task, b: Task) => {
       // First by completion status
       if (a.done !== b.done) return a.done ? 1 : -1;
       
@@ -227,11 +254,33 @@ function TaskWidget() {
       // Finally by creation date (newest first)
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [tasks]);
+  }, [tasks, hideCompleted, searchQuery]);
 
   return (
     <div className="border rounded-lg p-4 shadow-sm h-full bg-card">
       <h3 className="text-lg font-semibold mb-3">Tasks</h3>
+      
+      {/* Search and Filter Controls */}
+      <div className="mb-4 space-y-2">
+        <Input
+          type="text"
+          placeholder="Search tasks..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full"
+        />
+        
+        <div className="flex items-center space-x-2">
+          <Checkbox 
+            id="hideCompleted" 
+            checked={hideCompleted}
+            onCheckedChange={(checked) => setHideCompleted(!!checked)}
+          />
+          <label htmlFor="hideCompleted" className="text-sm cursor-pointer">
+            Hide completed tasks
+          </label>
+        </div>
+      </div>
       
       {/* Task Input Form */}
       <form onSubmit={handleSubmit} className="mb-4 flex flex-col gap-2">
@@ -316,12 +365,12 @@ function TaskWidget() {
       
       {/* Task List */}
       <div className="space-y-2 overflow-y-auto" style={{ maxHeight: "calc(100% - 180px)" }}>
-        {sortedTasks.length === 0 ? (
+        {filteredTasks.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             No tasks yet. Add your first task above!
           </div>
         ) : (
-          sortedTasks.map((task) => (
+          filteredTasks.map((task: Task) => (
             <div
               key={task.id}
               className={cn(
@@ -392,7 +441,7 @@ function TaskWidget() {
                 {/* Task tags */}
                 {task.tags && task.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {task.tags.map((tag) => (
+                    {task.tags.map((tag: string) => (
                       <span 
                         key={tag} 
                         className="inline-flex items-center text-xs px-1.5 py-0.5 rounded-sm bg-purple-100 text-purple-800"
