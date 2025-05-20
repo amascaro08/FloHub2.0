@@ -171,6 +171,7 @@ export default function TasksPage() {
     <DashboardLayout title="Tasks">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
+          <div></div> {/* Spacer for alignment */}
           <button
             className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
             onClick={() => setShowAddTask(!showAddTask)}
@@ -424,6 +425,6 @@ export default function TasksPage() {
           )}
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

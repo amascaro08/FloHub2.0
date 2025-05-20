@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
+import DashboardLayout from "@/components/dashboard/DashboardLayout";
 
 // Note type definition
 interface Note {
@@ -329,10 +330,10 @@ export default function NotesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <DashboardLayout title="Notes">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Notes</h1>
+          <div></div>
           <button
             className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
             onClick={() => setShowNewNoteForm(!showNewNoteForm)}
@@ -584,6 +585,6 @@ export default function NotesPage() {
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
