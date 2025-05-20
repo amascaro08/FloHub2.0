@@ -1,19 +1,19 @@
 // components/widgets/TaskWidget.tsx
 import { useState, FormEvent, useMemo, memo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Calendar } from "@/components/ui/calendar";
+import { Checkbox } from "../../components/ui/checkbox";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Calendar } from "../../components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "../../components/ui/popover";
 import { format } from "date-fns";
 import { CalendarIcon, PlusIcon, Trash2, Pencil, Tag, X } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { cn } from "@/lib/utils";
+import { useAuth } from "../../hooks/useAuth";
+import { cn } from "../../lib/utils";
 import CreatableSelect from 'react-select/creatable';
 import {
   Dialog,
@@ -21,14 +21,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from "../../components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "../../components/ui/select";
 import confetti from 'canvas-confetti';
 
 interface Task {
@@ -83,7 +83,7 @@ function TaskWidget() {
 
   // Combine unique tags from tasks and global tags from settings
   const allAvailableTags = useMemo(() => {
-    const taskTags = tasks?.flatMap(task => task.tags) || [];
+    const taskTags = tasks?.flatMap((task: Task) => task.tags) || [];
     const globalTags = userSettings?.globalTags || [];
     const combinedTags = [...taskTags, ...globalTags];
     return Array.from(new Set(combinedTags)).sort();

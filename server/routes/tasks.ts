@@ -1,117 +1,151 @@
-// server/routes/tasks.ts
-import { Router, Request, Response } from "express";
-import { taskService } from "../services/taskService";
-import { insertTaskSchema } from "@shared/schema";
+import { Router } from "express";
 import { isAuthenticated } from "../replitAuth";
+import { taskService } from "../services/taskService";
 import { z } from "zod";
 
 const router = Router();
 
-// Get all tasks for a user
-router.get("/", isAuthenticated, async (req: any, res: Response) => {
+// Task validation schema
+const taskSchema = z.object({
+  text: z.string().min(1, "Task text is required"),
+  done: z.boolean().optional().default(false),
+  dueDate: z.string().nullable().optional(),
+  source: z.string().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  priority: z.enum(["low", "medium", "high"]).nullable().optional(),
+  notes: z.string().nullable().optional()
+});
+
+// Get all tasks for the current user
+router.get("/api/tasks", isAuthenticated, async (req: any, res) => {
   try {
-    const userId = req.user.claims.sub;
+    const userId = req.user?.claims?.sub || "";
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
     const tasks = await taskService.getUserTasks(userId);
-    res.json(tasks);
+    return res.json(tasks);
   } catch (error) {
     console.error("Error fetching tasks:", error);
-    res.status(500).json({ message: "Failed to fetch tasks" });
+    res.status(500).json({ error: "Failed to fetch tasks" });
   }
 });
 
 // Create a new task
-router.post("/", isAuthenticated, async (req: any, res: Response) => {
+router.post("/api/tasks", isAuthenticated, async (req: any, res) => {
   try {
-    const userId = req.user.claims.sub;
-    
-    // Validate request body
-    const taskData = insertTaskSchema
-      .omit({ userId: true, firebaseId: true })
-      .safeParse(req.body);
-    
-    if (!taskData.success) {
-      return res.status(400).json({ message: "Invalid task data", errors: taskData.error.errors });
+    const userId = req.user?.claims?.sub || "";
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
     }
+
+    // Validate task data
+    const validationResult = taskSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ 
+        error: "Invalid task data", 
+        details: validationResult.error.format() 
+      });
+    }
+
+    const taskData = validationResult.data;
     
-    const task = await taskService.createTask(userId, taskData.data);
-    res.status(201).json(task);
+    // Create the task
+    const newTask = await taskService.createTask(userId, taskData);
+    return res.status(201).json(newTask);
   } catch (error) {
     console.error("Error creating task:", error);
-    res.status(500).json({ message: "Failed to create task" });
+    res.status(500).json({ error: "Failed to create task" });
   }
 });
 
 // Update a task
-router.put("/:id", isAuthenticated, async (req: any, res: Response) => {
+router.put("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
   try {
-    const userId = req.user.claims.sub;
+    const userId = req.user?.claims?.sub || "";
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
     const taskId = parseInt(req.params.id, 10);
-    
-    // Validate request body
-    const updateSchema = z.object({
-      text: z.string().optional(),
-      done: z.boolean().optional(),
-      dueDate: z.date().nullable().optional(),
-      source: z.string().optional(),
-      tags: z.array(z.string()).optional(),
-      priority: z.string().optional(),
-      notes: z.string().optional(),
-    });
-    
-    const taskData = updateSchema.safeParse(req.body);
-    
-    if (!taskData.success) {
-      return res.status(400).json({ message: "Invalid task data", errors: taskData.error.errors });
+    if (isNaN(taskId)) {
+      return res.status(400).json({ error: "Invalid task ID" });
     }
+
+    // Validate task update data
+    const validationResult = taskSchema.partial().safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ 
+        error: "Invalid task data", 
+        details: validationResult.error.format() 
+      });
+    }
+
+    const taskData = validationResult.data;
     
-    const updatedTask = await taskService.updateTask(taskId, userId, taskData.data);
-    
+    // Update the task
+    const updatedTask = await taskService.updateTask(taskId, userId, taskData);
     if (!updatedTask) {
-      return res.status(404).json({ message: "Task not found" });
+      return res.status(404).json({ error: "Task not found or you don't have permission to edit it" });
     }
     
-    res.json(updatedTask);
+    return res.json(updatedTask);
   } catch (error) {
     console.error("Error updating task:", error);
-    res.status(500).json({ message: "Failed to update task" });
+    res.status(500).json({ error: "Failed to update task" });
   }
 });
 
 // Delete a task
-router.delete("/:id", isAuthenticated, async (req: any, res: Response) => {
+router.delete("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
   try {
-    const userId = req.user.claims.sub;
+    const userId = req.user?.claims?.sub || "";
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
     const taskId = parseInt(req.params.id, 10);
-    
-    const result = await taskService.deleteTask(taskId, userId);
-    
-    if (!result) {
-      return res.status(404).json({ message: "Task not found" });
+    if (isNaN(taskId)) {
+      return res.status(400).json({ error: "Invalid task ID" });
     }
     
-    res.status(204).end();
+    // Delete the task
+    const success = await taskService.deleteTask(taskId, userId);
+    if (!success) {
+      return res.status(404).json({ error: "Task not found or you don't have permission to delete it" });
+    }
+    
+    return res.json({ success: true });
   } catch (error) {
     console.error("Error deleting task:", error);
-    res.status(500).json({ message: "Failed to delete task" });
+    res.status(500).json({ error: "Failed to delete task" });
   }
 });
 
-// Toggle task completion
-router.patch("/:id/toggle", isAuthenticated, async (req: any, res: Response) => {
+// Toggle task completion status
+router.post("/api/tasks/:id/toggle", isAuthenticated, async (req: any, res) => {
   try {
-    const userId = req.user.claims.sub;
+    const userId = req.user?.claims?.sub || "";
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
     const taskId = parseInt(req.params.id, 10);
-    
-    const updatedTask = await taskService.toggleTaskCompletion(taskId, userId);
-    
-    if (!updatedTask) {
-      return res.status(404).json({ message: "Task not found" });
+    if (isNaN(taskId)) {
+      return res.status(400).json({ error: "Invalid task ID" });
     }
     
-    res.json(updatedTask);
+    // Toggle the task
+    const updatedTask = await taskService.toggleTaskCompletion(taskId, userId);
+    if (!updatedTask) {
+      return res.status(404).json({ error: "Task not found or you don't have permission to update it" });
+    }
+    
+    return res.json(updatedTask);
   } catch (error) {
-    console.error("Error toggling task completion:", error);
-    res.status(500).json({ message: "Failed to toggle task completion" });
+    console.error("Error toggling task:", error);
+    res.status(500).json({ error: "Failed to toggle task" });
   }
 });
 
