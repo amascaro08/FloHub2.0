@@ -40,6 +40,7 @@ export const userSettings = pgTable("user_settings", {
   lastSyncTime: timestamp("last_sync_time"),
   globalTags: text("global_tags").array().default([]),
   activeWidgets: text("active_widgets").array().default(["tasks", "calendar", "ataglance", "quicknote"]),
+  powerAutomateUrl: text("power_automate_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -50,6 +51,7 @@ export const insertUserSettingsSchema = createInsertSchema(userSettings).pick({
   defaultView: true,
   globalTags: true,
   activeWidgets: true,
+  powerAutomateUrl: true,
 });
 
 export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;

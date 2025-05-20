@@ -21,8 +21,8 @@ import {
 import { Switch } from "../../components/ui/switch";
 import { Label } from "../../components/ui/label";
 import { Badge } from "../../components/ui/badge";
-import { Calendar, RefreshCw, XCircle, Plus, Save, Loader2, Trash2 } from "lucide-react";
-import CreatableSelect from 'react-select/creatable';
+import { Calendar, RefreshCw, XCircle, Plus, Save, Loader2, Trash2, Check } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../components/ui/tooltip";
 
 // Types
 interface CalendarSource {
@@ -92,23 +92,24 @@ export default function Settings() {
   });
 
   // Fetch user settings
-  const { data: settings, isLoading: isLoadingSettings } = useQuery({
+  const { data: settings, isLoading: isLoadingSettings } = useQuery<UserSettings & { calendarSources?: CalendarSource[] }>({
     queryKey: ['/api/user-settings'],
     retry: 1,
-    enabled: isAuthenticated,
-    onSuccess: (data) => {
-      if (data) {
-        // Initialize form state from loaded settings
-        setDefaultView(data.defaultView || 'week');
-        setActiveWidgets(data.activeWidgets || ['calendar', 'tasks', 'ataglance', 'quicknote']);
-        setPowerAutomateUrl(data.powerAutomateUrl || '');
-      }
-    }
+    enabled: isAuthenticated
   });
+  
+  // Initialize state from settings when available
+  useEffect(() => {
+    if (settings) {
+      setDefaultView(settings.defaultView || 'week');
+      setActiveWidgets(settings.activeWidgets || ['calendar', 'tasks', 'ataglance', 'quicknote']);
+      setPowerAutomateUrl(settings.powerAutomateUrl || '');
+    }
+  }, [settings]);
 
   // Calendar sources from settings
-  const calendarSources = settings?.calendarSources || [];
-  const globalTags = settings?.globalTags || [];
+  const calendarSources: CalendarSource[] = settings?.calendarSources || [];
+  const globalTags: string[] = settings?.globalTags || [];
 
   // Mutations
   const updateSettingsMutation = useMutation({
@@ -416,7 +417,7 @@ export default function Settings() {
                             <p className="text-sm text-gray-500">{account.provider === 'google' ? 'Google Calendar' : 'Microsoft Calendar'}</p>
                           </div>
                         </div>
-                        <Badge variant={account.isConnected ? "success" : "destructive"}>
+                        <Badge variant={account.isConnected ? "outline" : "destructive"} className={account.isConnected ? "bg-green-100 text-green-800" : ""}>
                           {account.isConnected ? 'Connected' : 'Disconnected'}
                         </Badge>
                       </div>

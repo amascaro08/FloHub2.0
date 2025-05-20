@@ -80,7 +80,8 @@ router.post('/api/calendar/sources', isAuthenticated, async (req: any, res) => {
 
     const sourceData = {
       ...validationResult.data,
-      userId
+      userId,
+      connectionData: validationResult.data.connectionData || ''
     };
 
     // Create the calendar source
