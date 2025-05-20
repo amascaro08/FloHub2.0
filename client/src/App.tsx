@@ -1,10 +1,12 @@
-import { Switch, Route } from "wouter";
+import { useState, useEffect } from "react";
+import { Switch, Route, useLocation } from "wouter";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Register from "@/pages/Register";
 import AdminUpdates from "@/pages/AdminUpdates";
 import Updates from "@/pages/Updates";
 import Dashboard from "@/pages/Dashboard";
+import Login from "@/pages/Login";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 

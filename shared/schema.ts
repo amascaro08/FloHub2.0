@@ -3,21 +3,19 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const users = pgTable("users", {
-  id: text("id").primaryKey(),
-  email: text("email").unique(),
-  firstName: text("first_name"),
-  lastName: text("last_name"),
-  profileImageUrl: text("profile_image_url"),
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  username: text("username").unique(),
+  password: text("password").notNull(),
+  name: text("name").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
-  id: true,
   email: true,
-  firstName: true,
-  lastName: true,
-  profileImageUrl: true,
+  username: true,
+  password: true,
+  name: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
