@@ -433,21 +433,25 @@ export default function Dashboard() {
                 Dashboard
               </h3>
               <div className="mt-2 space-y-1">
-                <a href="#" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-teal-600 bg-teal-50">
+                <a href="/dashboard" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-teal-600 bg-teal-50">
                   <Clock className="mr-3 h-6 w-6 text-teal-500" />
                   Home
                 </a>
-                <a href="#" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                <a href="/dashboard/tasks" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
                   <CheckSquare className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
                   Tasks
                 </a>
-                <a href="#" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                <a href="/dashboard/meetings" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
                   <Calendar className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Calendar
+                  Meetings
                 </a>
-                <a href="#" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                <a href="/dashboard/notes" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
                   <FileText className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
                   Notes
+                </a>
+                <a href="/dashboard/journal" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                  <FileText className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
+                  Journal
                 </a>
                 <a href="#" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
                   <CheckSquare className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
@@ -464,9 +468,9 @@ export default function Dashboard() {
                   <User className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
                   Profile
                 </a>
-                <a href="#" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                <a href="/dashboard/settings" className="group flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
                   <Settings className="mr-3 h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-                  Preferences
+                  Settings
                 </a>
               </div>
             </div>
