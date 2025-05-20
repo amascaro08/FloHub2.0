@@ -6,9 +6,27 @@ import { eq, desc } from "drizzle-orm";
 // you might need
 
 export interface IStorage {
+  // User operations
   getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  
+  // Session operations
+  createSession(session: InsertSession): Promise<Session>;
+  getSessionByToken(token: string): Promise<Session | undefined>;
+  deleteSession(id: number): Promise<boolean>;
+  
+  // User settings operations
+  getUserSettings(userId: number): Promise<UserSettings | undefined>;
+  createUserSettings(settings: InsertUserSettings): Promise<UserSettings>;
+  updateUserSettings(userId: number, settings: Partial<InsertUserSettings>): Promise<UserSettings | undefined>;
+  
+  // Calendar sources operations
+  getCalendarSources(userId: number): Promise<CalendarSource[]>;
+  getCalendarSource(id: number): Promise<CalendarSource | undefined>;
+  createCalendarSource(source: InsertCalendarSource): Promise<CalendarSource>;
+  updateCalendarSource(id: number, source: Partial<InsertCalendarSource>): Promise<CalendarSource | undefined>;
+  deleteCalendarSource(id: number): Promise<boolean>;
   
   // Registration operations
   createRegistration(registration: InsertRegistration): Promise<Registration>;

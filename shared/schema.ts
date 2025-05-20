@@ -4,17 +4,94 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  passwordSalt: text("password_salt").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  profileImageUrl: text("profile_image_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+  email: true,
+  passwordHash: true,
+  passwordSalt: true,
+  firstName: true,
+  lastName: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export const sessions = pgTable("sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  token: text("token").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
+export const insertSessionSchema = createInsertSchema(sessions).pick({
+  userId: true,
+  token: true,
+  createdAt: true,
+  expiresAt: true,
+});
+
+export type InsertSession = z.infer<typeof insertSessionSchema>;
+export type Session = typeof sessions.$inferSelect;
+
+export const userSettings = pgTable("user_settings", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  selectedCals: text("selected_cals").array().default([]),
+  defaultView: text("default_view").default("month"),
+  lastSyncTime: timestamp("last_sync_time"),
+  globalTags: text("global_tags").array().default([]),
+  activeWidgets: text("active_widgets").array().default(["tasks", "calendar", "ataglance", "quicknote"]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertUserSettingsSchema = createInsertSchema(userSettings).pick({
+  userId: true,
+  selectedCals: true,
+  defaultView: true,
+  globalTags: true,
+  activeWidgets: true,
+});
+
+export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
+export type UserSettings = typeof userSettings.$inferSelect;
+
+export const calendarSources = pgTable("calendar_sources", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // 'google', 'o365', 'other'
+  sourceId: text("source_id").notNull(),
+  isEnabled: boolean("is_enabled").default(true).notNull(),
+  tags: text("tags").array().default([]),
+  connectionData: text("connection_data").notNull(), // JSON string with connection details
+  lastSyncTime: timestamp("last_sync_time"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertCalendarSourceSchema = createInsertSchema(calendarSources).pick({
+  userId: true,
+  name: true,
+  type: true,
+  sourceId: true,
+  isEnabled: true,
+  tags: true,
+  connectionData: true,
+});
+
+export type InsertCalendarSource = z.infer<typeof insertCalendarSourceSchema>;
+export type CalendarSource = typeof calendarSources.$inferSelect;
 
 export const registrations = pgTable("registrations", {
   id: serial("id").primaryKey(),
