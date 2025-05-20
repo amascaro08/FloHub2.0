@@ -7,8 +7,15 @@ import { storage } from "./storage";
 import { insertRegistrationSchema, insertUpdateSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { sendRegistrationConfirmation, sendAdminNotification, sendUpdateEmail } from "./utils/emailService";
+import { registerUser, loginUser, logoutUser, getCurrentUser, isAuthenticated } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Authentication routes
+  app.post('/api/auth/register', registerUser);
+  app.post('/api/auth/login', loginUser);
+  app.post('/api/auth/logout', logoutUser);
+  app.get('/api/auth/me', getCurrentUser);
+  
   // Health check endpoint
   app.get('/health', (_req: Request, res: Response) => {
     res.status(200).send('OK');
