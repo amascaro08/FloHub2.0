@@ -1067,7 +1067,7 @@ export default function MeetingsPage() {
   }, [user?.id]);
 
   // Handler functions
-  const handleCreateTask = (meetingId: number, taskText: string, priority: string) => {
+  const handleCreateTask = (meetingId: number, taskText: string, priority: string = 'medium') => {
     // Create a new task
     const newTaskId = Math.max(...meetings.flatMap(m => m.tasks?.map(t => t.id) || [0]), 0) + 1;
     
@@ -1103,40 +1103,42 @@ export default function MeetingsPage() {
       });
     }
     
-    // Use localStorage to store tasks - this matches how the task widget works
+    // Add to the task widget's localStorage storage
     try {
       // Get existing tasks from localStorage
       const storedTasks = localStorage.getItem('floHub_tasks');
       const existingTasks = storedTasks ? JSON.parse(storedTasks) : [];
       
-      // Create new task with the expected format for task widget
-      const newWidgetTask = {
+      // Create widget task with the format expected by the task widget
+      const widgetTask = {
         id: Date.now() + Math.floor(Math.random() * 1000),
-        title: taskText,
-        description: `From meeting: ${meetings.find(m => m.id === meetingId)?.title || 'Unknown meeting'}`,
-        dueDate: null, 
-        status: 'todo',
+        text: taskText,
+        done: false,
+        dueDate: null,
+        source: 'meeting',
+        tags: ['meeting', 'action-item'],
         priority: priority || 'medium',
-        completed: false,
-        sourceId: meetingId.toString(),
-        sourceType: 'meeting',
-        userId: userId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        tags: ['meeting', 'action-item']
+        notes: `From meeting: ${meetings.find(m => m.id === meetingId)?.title || 'Unknown meeting'}`,
+        createdAt: new Date().toISOString()
       };
       
-      // Save updated tasks list to localStorage
-      localStorage.setItem('floHub_tasks', JSON.stringify([...existingTasks, newWidgetTask]));
+      // Save the updated tasks list to localStorage
+      localStorage.setItem('floHub_tasks', JSON.stringify([...existingTasks, widgetTask]));
       
-      // Refresh task widget data by invalidating the query cache
-      if (window.queryClient) {
-        window.queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      // Invalidate the task queries to refresh the UI
+      // Using try/catch in case queryClient isn't available in the window object
+      try {
+        const queryClient = (window as any).queryClient;
+        if (queryClient) {
+          queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+        }
+      } catch (e) {
+        // Silently fail if queryClient doesn't exist
       }
       
-      console.log('Task created successfully:', newWidgetTask);
+      console.log('Task created and synced with task widget');
     } catch (error) {
-      console.error('Error creating task in task tracker:', error);
+      console.error('Error syncing task with task widget:', error);
     }
   };
   
