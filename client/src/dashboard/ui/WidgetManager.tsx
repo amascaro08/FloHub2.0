@@ -21,7 +21,7 @@ const availableWidgets: WidgetConfig[] = [
     id: "ataglance",
     name: "At a Glance",
     description: "Quick overview of your day",
-    component: "AtAGlanceWidget",
+    component: "DynamicAtAGlanceWidget",
   },
   {
     id: "quicknote",
