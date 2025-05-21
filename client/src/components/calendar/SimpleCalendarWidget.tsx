@@ -127,6 +127,40 @@ const SimpleCalendarWidget = () => {
       
       // Process events if needed and return
       return events.map((event: any, index: number) => {
+        // Clean up HTML in description
+        let cleanDescription = '';
+        if (event.description || event.body) {
+          const rawDescription = event.description || event.body;
+          // Extract useful information from HTML if present
+          if (rawDescription.includes('<div') || rawDescription.includes('<span')) {
+            // Extract meeting ID
+            const meetingIdMatch = rawDescription.match(/Meeting ID:?\s*([0-9\s]+)/i);
+            const meetingId = meetingIdMatch ? meetingIdMatch[1].trim() : '';
+            
+            // Extract passcode
+            const passcodeMatch = rawDescription.match(/Pass(?:code|word):?\s*([a-zA-Z0-9]+)/i);
+            const passcode = passcodeMatch ? passcodeMatch[1].trim() : '';
+            
+            // Extract Teams link
+            const teamsLinkMatch = rawDescription.match(/href="(https:\/\/(?:aka\.ms\/JoinTeamsMeeting|teams\.microsoft\.com\/[^"]+))"/i);
+            const teamsLink = teamsLinkMatch ? teamsLinkMatch[1] : '';
+            
+            // Build a cleaner description with the extracted information
+            cleanDescription = 'Microsoft Teams Meeting\n';
+            if (teamsLink) {
+              cleanDescription += `Join link: ${teamsLink}\n`;
+            }
+            if (meetingId) {
+              cleanDescription += `Meeting ID: ${meetingId}\n`;
+            }
+            if (passcode) {
+              cleanDescription += `Passcode: ${passcode}`;
+            }
+          } else {
+            cleanDescription = rawDescription;
+          }
+        }
+        
         // Convert from startTime/endTime format to start/end format if needed
         if (event.startTime && event.endTime) {
           console.log('Converting startTime/endTime format to start/end format');
@@ -135,9 +169,10 @@ const SimpleCalendarWidget = () => {
             summary: event.subject || event.title || event.name || 'Untitled Event',
             start: { dateTime: event.startTime },
             end: { dateTime: event.endTime },
-            description: event.description || event.body || '',
+            description: cleanDescription,
             calendarName: event.calendar || event.calendarName || 'Work',
             source: 'work',
+            htmlDescription: event.description || event.body || '',
           };
         } 
         // Handle Google Calendar API format
@@ -147,9 +182,10 @@ const SimpleCalendarWidget = () => {
             summary: event.summary || event.title || 'Untitled Event',
             start: event.start,
             end: event.end,
-            description: event.description || '',
+            description: cleanDescription,
             calendarName: event.calendarName || 'Calendar',
             source: event.source || 'work',
+            htmlDescription: event.description || event.body || '',
           };
         }
         // Default case - just return with minimal transformation
@@ -163,9 +199,10 @@ const SimpleCalendarWidget = () => {
             end: { 
               dateTime: event.end?.dateTime || event.endDate || event.end || new Date().toISOString() 
             },
-            description: event.description || '',
+            description: cleanDescription,
             calendarName: event.calendarName || 'Calendar',
             source: event.source || 'work',
+            htmlDescription: event.description || event.body || '',
           };
         }
       });
@@ -593,11 +630,17 @@ const SimpleCalendarWidget = () => {
                       )}
                       
                       {/* Display Teams meeting info if present */}
-                      {event.description && event.description.includes('Microsoft Teams') && (
+                      {event.description && (event.description.includes('Microsoft Teams') || event.description.includes('Join link')) && (
                         <div className="mt-2">
-                          {event.description.includes('https://') && (
+                          {/* Extract and use teams meeting URL if present */}
+                          {(event.description.match(/(https:\/\/[^\s"'<>]+)/i) || 
+                           event.description.includes('Join link:') && event.description.match(/Join link: (https:\/\/[^\s\n]+)/)) && (
                             <a 
-                              href={event.description.match(/(https:\/\/[^\s"'<>]+)/)?.[1] || '#'}
+                              href={
+                                event.description.includes('Join link:') 
+                                  ? event.description.match(/Join link: (https:\/\/[^\s\n]+)/)?.[1] 
+                                  : event.description.match(/(https:\/\/[^\s"'<>]+)/i)?.[1] || '#'
+                              }
                               target="_blank"
                               rel="noopener noreferrer" 
                               className="text-xs inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"
