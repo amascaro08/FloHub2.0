@@ -153,8 +153,8 @@ export default function Login() {
         description: "Welcome to FloHub!",
       });
       
-      // Redirect to dashboard
-      setLocation('/dashboard');
+      // Redirect to dashboard with a force reload to ensure session is recognized
+      window.location.href = '/dashboard';
     } catch (error) {
       console.error('Login error:', error);
       toast({
