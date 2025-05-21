@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useAuth } from '@/hooks/useAuth';
-import { CalendarIcon, PlusCircleIcon, CheckIcon, ClipboardIcon } from 'lucide-react';
+import { PlusCircleIcon, CalendarIcon, ClipboardIcon, CheckIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 // Meeting type definition
 interface Meeting {
@@ -14,15 +14,10 @@ interface Meeting {
   userId: string;
   title: string;
   description: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  location: string;
-  attendees: string[];
   notes: string;
   status: 'upcoming' | 'completed' | 'cancelled';
   meetingType: 'internal' | 'client' | 'one-on-one' | 'interview' | 'workshop';
-  calendarEventId?: string;
+  date: string;
   tasks?: Task[];
 }
 
@@ -46,95 +41,6 @@ interface NoteTemplate {
   template: string;
 }
 
-// Meeting list item component
-const MeetingListItem = ({ 
-  meeting, 
-  onSelectMeeting 
-}: { 
-  meeting: Meeting; 
-  onSelectMeeting: (meeting: Meeting) => void;
-}) => {
-  
-  // Format time display
-  const formatTime = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':');
-    const hour = parseInt(hours, 10);
-    const period = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${period}`;
-  };
-  
-  // Get status badge color
-  const getStatusBadge = (status: 'upcoming' | 'completed' | 'cancelled') => {
-    switch (status) {
-      case 'upcoming':
-        return 'bg-blue-100 text-blue-800';
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-  
-  // Get meeting type badge color
-  const getTypeBadge = (type: string) => {
-    switch (type) {
-      case 'internal':
-        return 'bg-teal-100 text-teal-800';
-      case 'client':
-        return 'bg-purple-100 text-purple-800';
-      case 'one-on-one':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'interview':
-        return 'bg-blue-100 text-blue-800';
-      case 'workshop':
-        return 'bg-indigo-100 text-indigo-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  return (
-    <div 
-      onClick={() => onSelectMeeting(meeting)}
-      className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer"
-    >
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="font-medium text-gray-800">{meeting.title}</h3>
-        <div className={`px-2 py-1 rounded text-xs ${getStatusBadge(meeting.status)}`}>
-          {meeting.status.charAt(0).toUpperCase() + meeting.status.slice(1)}
-        </div>
-      </div>
-      
-      <div className="text-sm text-gray-600 mb-2 flex items-center">
-        <span className="mr-2">{new Date(meeting.date).toLocaleDateString()}</span>
-        <span>{formatTime(meeting.startTime)} - {formatTime(meeting.endTime)}</span>
-      </div>
-      
-      <div className="flex justify-between items-center">
-        <div className={`px-2 py-1 rounded-full text-xs ${getTypeBadge(meeting.meetingType)}`}>
-          {meeting.meetingType.charAt(0).toUpperCase() + meeting.meetingType.slice(1).replace('-', ' ')}
-        </div>
-        
-        <div className="text-xs text-gray-500">
-          {meeting.attendees.length} attendee{meeting.attendees.length !== 1 ? 's' : ''}
-        </div>
-      </div>
-      
-      {meeting.tasks && meeting.tasks.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-gray-100">
-          <div className="text-xs text-gray-500 flex items-center">
-            <CheckIcon className="h-3 w-3 mr-1" />
-            {meeting.tasks.length} task{meeting.tasks.length !== 1 ? 's' : ''}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 // Meeting detail component
 const MeetingDetail = ({ 
   meeting,
@@ -154,15 +60,6 @@ const MeetingDetail = ({
   const { toast } = useToast();
   const [taskText, setTaskText] = useState('');
 
-  // Format time display
-  const formatTime = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':');
-    const hour = parseInt(hours, 10);
-    const period = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${period}`;
-  };
-  
   // Extract action items from notes
   const handleExtractTasks = () => {
     const noteLines = meeting.notes.split('\n');
@@ -218,7 +115,9 @@ const MeetingDetail = ({
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
       <div className="flex justify-between items-start mb-6">
-        <h2 className="text-xl font-medium text-gray-800">{meeting.title}</h2>
+        <h2 className="text-xl font-medium text-gray-800">
+          {meeting.title}
+        </h2>
         <div className="flex space-x-2">
           <button
             onClick={onBack}
@@ -230,7 +129,7 @@ const MeetingDetail = ({
             onClick={() => onEdit(meeting)}
             className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
           >
-            Edit
+            Edit Notes
           </button>
           <button
             onClick={() => onDelete(meeting.id)}
@@ -242,45 +141,23 @@ const MeetingDetail = ({
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div>
-          <div className="flex items-center mb-4">
-            <div className="mr-3 h-10 w-10 flex items-center justify-center rounded-full bg-teal-100 text-teal-700">
-              <CalendarIcon className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-700">Date & Time</h3>
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Meeting Info</h3>
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600">
+              <span className="font-medium">Date:</span> {format(new Date(meeting.date), 'EEEE, MMMM d, yyyy')}
+            </p>
+            <p className="text-sm text-gray-600">
+              <span className="font-medium">Type:</span> {meeting.meetingType.charAt(0).toUpperCase() + meeting.meetingType.slice(1).replace('-', ' ')}
+            </p>
+            {meeting.description && (
               <p className="text-sm text-gray-600">
-                {new Date(meeting.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                <span className="font-medium">Description:</span> {meeting.description}
               </p>
-              <p className="text-sm text-gray-600">
-                {formatTime(meeting.startTime)} - {formatTime(meeting.endTime)}
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center mb-4">
-            <div className="mr-3 h-10 w-10 flex items-center justify-center rounded-full bg-teal-100 text-teal-700">
-              <span className="text-lg">📍</span>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-700">Location</h3>
-              <p className="text-sm text-gray-600">{meeting.location}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center mb-4">
-            <div className="mr-3 h-10 w-10 flex items-center justify-center rounded-full bg-teal-100 text-teal-700">
-              <span className="text-lg">🏷️</span>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-700">Type</h3>
-              <p className="text-sm text-gray-600">
-                {meeting.meetingType.charAt(0).toUpperCase() + meeting.meetingType.slice(1).replace('-', ' ')}
-              </p>
-            </div>
+            )}
           </div>
         </div>
-        
+      
         <div>
           <div className="mb-4">
             <h3 className="text-sm font-medium text-gray-700 mb-2">Status</h3>
@@ -319,12 +196,23 @@ const MeetingDetail = ({
           </div>
           
           <div className="mb-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Attendees</h3>
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Meeting Type</h3>
             <div className="flex flex-wrap gap-2">
-              {meeting.attendees.map((attendee, index) => (
-                <span key={index} className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs">
-                  {attendee}
-                </span>
+              {['internal', 'client', 'one-on-one', 'interview', 'workshop'].map(type => (
+                <button
+                  key={type}
+                  onClick={() => onEdit({
+                    ...meeting,
+                    meetingType: type as any
+                  })}
+                  className={`px-3 py-1 rounded-md text-sm ${
+                    meeting.meetingType === type
+                      ? 'bg-teal-100 text-teal-800 font-medium'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' ')}
+                </button>
               ))}
             </div>
           </div>
@@ -358,11 +246,6 @@ const MeetingDetail = ({
             </Button>
           </div>
         </div>
-      </div>
-      
-      <div className="mb-6">
-        <h3 className="text-sm font-medium text-gray-700 mb-2">Description</h3>
-        <p className="text-sm text-gray-600 whitespace-pre-line">{meeting.description}</p>
       </div>
       
       {/* Meeting Tasks Section */}
@@ -415,8 +298,8 @@ const MeetingDetail = ({
   );
 };
 
-// Meeting edit form component
-const MeetingForm = ({
+// Meeting notes form component
+const MeetingNotesForm = ({
   meeting,
   onSave,
   onCancel
@@ -425,26 +308,17 @@ const MeetingForm = ({
   onSave: (meeting: Meeting) => void;
   onCancel: () => void;
 }) => {
-  const { toast } = useToast();
-  const isEditing = !!meeting;
-  
   const [formData, setFormData] = useState<Meeting>(meeting || {
     id: 0,
     userId: '',
     title: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
-    startTime: '09:00',
-    endTime: '10:00',
-    location: 'Conference Room A',
-    attendees: [],
     notes: '',
     status: 'upcoming',
     meetingType: 'internal',
+    date: new Date().toISOString().split('T')[0],
     tasks: []
   });
-
-  const [newAttendee, setNewAttendee] = useState('');
   
   // Template choices for meeting notes
   const noteTemplates = [
@@ -465,23 +339,6 @@ const MeetingForm = ({
       template: "# Client Meeting Notes\n\n## Client Requirements\n- \n- \n\n## Feedback Received\n- \n- \n\n## Project Updates Shared\n- \n- \n\n## Questions & Concerns\n- \n- \n\n## Action Items\n- [ ] \n- [ ] \n- [ ] \n\n## Follow-up Schedule\n- Next meeting: "
     }
   ];
-
-  const handleAddAttendee = () => {
-    if (newAttendee.trim() !== '' && !formData.attendees.includes(newAttendee.trim())) {
-      setFormData({
-        ...formData,
-        attendees: [...formData.attendees, newAttendee.trim()]
-      });
-      setNewAttendee('');
-    }
-  };
-
-  const handleRemoveAttendee = (attendeeToRemove: string) => {
-    setFormData({
-      ...formData,
-      attendees: formData.attendees.filter(attendee => attendee !== attendeeToRemove)
-    });
-  };
   
   const applyTemplate = (templateText: string) => {
     // Preserve any existing notes if there are some
@@ -502,13 +359,20 @@ const MeetingForm = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate the form
+    if (!formData.title) {
+      alert('Please enter a meeting title');
+      return;
+    }
+    
     onSave(formData);
   };
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
       <h2 className="text-xl font-medium text-gray-800 mb-6">
-        {isEditing ? 'Edit Meeting Notes' : 'Create New Meeting'}
+        {meeting ? 'Edit Meeting Notes' : 'Create New Meeting Notes'}
       </h2>
       
       <form onSubmit={handleSubmit}>
@@ -527,116 +391,33 @@ const MeetingForm = ({
             />
           </div>
           
-          {/* Date and Type Info */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date*
-              </label>
-              <input
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Time*
-              </label>
-              <div className="flex space-x-2">
-                <input
-                  type="time"
-                  value={formData.startTime}
-                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
-                  required
-                />
-                <span className="flex items-center">-</span>
-                <input
-                  type="time"
-                  value={formData.endTime}
-                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
-                  required
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Meeting Type
-              </label>
-              <select
-                value={formData.meetingType}
-                onChange={(e) => setFormData({ ...formData, meetingType: e.target.value as any })}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
-              >
-                <option value="internal">Internal</option>
-                <option value="client">Client</option>
-                <option value="one-on-one">One-on-One</option>
-                <option value="interview">Interview</option>
-                <option value="workshop">Workshop</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Meeting Date
+            </label>
+            <input
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+            />
           </div>
           
-          {/* Location and Attendees */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location
-              </label>
-              <input
-                type="text"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
-                placeholder="Enter meeting location"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Attendees
-              </label>
-              <div className="flex">
-                <input
-                  type="text"
-                  value={newAttendee}
-                  onChange={(e) => setNewAttendee(e.target.value)}
-                  className="flex-1 p-2 border border-gray-300 rounded-l-md focus:ring-teal-500 focus:border-teal-500"
-                  placeholder="Add attendee"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddAttendee}
-                  className="px-4 py-2 bg-teal-600 text-white rounded-r-md hover:bg-teal-700"
-                >
-                  Add
-                </button>
-              </div>
-              
-              <div className="flex flex-wrap gap-2 mt-2">
-                {formData.attendees.map((attendee, index) => (
-                  <span 
-                    key={index}
-                    className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs flex items-center"
-                  >
-                    {attendee}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAttendee(attendee)}
-                      className="ml-1 text-gray-600 hover:text-gray-800"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Meeting Type
+            </label>
+            <select
+              value={formData.meetingType}
+              onChange={(e) => setFormData({ ...formData, meetingType: e.target.value as any })}
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+            >
+              <option value="internal">Internal</option>
+              <option value="client">Client</option>
+              <option value="one-on-one">One-on-One</option>
+              <option value="interview">Interview</option>
+              <option value="workshop">Workshop</option>
+            </select>
           </div>
           
           {/* Brief Description */}
@@ -686,7 +467,7 @@ const MeetingForm = ({
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500 font-mono"
               placeholder="Enter detailed meeting notes with action items marked as '- [ ] Task description'"
-              rows={12}
+              rows={15}
             />
           </div>
           
@@ -702,7 +483,7 @@ const MeetingForm = ({
               type="submit"
               className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
             >
-              {isEditing ? 'Update Meeting' : 'Save Meeting'}
+              {meeting ? 'Update Notes' : 'Save Notes'}
             </button>
           </div>
         </div>
@@ -715,109 +496,81 @@ const MeetingForm = ({
 export default function MeetingsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const userId = user?.id?.toString() || '1'; // Fallback to '1' for demo
   
-  // Sample task data
-  const sampleTasks = [
-    {
-      id: 101,
-      userId: userId,
-      text: "Prepare agenda for next sprint planning",
-      done: false,
-      source: "meeting",
-      tags: ["internal", "planning"],
-      priority: "high",
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 102,
-      userId: userId,
-      text: "Schedule follow-up meeting with client",
-      done: true,
-      source: "meeting",
-      tags: ["client", "follow-up"],
-      priority: "medium",
-      createdAt: new Date().toISOString(),
-    }
-  ];
-  
-  // Sample meetings for demonstration
+  // State
   const [meetings, setMeetings] = useState<Meeting[]>([
     {
       id: 1,
       userId: userId,
       title: 'Weekly Team Standup',
       description: 'Regular weekly team meeting to discuss progress, blockers, and upcoming priorities.',
-      date: '2025-05-20',
-      startTime: '09:00',
-      endTime: '09:30',
-      location: 'Conference Room A',
-      attendees: ['John Smith', 'Sarah Johnson', 'Michael Brown', 'Emma Wilson'],
       notes: '# Weekly Team Standup\n\n## Updates\n- Backend API integration is 80% complete\n- Frontend design updates completed\n- QA started testing new features\n\n## Action Items\n- [ ] Send updated timeline to stakeholders\n- [ ] Schedule additional resources for API work\n- [ ] Review QA feedback by Friday\n\n## Next Steps\n- Continue API development\n- Start planning for next sprint',
       status: 'upcoming',
       meetingType: 'internal',
-      tasks: [sampleTasks[0]],
+      date: '2025-05-20',
+      tasks: [
+        {
+          id: 101,
+          userId: userId,
+          text: "Prepare agenda for next sprint planning",
+          done: false,
+          source: "meeting",
+          tags: ["internal", "planning"],
+          priority: "high",
+          createdAt: new Date().toISOString(),
+        }
+      ],
     },
     {
       id: 2,
       userId: userId,
       title: 'Project Kickoff Meeting',
       description: 'Initial kickoff meeting to discuss project goals, timeline, and resource allocation for the new client project.',
-      date: '2025-05-21',
-      startTime: '13:00',
-      endTime: '14:30',
-      location: 'Main Conference Room',
-      attendees: ['John Smith', 'Sarah Johnson', 'Michael Brown', 'Emma Wilson', 'David Lee', 'Client Rep'],
       notes: '# Project Kickoff\n\n## Project Goals\n- Launch initial version by August 15th\n- Address client\'s primary pain points\n- Establish scalable architecture\n\n## Timeline\n- Design phase: 2 weeks\n- Development: 8 weeks\n- Testing: 2 weeks\n- Launch: 1 week\n\n## Action Items\n- [ ] Create detailed project plan\n- [ ] Set up development environments\n- [ ] Schedule recurring status meetings',
       status: 'upcoming',
       meetingType: 'client',
+      date: '2025-05-21',
       tasks: [],
     },
     {
       id: 3,
       userId: userId,
-      title: 'Performance Review',
-      description: 'One-on-one performance review meeting to discuss progress, goals, and career development.',
-      date: '2025-05-22',
-      startTime: '10:00',
-      endTime: '11:00',
-      location: 'Office 203',
-      attendees: ['John Smith', 'Emma Wilson'],
-      notes: '# Performance Review\n\n## Achievements\n- Successfully led the redesign project\n- Improved build performance by 30%\n- Mentored 2 junior team members\n\n## Areas for Growth\n- Technical documentation could be more comprehensive\n- Consider taking on more project management responsibilities\n\n## Goals for Next Quarter\n- Complete advanced certification\n- Lead a cross-functional initiative\n\n## Action Items\n- [ ] Research certification courses\n- [ ] Draft development plan\n- [ ] Schedule monthly check-ins',
-      status: 'upcoming',
-      meetingType: 'one-on-one',
-      tasks: [],
-    },
-    {
-      id: 6,
-      userId: userId,
       title: 'Last Month\'s Budget Review',
       description: 'Review of last month\'s budget, expenses, and financial planning for the next quarter.',
-      date: '2025-05-15',
-      startTime: '11:00',
-      endTime: '12:00',
-      location: 'Finance Department',
-      attendees: ['John Smith', 'Finance Director', 'Department Heads'],
       notes: '# Budget Review Meeting\n\n## Q1 Highlights\n- Overall spending 5% under budget\n- Marketing expenses 10% over allocated budget\n- New equipment purchases delayed to Q2\n\n## Q2 Planning\n- Increase development resources budget by 15%\n- Reduce travel expenses by 20%\n\n## Action Items\n- [ ] Prepare updated budget proposal\n- [ ] Schedule individual department reviews\n- [ ] Finalize Q2 financial plan\n',
       status: 'completed',
       meetingType: 'internal',
-      tasks: [sampleTasks[1]],
+      date: '2025-05-15',
+      tasks: [
+        {
+          id: 102,
+          userId: userId,
+          text: "Schedule follow-up meeting with client",
+          done: true,
+          source: "meeting",
+          tags: ["client", "follow-up"],
+          priority: "medium",
+          createdAt: new Date().toISOString(),
+        }
+      ],
     },
   ]);
 
-  const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all');
   const [view, setView] = useState<'list' | 'detail' | 'form'>('list');
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'completed' | 'cancelled'>('all');
 
-  // In a real implementation, we would fetch meetings from the API
-  // For demo, we're using local state
-  
+  // Filter meetings by status
+  const filteredMeetings = meetings.filter(meeting => 
+    statusFilter === 'all' || meeting.status === statusFilter
+  );
+
   // Handler functions
   const handleCreateTask = (meetingId: number, taskText: string) => {
-    // In a real implementation, this would call the API
-    const newTaskId = Math.max(...meetings.flatMap(m => m.tasks?.map(t => t.id) || [0]), ...sampleTasks.map(t => t.id)) + 1;
+    // Create a new task
+    const newTaskId = Math.max(...meetings.flatMap(m => m.tasks?.map(t => t.id) || [0])) + 1;
     
     const newTask: Task = {
       id: newTaskId,
@@ -850,64 +603,64 @@ export default function MeetingsPage() {
         tasks: [...(selectedMeeting.tasks || []), newTask]
       });
     }
+    
+    // Create it in the main task list too via API
+    try {
+      fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: taskText,
+          done: false,
+          source: 'meeting',
+          tags: ['meeting', 'action-item'],
+          priority: 'medium',
+          notes: `From meeting: ${meetings.find(m => m.id === meetingId)?.title || 'Unknown meeting'}`,
+        }),
+      });
+    } catch (error) {
+      console.error('Error creating task in task list:', error);
+    }
   };
   
-  // Filter meetings
-  const filteredMeetings = meetings.filter(meeting => {
-    if (filter === 'all') return true;
-    return meeting.status === filter;
-  });
-
-  // Sort meetings by date and time
-  const sortedMeetings = [...filteredMeetings].sort((a, b) => {
-    const dateComparison = new Date(a.date).getTime() - new Date(b.date).getTime();
-    if (dateComparison !== 0) return dateComparison;
-    return a.startTime.localeCompare(b.startTime);
-  });
-
-  // Handle selecting a meeting
-  const handleSelectMeeting = (meeting: Meeting) => {
-    setSelectedMeeting(meeting);
-    setView('detail');
-  };
-
-  // Handle editing a meeting
-  const handleEditMeeting = (meeting: Meeting) => {
-    setEditingMeeting(meeting);
-    setView('form');
-  };
-
-  // Handle saving a meeting (new or edited)
-  const handleSaveMeeting = (meeting: Meeting) => {
-    if (meeting.id === 0) {
-      // New meeting
-      const newMeeting = {
-        ...meeting,
-        userId,
-        id: meetings.length > 0 ? Math.max(...meetings.map(m => m.id)) + 1 : 1,
-        tasks: []
-      };
-      setMeetings([...meetings, newMeeting]);
-      setSelectedMeeting(newMeeting);
-    } else {
-      // Update existing meeting
-      const updatedMeetings = meetings.map(m => 
-        m.id === meeting.id ? { ...meeting, tasks: m.tasks || [] } : m
-      );
-      setMeetings(updatedMeetings);
-      setSelectedMeeting({ ...meeting, tasks: selectedMeeting?.tasks || [] });
-    }
+  // Create meeting
+  const handleCreateMeeting = (meeting: Meeting) => {
+    const newMeeting = {
+      ...meeting,
+      userId,
+      id: meetings.length > 0 ? Math.max(...meetings.map(m => m.id)) + 1 : 1,
+      tasks: []
+    };
     
+    setMeetings([...meetings, newMeeting]);
+    setView('list');
+    
+    toast({
+      title: "Meeting notes created",
+      description: "Your meeting notes have been saved.",
+    });
+  };
+  
+  // Update meeting
+  const handleUpdateMeeting = (meeting: Meeting) => {
+    const updatedMeetings = meetings.map(m => 
+      m.id === meeting.id ? { ...meeting, tasks: m.tasks } : m
+    );
+    
+    setMeetings(updatedMeetings);
+    setSelectedMeeting({ ...meeting, tasks: selectedMeeting?.tasks || [] });
     setEditingMeeting(null);
     setView('detail');
     
     toast({
-      title: meeting.id === 0 ? "Meeting created" : "Meeting updated",
-      description: "Your meeting has been saved successfully.",
+      title: "Meeting notes updated",
+      description: "Your changes have been saved.",
     });
   };
 
-  // Handle deleting a meeting
+  // Delete meeting
   const handleDeleteMeeting = (id: number) => {
     setMeetings(meetings.filter(meeting => meeting.id !== id));
     setSelectedMeeting(null);
@@ -919,11 +672,12 @@ export default function MeetingsPage() {
     });
   };
 
-  // Handle changing meeting status
+  // Change meeting status
   const handleStatusChange = (id: number, status: 'upcoming' | 'completed' | 'cancelled') => {
     const updatedMeetings = meetings.map(meeting => 
       meeting.id === id ? { ...meeting, status } : meeting
     );
+    
     setMeetings(updatedMeetings);
     
     // Update selected meeting if it's the one being changed
@@ -940,114 +694,172 @@ export default function MeetingsPage() {
   return (
     <DashboardLayout title="Meetings">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <div></div>
+        <div className="flex flex-col space-y-4 mb-6">
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-semibold text-gray-800">Meeting Notes</h1>
+            
+            {view === 'list' && (
+              <Button
+                onClick={() => {
+                  setEditingMeeting(null);
+                  setView('form');
+                }}
+                className="bg-teal-600 hover:bg-teal-700"
+              >
+                <PlusCircleIcon className="h-5 w-5 mr-2" />
+                New Meeting Notes
+              </Button>
+            )}
+            
+            {view !== 'list' && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedMeeting(null);
+                  setEditingMeeting(null);
+                  setView('list');
+                }}
+              >
+                Back to List
+              </Button>
+            )}
+          </div>
+          
           {view === 'list' && (
-            <button
-              className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
-              onClick={() => {
-                setEditingMeeting(null);
-                setView('form');
-              }}
-            >
-              + New Meeting
-            </button>
-          )}
-        </div>
-
-        {view === 'list' && (
-          <>
-            {/* Filters */}
-            <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
-              <div className="flex flex-wrap space-x-2">
+            <div className="flex justify-between items-center">
+              <div className="flex space-x-2">
                 <button
-                  onClick={() => setFilter('all')}
-                  className={`px-3 py-1 rounded-md text-sm ${
-                    filter === 'all' 
-                      ? 'bg-teal-100 text-teal-800 font-medium' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  onClick={() => setStatusFilter('all')}
+                  className={`px-4 py-2 rounded-md ${
+                    statusFilter === 'all'
+                      ? 'bg-gray-800 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
-                  All Meetings
+                  All
                 </button>
                 <button
-                  onClick={() => setFilter('upcoming')}
-                  className={`px-3 py-1 rounded-md text-sm ${
-                    filter === 'upcoming' 
-                      ? 'bg-blue-100 text-blue-800 font-medium' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  onClick={() => setStatusFilter('upcoming')}
+                  className={`px-4 py-2 rounded-md ${
+                    statusFilter === 'upcoming'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
                   Upcoming
                 </button>
                 <button
-                  onClick={() => setFilter('completed')}
-                  className={`px-3 py-1 rounded-md text-sm ${
-                    filter === 'completed' 
-                      ? 'bg-green-100 text-green-800 font-medium' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  onClick={() => setStatusFilter('completed')}
+                  className={`px-4 py-2 rounded-md ${
+                    statusFilter === 'completed'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
                   Completed
                 </button>
                 <button
-                  onClick={() => setFilter('cancelled')}
-                  className={`px-3 py-1 rounded-md text-sm ${
-                    filter === 'cancelled' 
-                      ? 'bg-red-100 text-red-800 font-medium' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  onClick={() => setStatusFilter('cancelled')}
+                  className={`px-4 py-2 rounded-md ${
+                    statusFilter === 'cancelled'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
                   Cancelled
                 </button>
               </div>
             </div>
-            
-            {/* Meetings List */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-medium text-gray-800 mb-4">
-                {filter === 'all' ? 'All Meetings' : 
-                  filter === 'upcoming' ? 'Upcoming Meetings' : 
-                  filter === 'completed' ? 'Completed Meetings' : 'Cancelled Meetings'}
-              </h2>
-              
-              {sortedMeetings.length === 0 ? (
-                <div className="py-8 text-center">
-                  <p className="text-gray-500">No meetings found.</p>
+          )}
+        </div>
+        
+        {/* Meetings List View */}
+        {view === 'list' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredMeetings.length === 0 ? (
+              <div className="col-span-full py-8 text-center bg-white rounded-xl shadow-sm">
+                <p className="text-gray-500">No meetings found. Create a new meeting to get started.</p>
+              </div>
+            ) : (
+              filteredMeetings.map(meeting => (
+                <div 
+                  key={meeting.id}
+                  onClick={() => {
+                    setSelectedMeeting(meeting);
+                    setView('detail');
+                  }}
+                  className="bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-medium text-gray-800">{meeting.title}</h3>
+                    <div className={`px-2 py-1 rounded text-xs ${
+                      meeting.status === 'upcoming' ? 'bg-blue-100 text-blue-800' :
+                      meeting.status === 'completed' ? 'bg-green-100 text-green-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {meeting.status.charAt(0).toUpperCase() + meeting.status.slice(1)}
+                    </div>
+                  </div>
+                  
+                  <div className="text-sm text-gray-600 mb-2 flex items-center">
+                    <CalendarIcon className="h-3.5 w-3.5 mr-1" />
+                    <span>{format(new Date(meeting.date), 'MMM d, yyyy')}</span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <div className={`px-2 py-1 rounded-full text-xs ${
+                      meeting.meetingType === 'internal' ? 'bg-teal-100 text-teal-800' :
+                      meeting.meetingType === 'client' ? 'bg-purple-100 text-purple-800' :
+                      meeting.meetingType === 'one-on-one' ? 'bg-yellow-100 text-yellow-800' :
+                      meeting.meetingType === 'interview' ? 'bg-blue-100 text-blue-800' :
+                      'bg-indigo-100 text-indigo-800'
+                    }`}>
+                      {meeting.meetingType.charAt(0).toUpperCase() + meeting.meetingType.slice(1).replace('-', ' ')}
+                    </div>
+                    
+                    {meeting.tasks && meeting.tasks.length > 0 && (
+                      <div className="text-xs text-gray-500 flex items-center">
+                        <CheckIcon className="h-3 w-3 mr-1" />
+                        {meeting.tasks.length} task{meeting.tasks.length !== 1 ? 's' : ''}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {sortedMeetings.map((meeting) => (
-                    <MeetingListItem 
-                      key={meeting.id}
-                      meeting={meeting}
-                      onSelectMeeting={handleSelectMeeting}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </>
+              ))
+            )}
+          </div>
         )}
-
+        
+        {/* Meeting Detail View */}
         {view === 'detail' && selectedMeeting && (
           <MeetingDetail 
             meeting={selectedMeeting}
-            onEdit={handleEditMeeting}
-            onBack={() => setView('list')}
+            onEdit={(meeting) => {
+              setEditingMeeting(meeting);
+              setView('form');
+            }}
+            onBack={() => {
+              setSelectedMeeting(null);
+              setView('list');
+            }}
             onDelete={handleDeleteMeeting}
             onStatusChange={handleStatusChange}
             onCreateTask={handleCreateTask}
           />
         )}
-
+        
+        {/* Meeting Form View */}
         {view === 'form' && (
-          <MeetingForm 
-            meeting={editingMeeting || undefined}
-            onSave={handleSaveMeeting}
+          <MeetingNotesForm
+            meeting={editingMeeting}
+            onSave={editingMeeting ? handleUpdateMeeting : handleCreateMeeting}
             onCancel={() => {
-              setView(editingMeeting ? 'detail' : 'list');
-              setEditingMeeting(null);
+              if (editingMeeting) {
+                setEditingMeeting(null);
+                setView('detail');
+              } else {
+                setView('list');
+              }
             }}
           />
         )}

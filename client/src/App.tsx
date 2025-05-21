@@ -14,7 +14,7 @@ import TermsOfService from "@/pages/TermsOfService";
 import Journal from "@/pages/dashboard/Journal";
 import Tasks from "@/pages/dashboard/Tasks";
 import Notes from "@/pages/dashboard/Notes";
-import Meetings from "@/pages/dashboard/MeetingsCalendarIntegrated";
+import Meetings from "@/pages/dashboard/MeetingsSimple";
 import Settings from "@/pages/dashboard/Settings";
 
 // Protected route component
