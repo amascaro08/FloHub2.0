@@ -102,17 +102,17 @@ const JournalInsights: React.FC<JournalInsightsProps> = ({
       
       if (avgSleepQuality > 3.5) {
         insights.push({
-          title: 'You have been sleeping well!',
-          description: 'Your average sleep quality is above average. Keep up the good habits!',
-          type: 'analysis',
-          icon: '😴'
+          title: "You have been sleeping well!",
+          description: "Your average sleep quality is above average. Keep up the good habits!",
+          type: "analysis",
+          icon: "😴"
         });
       } else if (avgSleepQuality < 2.5) {
         insights.push({
-          title: 'Sleep quality needs attention',
-          description: 'Your average sleep quality is below average. Consider reviewing your sleep schedule.',
-          type: 'suggestion',
-          icon: '⚠️'
+          title: "Sleep quality needs attention",
+          description: "Your average sleep quality is below average. Consider reviewing your sleep schedule.",
+          type: "suggestion",
+          icon: "⚠️"
         });
       }
     }
@@ -129,10 +129,10 @@ const JournalInsights: React.FC<JournalInsightsProps> = ({
       const mostCommonMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0][0];
       
       insights.push({
-        title: 'Mood Patterns',
+        title: "Mood Patterns",
         description: `Your most common mood recently has been "${mostCommonMood}"`,
-        type: 'analysis',
-        icon: moodEntries[Object.keys(moodEntries)[0]]?.emoji || '🙂'
+        type: "analysis",
+        icon: moodEntries[Object.keys(moodEntries)[0]]?.emoji || "🙂"
       });
     }
     
@@ -150,10 +150,10 @@ const JournalInsights: React.FC<JournalInsightsProps> = ({
       
       if (sortedActivities.length > 0) {
         insights.push({
-          title: 'Activity Patterns',
+          title: "Activity Patterns",
           description: `Your most frequent activity is "${sortedActivities[0][0]}"`,
-          type: 'analysis',
-          icon: '📊'
+          type: "analysis",
+          icon: "📊"
         });
       }
       
@@ -173,10 +173,10 @@ const JournalInsights: React.FC<JournalInsightsProps> = ({
         
         if (exerciseMoods.length > 0 && goodMoodsWithExercise / exerciseMoods.length > 0.7) {
           insights.push({
-            title: 'Exercise Benefits Your Mood',
-            description: 'On days when you exercise, you tend to have a better mood',
-            type: 'pattern',
-            icon: '🏃‍♂️'
+            title: "Exercise Benefits Your Mood",
+            description: "On days when you exercise, you tend to have a better mood",
+            type: "pattern",
+            icon: "🏃‍♂️"
           });
         }
       }
@@ -185,17 +185,17 @@ const JournalInsights: React.FC<JournalInsightsProps> = ({
     // Add FloCat's default insights if we don't have enough data
     if (insights.length < 2) {
       insights.push({
-        title: 'Welcome to Journal Insights',
-        description: 'FloCat will analyze your journal entries, mood, and activities to provide personalized insights',
-        type: 'suggestion',
-        icon: '🐱'
+        title: "Welcome to Journal Insights",
+        description: "FloCat will analyze your journal entries, mood, and activities to provide personalized insights",
+        type: "suggestion",
+        icon: "🐱"
       });
       
       insights.push({
-        title: 'Track Your Patterns',
-        description: 'The more consistently you journal, the better insights FloCat can provide about your wellbeing',
-        type: 'suggestion',
-        icon: '📝'
+        title: "Track Your Patterns",
+        description: "The more consistently you journal, the better insights FloCat can provide about your wellbeing",
+        type: "suggestion",
+        icon: "📝"
       });
     }
     

@@ -93,6 +93,10 @@ export default function JournalPage() {
   const [journalContent, setJournalContent] = useState('');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
+  // Entry viewer state
+  const [viewingEntry, setViewingEntry] = useState(false);
+  const [viewEntryDate, setViewEntryDate] = useState<string>('');
+  
   // Current mood selection
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   
@@ -480,7 +484,10 @@ export default function JournalPage() {
               </CardContent>
             </Card>
             
-            <JournalTimeline onSelectDate={handleSelectDate} />
+            <JournalTimeline onSelectDate={(date) => {
+              setViewEntryDate(date);
+              setViewingEntry(true);
+            }} />
             
             <OnThisDay onViewEntry={handleSelectDate} />
           </div>
