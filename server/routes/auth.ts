@@ -80,8 +80,18 @@ export const setupAuthRoutes = (app: any) => {
         }
         
         if (user) {
-          // Store user ID in session
+          // Store user ID in session and save session immediately
           req.session.userId = String(user.id);
+          req.session.isAuthenticated = true;
+          req.session.userInfo = { id: user.id, email: user.email, username: user.username };
+          
+          await new Promise((resolve) => {
+            req.session.save((err) => {
+              if (err) console.error('Session save error:', err);
+              resolve(true);
+            });
+          });
+          
           console.log('Login successful for test user, session userId:', req.session.userId);
           
           // Remove password from response
@@ -105,8 +115,29 @@ export const setupAuthRoutes = (app: any) => {
         return res.status(401).json({ error: 'Invalid email or password' });
       }
       
-      // Store user ID in session
+      // Store user ID in session and save session immediately
       req.session.userId = String(user.id);
+      // Using session.regenerate for better security and to ensure the session is correctly established
+      await new Promise<void>((resolve, reject) => {
+        req.session.regenerate((err) => {
+          if (err) {
+            console.error('Session regeneration error:', err);
+            reject(err);
+            return;
+          }
+          req.session.userId = String(user.id);
+          resolve();
+        });
+      });
+      
+      await new Promise((resolve) => {
+        req.session.save((err) => {
+          if (err) console.error('Session save error:', err);
+          resolve(true);
+        });
+      });
+      
+      console.log('Login successful for user, session userId:', req.session.userId);
       
       // Remove password from response
       const { password: _, ...userWithoutPassword } = user;

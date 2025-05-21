@@ -153,7 +153,11 @@ export default function Login() {
         description: "Welcome to FloHub!",
       });
       
-      // Redirect to dashboard with a force reload to ensure session is recognized
+      // Store authentication info in localStorage to help with auth persistence
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('user', JSON.stringify(data));
+      
+      // Force a full page reload to dashboard to ensure session is properly established
       window.location.href = '/dashboard';
     } catch (error) {
       console.error('Login error:', error);

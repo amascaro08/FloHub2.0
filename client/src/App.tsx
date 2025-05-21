@@ -24,28 +24,56 @@ const ProtectedRoute = ({ component: Component, ...rest }: any) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is authenticated via API
+    // Check if user is authenticated via API or localStorage
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/auth/me');
+        // First check localStorage for quick auth
+        const isStoredAuth = localStorage.getItem('isAuthenticated') === 'true';
+        if (isStoredAuth) {
+          console.log('Found auth in localStorage, proceeding');
+          setIsAuthenticated(true);
+          setLoading(false);
+          return;
+        }
+        
+        // If not in localStorage, check via API
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include', // Important: include cookies in the request
+          headers: {
+            'Cache-Control': 'no-cache', // Disable caching
+            'Pragma': 'no-cache'
+          }
+        });
+        
         if (response.ok) {
+          const userData = await response.json();
+          console.log('Auth successful, user data:', userData);
+          localStorage.setItem('isAuthenticated', 'true');
+          localStorage.setItem('user', JSON.stringify(userData));
           setIsAuthenticated(true);
         } else {
-          setLocation('/login');
+          console.warn('Authentication failed, redirecting to login');
+          localStorage.removeItem('isAuthenticated');
+          localStorage.removeItem('user');
+          window.location.href = '/login'; // Use direct navigation instead of wouter
         }
       } catch (error) {
         console.error('Auth check error:', error);
-        setLocation('/login');
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('user');
+        window.location.href = '/login'; // Use direct navigation instead of wouter
       } finally {
         setLoading(false);
       }
     };
     
     checkAuth();
-  }, [setLocation]);
+  }, []);  // Remove setLocation dependency to prevent re-renders
 
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return <div className="flex items-center justify-center h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-teal-500"></div>
+    </div>;
   }
 
   return isAuthenticated ? <Component {...rest} /> : null;
