@@ -479,10 +479,13 @@ const MeetingForm = ({
   onSave: (meeting: Meeting) => void;
   onCancel: () => void;
 }) => {
+  const { toast } = useToast();
   const isEditing = !!meeting;
+  const [extractingActionItems, setExtractingActionItems] = useState(false);
   
   const [formData, setFormData] = useState<Meeting>(meeting || {
     id: 0,
+    userId: '',
     title: '',
     description: '',
     date: new Date().toISOString().split('T')[0],
@@ -492,10 +495,31 @@ const MeetingForm = ({
     attendees: [],
     notes: '',
     status: 'upcoming',
-    meetingType: 'internal'
+    meetingType: 'internal',
+    tasks: []
   });
 
   const [newAttendee, setNewAttendee] = useState('');
+  
+  // Template choices for meeting notes
+  const noteTemplates = [
+    {
+      name: "Standard Meeting",
+      template: "# Meeting Summary\n\n## Agenda\n- \n- \n- \n\n## Discussion Points\n- \n- \n- \n\n## Action Items\n- [ ] \n- [ ] \n- [ ] \n\n## Decisions Made\n- \n- \n\n## Next Steps\n- "
+    },
+    {
+      name: "One-on-One",
+      template: "# One-on-One Meeting Notes\n\n## Goals & Achievements\n- \n- \n\n## Challenges & Blockers\n- \n- \n\n## Development Plans\n- \n- \n\n## Action Items\n- [ ] \n- [ ] \n\n## Follow-up for Next Meeting\n- "
+    },
+    {
+      name: "Project Update",
+      template: "# Project Status Update\n\n## Project Overview\n- Current Status: \n- Timeline: \n\n## Milestones\n- Completed: \n- In Progress: \n- Upcoming: \n\n## Risks & Issues\n- \n- \n\n## Resource Needs\n- \n\n## Action Items\n- [ ] \n- [ ] \n- [ ] "
+    },
+    {
+      name: "Client Meeting",
+      template: "# Client Meeting Notes\n\n## Client Requirements\n- \n- \n\n## Feedback Received\n- \n- \n\n## Project Updates Shared\n- \n- \n\n## Questions & Concerns\n- \n- \n\n## Action Items\n- [ ] \n- [ ] \n- [ ] \n\n## Follow-up Schedule\n- Next meeting: "
+    }
+  ];
 
   const handleAddAttendee = () => {
     if (newAttendee.trim() !== '' && !formData.attendees.includes(newAttendee.trim())) {
@@ -513,16 +537,97 @@ const MeetingForm = ({
       attendees: formData.attendees.filter(attendee => attendee !== attendeeToRemove)
     });
   };
+  
+  const applyTemplate = (templateText: string) => {
+    // Preserve any existing notes if there are some
+    if (formData.notes && formData.notes.trim() !== '') {
+      if (confirm('This will replace your current notes. Are you sure?')) {
+        setFormData({
+          ...formData,
+          notes: templateText
+        });
+      }
+    } else {
+      setFormData({
+        ...formData,
+        notes: templateText
+      });
+    }
+  };
+  
+  // Function to extract action items from meeting notes
+  const extractActionItems = () => {
+    setExtractingActionItems(true);
+    
+    // In a real implementation, we could use AI like OpenAI to extract tasks
+    // For demo purposes, we'll use a simple regex to find action items
+    const actionItemRegex = /\[\s?\]\s*(.*?)(?:\n|$)/g;
+    const matches = [...formData.notes.matchAll(actionItemRegex)];
+    
+    setTimeout(() => {
+      setExtractingActionItems(false);
+      
+      if (matches.length === 0) {
+        toast({
+          title: "No action items found",
+          description: "Try using the format '- [ ] Task description' for action items",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      const extractedTasks = matches.map(match => match[1].trim()).filter(item => item.length > 0);
+      
+      // Add these to the meeting form as potential tasks
+      const updatedFormData = {
+        ...formData,
+        extractedTasks: extractedTasks
+      };
+      
+      setFormData(updatedFormData as any);
+      
+      toast({
+        title: `${extractedTasks.length} action items found`,
+        description: "These will be automatically converted to tasks when you save the meeting",
+      });
+    }, 1000);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    
+    // Create tasks from extracted action items if any
+    if ((formData as any).extractedTasks && (formData as any).extractedTasks.length > 0) {
+      const tasks = (formData as any).extractedTasks.map((text: string, index: number) => {
+        return {
+          id: -(index + 1), // Negative ID to flag as a new task
+          userId: formData.userId,
+          text: text,
+          done: false,
+          source: 'meeting',
+          tags: [formData.meetingType, 'action-item'],
+          priority: 'medium',
+          notes: `From meeting: ${formData.title}`,
+          dueDate: null,
+        };
+      });
+      
+      const updatedFormData = {
+        ...formData,
+        tasks: [...tasks],
+        extractedTasks: undefined // Remove this temporary field
+      };
+      
+      onSave(updatedFormData as Meeting);
+    } else {
+      onSave(formData);
+    }
   };
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
       <h2 className="text-xl font-medium text-gray-800 mb-6">
-        {isEditing ? 'Edit Meeting' : 'Schedule New Meeting'}
+        {isEditing ? 'Edit Meeting Notes' : 'Create New Meeting'}
       </h2>
       
       <form onSubmit={handleSubmit}>
@@ -541,19 +646,7 @@ const MeetingForm = ({
             />
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
-              placeholder="Enter meeting description"
-              rows={3}
-            />
-          </div>
-          
+          {/* Date and Type Info */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -570,43 +663,25 @@ const MeetingForm = ({
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Start Time*
+                Time*
               </label>
-              <input
-                type="time"
-                value={formData.startTime}
-                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                End Time*
-              </label>
-              <input
-                type="time"
-                value={formData.endTime}
-                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
-                required
-              />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location
-              </label>
-              <input
-                type="text"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
-                placeholder="Enter meeting location"
-              />
+              <div className="flex space-x-2">
+                <input
+                  type="time"
+                  value={formData.startTime}
+                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+                  required
+                />
+                <span className="flex items-center">-</span>
+                <input
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+                  required
+                />
+              </div>
             </div>
             
             <div>
@@ -627,57 +702,172 @@ const MeetingForm = ({
             </div>
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Attendees
-            </label>
-            <div className="flex">
+          {/* Location and Attendees */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Location
+              </label>
               <input
                 type="text"
-                value={newAttendee}
-                onChange={(e) => setNewAttendee(e.target.value)}
-                className="flex-1 p-2 border border-gray-300 rounded-l-md focus:ring-teal-500 focus:border-teal-500"
-                placeholder="Add attendee"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+                placeholder="Enter meeting location"
               />
-              <button
-                type="button"
-                onClick={handleAddAttendee}
-                className="px-4 py-2 bg-teal-600 text-white rounded-r-md hover:bg-teal-700"
-              >
-                Add
-              </button>
             </div>
             
-            <div className="flex flex-wrap gap-2 mt-2">
-              {formData.attendees.map((attendee, index) => (
-                <span 
-                  key={index}
-                  className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs flex items-center"
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Attendees
+              </label>
+              <div className="flex">
+                <input
+                  type="text"
+                  value={newAttendee}
+                  onChange={(e) => setNewAttendee(e.target.value)}
+                  className="flex-1 p-2 border border-gray-300 rounded-l-md focus:ring-teal-500 focus:border-teal-500"
+                  placeholder="Add attendee"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddAttendee}
+                  className="px-4 py-2 bg-teal-600 text-white rounded-r-md hover:bg-teal-700"
                 >
-                  {attendee}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveAttendee(attendee)}
-                    className="ml-1 text-gray-600 hover:text-gray-800"
+                  Add
+                </button>
+              </div>
+              
+              <div className="flex flex-wrap gap-2 mt-2">
+                {formData.attendees.map((attendee, index) => (
+                  <span 
+                    key={index}
+                    className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs flex items-center"
                   >
-                    ×
-                  </button>
-                </span>
-              ))}
+                    {attendee}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAttendee(attendee)}
+                      className="ml-1 text-gray-600 hover:text-gray-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
           
+          {/* Brief Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Meeting Notes
+              Brief Description
             </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+              placeholder="Enter a brief meeting description"
+              rows={2}
+            />
+          </div>
+          
+          {/* Note Templates */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+              <span>Meeting Notes</span>
+              <div className="relative inline-block text-left">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      Use Template
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Choose Note Template</DialogTitle>
+                      <DialogDescription>
+                        Select a template to structure your meeting notes
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid grid-cols-1 gap-4 py-4">
+                      {noteTemplates.map((template, i) => (
+                        <div 
+                          key={i}
+                          className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
+                          onClick={() => {
+                            applyTemplate(template.template);
+                            document.querySelector("[data-state='open']")?.setAttribute("data-state", "closed");
+                          }}
+                        >
+                          <h3 className="font-medium">{template.name}</h3>
+                          <p className="text-sm text-gray-500 truncate">{template.template.substring(0, 60)}...</p>
+                        </div>
+                      ))}
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => {
+                        document.querySelector("[data-state='open']")?.setAttribute("data-state", "closed");
+                      }}>
+                        Cancel
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </label>
+            <div className="mb-2 text-xs text-gray-500">
+              Use format "- [ ] Task description" for action items that can be automatically converted to tasks
+            </div>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
-              placeholder="Enter meeting notes"
-              rows={5}
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500 font-mono"
+              placeholder="Enter detailed meeting notes with action items marked as '- [ ] Task description'"
+              rows={12}
             />
+            
+            {/* Action Items Section */}
+            {(formData as any).extractedTasks && (formData as any).extractedTasks.length > 0 && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-md">
+                <h3 className="font-medium text-blue-800 mb-2">Extracted Action Items</h3>
+                <ul className="space-y-2">
+                  {(formData as any).extractedTasks.map((task: string, index: number) => (
+                    <li key={index} className="flex items-start">
+                      <div className="h-5 w-5 mt-0.5 mr-2 border border-blue-500 rounded flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <span>{task}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-sm text-blue-600">These items will be automatically added as tasks when you save.</p>
+              </div>
+            )}
+            
+            <div className="mt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={extractActionItems}
+                disabled={extractingActionItems}
+              >
+                {extractingActionItems ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-teal-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Extracting Action Items...
+                  </>
+                ) : (
+                  <>Extract Action Items</>
+                )}
+              </Button>
+            </div>
           </div>
           
           <div className="flex justify-end space-x-3">
@@ -692,7 +882,7 @@ const MeetingForm = ({
               type="submit"
               className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
             >
-              {isEditing ? 'Update Meeting' : 'Schedule Meeting'}
+              {isEditing ? 'Update Meeting' : 'Save Meeting'}
             </button>
           </div>
         </div>
@@ -942,6 +1132,137 @@ export default function MeetingsPage() {
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
 
+  // Fetch calendar events - in production, this would be from the API
+  // const { data: calendarEvents = [] } = useQuery({
+  //   queryKey: ['/api/calendar/events'],
+  //   enabled: !!user,
+  // });
+
+  // API mutations for production use
+  const createTaskMutation = useMutation({
+    mutationFn: ({ meetingId, taskData }: { meetingId: number; taskData: Partial<Task> }) => 
+      fetch(`/api/meetings/${meetingId}/tasks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(taskData)
+      }).then(res => res.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/meetings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      
+      // Demo only - update the local state
+      toast({
+        title: "Task Created",
+        description: "The task has been added to your task list.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error creating task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create task. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const linkCalendarEventMutation = useMutation({
+    mutationFn: ({ meetingId, calendarEventId }: { meetingId: number; calendarEventId: string }) => 
+      fetch(`/api/meetings/${meetingId}/calendar-event`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ calendarEventId })
+      }).then(res => res.json()),
+    onSuccess: (updatedMeeting) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/meetings'] });
+      
+      // Demo only - update the local state
+      setMeetings(meetings.map(m => m.id === updatedMeeting.id ? updatedMeeting : m));
+      if (selectedMeeting && selectedMeeting.id === updatedMeeting.id) {
+        setSelectedMeeting(updatedMeeting);
+      }
+      
+      toast({
+        title: "Calendar Event Linked",
+        description: "The meeting has been linked to the calendar event.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error linking calendar event:', error);
+      toast({
+        title: "Error",
+        description: "Failed to link calendar event. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // For demo purposes - create and link a new task to a meeting
+  const handleCreateTask = (meetingId: number, taskData: Partial<Task>) => {
+    // In production, this would use the createTaskMutation
+    // createTaskMutation.mutate({ meetingId, taskData });
+    
+    // For demo, update the local state
+    const newTaskId = Math.max(...meetings.flatMap(m => m.tasks?.map(t => t.id) || [0])) + 1;
+    const newTask: Task = {
+      id: newTaskId,
+      userId: userId,
+      text: taskData.text || 'New task',
+      done: false,
+      dueDate: taskData.dueDate || null,
+      source: taskData.source || 'meeting',
+      tags: taskData.tags || [],
+      priority: taskData.priority || 'medium',
+      notes: taskData.notes || '',
+      createdAt: new Date().toISOString(),
+    };
+    
+    const updatedMeetings = meetings.map(meeting => {
+      if (meeting.id === meetingId) {
+        return {
+          ...meeting,
+          tasks: [...(meeting.tasks || []), newTask]
+        };
+      }
+      return meeting;
+    });
+    
+    setMeetings(updatedMeetings);
+    
+    if (selectedMeeting && selectedMeeting.id === meetingId) {
+      setSelectedMeeting({
+        ...selectedMeeting,
+        tasks: [...(selectedMeeting.tasks || []), newTask]
+      });
+    }
+  };
+
+  // For demo purposes - link a calendar event to a meeting
+  const handleLinkCalendarEvent = (meetingId: number, calendarEventId: string) => {
+    // In production, this would use the linkCalendarEventMutation
+    // linkCalendarEventMutation.mutate({ meetingId, calendarEventId });
+    
+    // For demo, update the local state
+    const updatedMeetings = meetings.map(meeting => {
+      if (meeting.id === meetingId) {
+        return {
+          ...meeting,
+          calendarEventId
+        };
+      }
+      return meeting;
+    });
+    
+    setMeetings(updatedMeetings);
+    
+    if (selectedMeeting && selectedMeeting.id === meetingId) {
+      setSelectedMeeting({
+        ...selectedMeeting,
+        calendarEventId
+      });
+    }
+  };
+
   // Filter meetings
   const filteredMeetings = meetings.filter(meeting => {
     if (filter === 'all') return true;
@@ -973,14 +1294,16 @@ export default function MeetingsPage() {
       // New meeting
       const newMeeting = {
         ...meeting,
-        id: meetings.length > 0 ? Math.max(...meetings.map(m => m.id)) + 1 : 1
+        userId,
+        id: meetings.length > 0 ? Math.max(...meetings.map(m => m.id)) + 1 : 1,
+        tasks: []
       };
       setMeetings([...meetings, newMeeting]);
     } else {
       // Update existing meeting
-      setMeetings(meetings.map(m => m.id === meeting.id ? meeting : m));
+      setMeetings(meetings.map(m => m.id === meeting.id ? { ...meeting, tasks: m.tasks || [] } : m));
     }
-    setSelectedMeeting(meeting.id !== 0 ? meeting : null);
+    setSelectedMeeting(meeting.id !== 0 ? { ...meeting, tasks: selectedMeeting?.tasks || [] } : null);
     setEditingMeeting(null);
     setView(meeting.id !== 0 ? 'detail' : 'list');
   };
@@ -1117,6 +1440,9 @@ export default function MeetingsPage() {
             onEdit={handleEditMeeting}
             onDelete={handleDeleteMeeting}
             onStatusChange={handleStatusChange}
+            onCreateTask={handleCreateTask}
+            onLinkCalendarEvent={handleLinkCalendarEvent}
+            calendarEvents={calendarEvents}
           />
         )}
 
