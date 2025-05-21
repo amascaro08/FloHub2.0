@@ -127,25 +127,80 @@ const AtAGlanceWidget = () => {
  };
 
  // Function to safely parse markdown (memoized to prevent unnecessary re-renders)
- const parseMarkdown = React.useCallback((text: string): string => {
-   try {
-     const result = marked(text);
-     return typeof result === 'string' ? result : '';
-   } catch (err) {
-     console.error("Error parsing markdown:", err);
-     return text;
-   }
- }, []);
+const parseMarkdown = React.useCallback((text: string): string => {
+  try {
+    const result = marked(text);
+    return typeof result === 'string' ? result : '';
+  } catch (err) {
+    console.error("Error parsing markdown:", err);
+    return text;
+  }
+}, []);
 
- useEffect(() => {
-   let isMounted = true; // Flag to prevent state updates after unmount
-   
-   const fetchData = async () => {
-     if (!isMounted) return;
-     
-     setLoading(true);
-     setError(null);
-     setAiMessage(null); // Clear previous message while loading
+// Function to get actual greeting based on time of day
+const getTimeBasedGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  return 'evening';
+};
+
+useEffect(() => {
+  let isMounted = true;
+  
+  const fetchData = async () => {
+    if (!isMounted) return;
+    
+    setLoading(true);
+    setError(null);
+    setAiMessage(null);
+
+    try {
+      // Fetch real tasks
+      const tasksRes = await fetch('/api/tasks');
+      const tasksData = await tasksRes.json();
+      setTasks(tasksData);
+
+      // Fetch real weather
+      const currentPosition = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject);
+      });
+
+      const weatherRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${currentPosition.coords.latitude}&lon=${currentPosition.coords.longitude}&units=imperial&appid=${process.env.NEXT_PUBLIC_WEATHER_API_KEY}`);
+      const weatherData = await weatherRes.json();
+      
+      setWeather({
+        temp: Math.round(weatherData.main.temp),
+        condition: weatherData.weather[0].main,
+        location: weatherData.name
+      });
+
+      // Generate dynamic message based on real data
+      const timeOfDay = getTimeBasedGreeting();
+      const incompleteTasks = tasksData.filter(task => !task.done);
+      
+      const dynamicMessage = `# *Purrs softly* Good ${timeOfDay}, ${userName}! 😺
+
+${weatherData ? `It's ${Math.round(weatherData.main.temp)}°F and ${weatherData.weather[0].main.toLowerCase()} in ${weatherData.name}!` : ''}
+
+${incompleteTasks.length > 0 ? `
+Here are your priorities for today:
+${incompleteTasks.map(task => `- ${task.text}`).join('\n')}
+
+I suggest focusing on "${incompleteTasks[0].text}" first!` : 'No tasks for now - time for a catnap! 😴'}
+
+Keep being amazing! *purrs encouragingly* 🐱`;
+
+      setAiMessage(dynamicMessage);
+      setFormattedHtml(parseMarkdown(dynamicMessage));
+
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to fetch real-time data');
+    } finally {
+      if (isMounted) setLoading(false);
+    }
+  };
 
      const now = new Date();
      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
