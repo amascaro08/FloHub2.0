@@ -42,6 +42,12 @@ router.get('/api/user-settings', isAuthenticated, async (req: any, res) => {
         selectedCals: [],
         defaultView: 'week',
         activeWidgets: ['calendar', 'tasks', 'ataglance', 'quicknote'],
+        floCatPreferences: {
+          communicationStyle: 'friendly',
+          focusAreas: ['meetings', 'tasks', 'habits'],
+          reminderIntensity: 'moderate',
+          interactionFrequency: 'medium'
+        }
       };
       
       const createdSettings = await storage.createUserSettings(defaultSettings);
