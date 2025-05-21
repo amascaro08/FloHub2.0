@@ -617,11 +617,14 @@ Keep being amazing, ${userName}! I'll be right here if you need me. 🐱`;
       <h3 className="font-medium text-md mb-2">Today: {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
       
       {loading ? (
-        <div className="flex items-center gap-2 animate-pulse">
-          <div className="rounded-full bg-teal-100 p-2">
+        <div className="flex items-center gap-2">
+          <div className="rounded-full bg-teal-100 p-2 animate-bounce">
             <img src="/flocat-icon.png" alt="FloCat" className="w-8 h-8" />
           </div>
-          <p className="text-gray-600">FloCat is thinking...</p>
+          <p className="text-gray-600 animate-pulse">
+            {loadingMessage}
+            <span className="inline-block animate-pulse">...</span>
+          </p>
         </div>
       ) : error ? (
         <div className="text-red-500">
@@ -642,9 +645,13 @@ Keep being amazing, ${userName}! I'll be right here if you need me. 🐱`;
       )}
       
       <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-200">
-        <div className="flex items-center gap-1">
-          <span className="text-yellow-500">☀️</span>
-          <p className="text-xs text-gray-500">{weather.temp}°F, {weather.condition} in {weather.location}</p>
+        <div className="flex items-center gap-2 group hover:bg-blue-50 rounded-full px-3 py-1 transition-all duration-200">
+          <span className="text-xl group-hover:scale-110 transition-transform duration-200">
+            {weather.condition.toLowerCase().includes('sun') ? '☀️' : 
+             weather.condition.toLowerCase().includes('cloud') ? '☁️' :
+             weather.condition.toLowerCase().includes('rain') ? '🌧️' : '⛅'}
+          </span>
+          <p className="text-sm text-gray-600 font-medium">{weather.temp}°F, {weather.condition} in {weather.location}</p>
         </div>
         
         <button 
