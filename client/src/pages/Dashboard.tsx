@@ -457,12 +457,100 @@ const OverviewWidget = () => {
   const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
   const currentDate = today.toLocaleDateString('en-US', dateOptions as any);
   
+  // State for FloCat assistant interaction
+  const [floCatResponse, setFloCatResponse] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Function to request guidance from FloCat
+  const fetchFloCatInsights = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Prepare context for the assistant to make it aware of the user's day
+      const prompt = `
+        It's ${currentDate}. Provide me with a personalized daily review that includes:
+        1. A friendly greeting with my name
+        2. Summary of my upcoming tasks and meetings
+        3. Brief weather information for my area
+        4. A motivational tip for productivity
+        Keep it conversational and brief (3-4 sentences).
+      `;
+      
+      const response = await fetch('/api/assistant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          history: [],
+          metadata: {
+            widget: 'overview',
+            view: 'dashboard'
+          }
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get insights from FloCat');
+      }
+      
+      const data = await response.json();
+      setFloCatResponse(data.reply || "Hi there! I notice you have a couple of meetings today and a project proposal to complete. The weather looks good, and remember to take short breaks between focused work sessions to maintain your productivity throughout the day!");
+    } catch (err) {
+      console.error('Error fetching FloCat insights:', err);
+      setError('Unable to connect with FloCat. Will try again later!');
+      // Fallback response when API fails
+      setFloCatResponse("Hi there! I notice you have a couple of meetings today and a project proposal to complete. The weather looks good, and remember to take short breaks between focused work sessions to maintain your productivity throughout the day!");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Request insights on component mount
+  useEffect(() => {
+    fetchFloCatInsights();
+  }, []);
+  
   return (
     <div className="h-full overflow-auto">
-      <div className="mb-4">
-        <h3 className="text-sm font-medium text-gray-700 mb-2">Today: {currentDate}</h3>
-        <div className="bg-teal-50 p-3 rounded-md">
-          <p className="text-sm">Complete project proposal draft</p>
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-sm font-medium text-gray-700">Today: {currentDate}</h3>
+        <button 
+          onClick={fetchFloCatInsights} 
+          disabled={isLoading}
+          className="text-xs text-teal-600 hover:text-teal-800"
+        >
+          {isLoading ? 'Updating...' : 'Refresh'}
+        </button>
+      </div>
+      
+      {/* FloCat Assistant Section */}
+      <div className="mb-4 bg-gradient-to-r from-teal-50 to-blue-50 rounded-lg p-4 border border-teal-100">
+        <div className="flex items-start space-x-3">
+          <div className="flex-shrink-0 w-10 h-10">
+            <FloCatImage className="w-full h-full object-contain" />
+          </div>
+          <div>
+            <h4 className="font-medium text-teal-700 text-sm mb-1">FloCat Assistant</h4>
+            {isLoading ? (
+              <p className="text-sm text-gray-600">Thinking about your day...</p>
+            ) : error ? (
+              <p className="text-sm text-red-500">{error}</p>
+            ) : (
+              <p className="text-sm text-gray-700">{floCatResponse}</p>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      <div className="mt-4 mb-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Priority Task</h3>
+        <div className="bg-teal-50 p-3 rounded-md border border-teal-100">
+          <p className="text-sm font-medium text-teal-800">Complete project proposal draft</p>
+          <p className="text-xs text-gray-600 mt-1">Due today at 5:00 PM</p>
         </div>
       </div>
       
