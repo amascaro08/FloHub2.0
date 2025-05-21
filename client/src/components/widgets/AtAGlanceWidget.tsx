@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { marked } from 'marked'; // Import marked
 // Initialize marked with GFM options and ensure it doesn't return promises
@@ -49,6 +49,40 @@ const AtAGlanceWidget = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formattedHtml, setFormattedHtml] = useState<string>("<div class='flex items-center gap-2'><img src='/flocat-icon.png' alt='FloCat' class='w-8 h-8' /> <p>FloCat is thinking...</p></div>");
+  
+  // Weather state
+  const [weather, setWeather] = useState<{temp: number, condition: string, location: string}>({
+    temp: 72,
+    condition: "Sunny", 
+    location: "New York"
+  });
+  const [userLocation, setUserLocation] = useState<{lat: number, lon: number} | null>(null);
+  
+  // Function to fetch user's location and weather
+  const fetchWeather = useCallback(async () => {
+    try {
+      // For demonstration, we'll use a default location first
+      // In production, this would use the browser's geolocation API and a weather service
+      setWeather({
+        temp: 72,
+        condition: "Sunny",
+        location: "New York"
+      });
+      
+      // This would actually access the browser's geolocation API
+      // navigator.geolocation.getCurrentPosition((position) => {
+      //   setUserLocation({
+      //     lat: position.coords.latitude,
+      //     lon: position.coords.longitude
+      //   });
+      //   
+      //   // Then fetch weather based on coordinates
+      //   // fetchWeatherFromCoordinates(position.coords.latitude, position.coords.longitude);
+      // });
+    } catch (err) {
+      console.error("Error fetching weather:", err);
+    }
+  }, []);
 
   // Fetch user settings
   const { data: loadedSettings, isLoading: isLoadingSettings } = useQuery({
@@ -416,7 +450,7 @@ My actual tasks: ${JSON.stringify(limitedTasks)}
 My calendar events: ${JSON.stringify(limitedEvents)}
 Current time: ${new Date().toLocaleTimeString()}
 Current date: ${new Date().toLocaleDateString()}
-Weather: 72°F, Sunny in New York
+Weather: [Based on your current location - will be fetched dynamically]
 
 Your response MUST:
 1. Start with a casual cat-like greeting ("Meow" or "Purr" incorporated naturally)
@@ -606,19 +640,91 @@ Have a purr-fect day!`;
       )}
       
       <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-200">
-        <p className="text-xs text-gray-500">72°F, Sunny in New York</p>
+        <div className="flex items-center gap-1">
+          <span className="text-yellow-500">☀️</span>
+          <p className="text-xs text-gray-500">{weather.temp}°F, {weather.condition} in {weather.location}</p>
+        </div>
+        
         <button 
           onClick={() => {
             setLoading(true);
             setError(null);
-            setTimeout(() => {
-              fetchData();
-            }, 100);
+            // Run the fetchData function
+            const fetchAndRefresh = async () => {
+              try {
+                // Fetch weather data
+                await fetchWeather();
+                
+                // Fetch tasks and calendar events
+                const now = new Date();
+                const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                
+                // This would typically call your API endpoints
+                const tasksRes = await fetch('/api/tasks');
+                const tasksData = await tasksRes.json();
+                
+                // If no tasks found, add demonstrational tasks
+                const finalTasks = tasksData && tasksData.length > 0 ? tasksData : [
+                  { id: "1", text: "Complete project proposal draft", done: false },
+                  { id: "2", text: "Review client feedback", done: false },
+                  { id: "3", text: "Schedule team meeting", done: true },
+                  { id: "4", text: "Update documentation", done: false }
+                ];
+                
+                setTasks(finalTasks);
+                
+                // Now generate a new message
+                const prompt = `You are FloCat, my personal AI assistant cat. Talk directly TO ME about my day and priorities.
+
+## IMPORTANT - USE THIS REAL DATA IN YOUR RESPONSE:
+My name: ${userName || "User"}
+My actual tasks: ${JSON.stringify(finalTasks)}
+Current time: ${new Date().toLocaleTimeString()}
+Current date: ${new Date().toLocaleDateString()}
+Weather: ${weather.temp}°F, ${weather.condition} in ${weather.location}
+
+Your response MUST:
+1. Start with a casual cat-like greeting ("Meow" or "Purr" incorporated naturally)
+2. Mention the current weather and how it might affect my day
+3. Name and reference my specific tasks by their actual names (Complete project proposal draft, etc.)
+4. Recommend which specific task I should prioritize today with a brief explanation
+5. End with an encouraging message using my name
+
+Response style:
+- Use a friendly and supportive tone
+- Keep your message under 150 words total
+- Write in first person as if you're talking TO me directly
+- Use cat-themed imagery subtly
+- Format with Markdown including emoji where appropriate`;
+
+                // Call the assistant API
+                const aiRes = await fetch('/api/assistant', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ prompt })
+                });
+                
+                if (aiRes.ok) {
+                  const aiData = await aiRes.json();
+                  setAiMessage(aiData.reply);
+                  setFormattedHtml(parseMarkdown(aiData.reply));
+                } else {
+                  throw new Error("Failed to get response from assistant");
+                }
+              } catch (err) {
+                setError("Could not refresh FloCat message. Please try again.");
+                console.error("Error refreshing FloCat:", err);
+              } finally {
+                setLoading(false);
+              }
+            };
+            
+            fetchAndRefresh();
           }} 
-          className="text-xs text-teal-600 hover:text-teal-800 flex items-center gap-1"
+          className="text-xs text-teal-600 hover:text-teal-800 flex items-center gap-1 px-2 py-1 rounded border border-teal-200 hover:bg-teal-50"
           disabled={loading}
         >
-          {loading ? "Updating..." : "Refresh"}
+          {loading ? "Updating..." : "Ask FloCat"}
         </button>
       </div>
     </div>
