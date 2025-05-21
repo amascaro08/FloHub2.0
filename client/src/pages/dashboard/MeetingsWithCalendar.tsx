@@ -872,7 +872,36 @@ export default function MeetingsPage() {
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
 
-  // Fetch calendar events
+  // Fetch user settings for PowerAutomate URL
+  const [powerAutomateUrl, setPowerAutomateUrl] = useState<string | null>(null);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+
+  // First fetch user settings to get calendar configurations
+  useEffect(() => {
+    const fetchUserSettings = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const response = await fetch('/api/userSettings', {
+          credentials: 'include',
+          headers: { 'Accept': 'application/json' }
+        });
+        
+        if (response.ok) {
+          const settings = await response.json();
+          setPowerAutomateUrl(settings?.powerAutomateUrl || null);
+        }
+      } catch (error) {
+        console.error('Error fetching user settings:', error);
+      } finally {
+        setIsLoadingSettings(false);
+      }
+    };
+    
+    fetchUserSettings();
+  }, [user?.id]);
+
+  // Fetch calendar events once we have user settings
   useEffect(() => {
     const fetchCalendarEvents = async () => {
       if (!user?.id) return;
@@ -884,72 +913,94 @@ export default function MeetingsPage() {
         const timeMin = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
         const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
         
-        // Build API URL for calendar events
-        const apiUrl = `/api/calendar?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`;
+        // Build API URL for calendar events with all possible parameters
+        let apiUrl = `/api/calendar?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`;
+        
+        // Include PowerAutomate URL if available
+        if (powerAutomateUrl) {
+          apiUrl += `&o365Url=${encodeURIComponent(powerAutomateUrl)}`;
+        }
         
         console.log("Fetching calendar events from URL:", apiUrl);
         const response = await fetch(apiUrl, {
           credentials: 'include',
-          headers: {
-            'Accept': 'application/json'
-          }
+          headers: { 'Accept': 'application/json' }
         });
+        
         if (response.ok) {
           const data = await response.json();
-          setCalendarEvents(Array.isArray(data) ? data : []);
+          if (Array.isArray(data) && data.length > 0) {
+            console.log("Retrieved calendar events:", data.length);
+            setCalendarEvents(data);
+          } else {
+            console.warn("No calendar events found in response", data);
+            showSampleEvents();
+          }
         } else {
           console.error('Failed to fetch calendar events:', response.status, response.statusText);
-          console.log('Response from calendar API:', await response.text());
+          try {
+            const text = await response.text();
+            console.log('Response from calendar API:', text);
+          } catch (e) {}
           
-          // Show error message to user
+          // Show error message and use sample data
           toast({
             title: "Could not load calendar events",
-            description: "Please make sure you're logged in and have connected your calendar accounts in Settings.",
+            description: "Using sample calendar events instead. Check your calendar integration in Settings.",
             variant: "destructive"
           });
+          
+          showSampleEvents();
         }
       } catch (error) {
         console.error('Error fetching calendar events:', error);
         toast({
           title: "Calendar error",
-          description: "Could not load your calendar events. Using sample data instead.",
+          description: "Using sample calendar events until your calendar connection is available.",
           variant: "destructive"
         });
         
-        // Sample calendar events as fallback
-        setCalendarEvents([
-          {
-            id: 'event1',
-            summary: 'Weekly Team Standup',
-            description: 'Regular team meeting',
-            start: { dateTime: '2025-05-20T10:00:00Z' },
-            end: { dateTime: '2025-05-20T11:00:00Z' },
-            source: 'sample'
-          },
-          {
-            id: 'event2',
-            summary: 'Project Kickoff',
-            description: 'Starting new project',
-            start: { dateTime: '2025-05-21T14:00:00Z' },
-            end: { dateTime: '2025-05-21T15:30:00Z' },
-            source: 'sample'
-          },
-          {
-            id: 'event3',
-            summary: 'Budget Review',
-            description: 'Financial planning',
-            start: { dateTime: '2025-05-23T09:00:00Z' },
-            end: { dateTime: '2025-05-23T10:00:00Z' },
-            source: 'sample'
-          }
-        ]);
+        showSampleEvents();
       } finally {
         setIsLoadingEvents(false);
       }
     };
     
-    fetchCalendarEvents();
-  }, [user?.id, toast]);
+    // Helper to show sample events when we can't get real ones
+    const showSampleEvents = () => {
+      setCalendarEvents([
+        {
+          id: 'event1',
+          summary: 'Weekly Team Standup',
+          description: 'Regular team meeting',
+          start: { dateTime: '2025-05-20T10:00:00Z' },
+          end: { dateTime: '2025-05-20T11:00:00Z' },
+          source: 'sample'
+        },
+        {
+          id: 'event2',
+          summary: 'Project Kickoff',
+          description: 'Starting new project',
+          start: { dateTime: '2025-05-21T14:00:00Z' },
+          end: { dateTime: '2025-05-21T15:30:00Z' },
+          source: 'sample'
+        },
+        {
+          id: 'event3',
+          summary: 'Budget Review',
+          description: 'Financial planning',
+          start: { dateTime: '2025-05-23T09:00:00Z' },
+          end: { dateTime: '2025-05-23T10:00:00Z' },
+          source: 'sample'
+        }
+      ]);
+    };
+    
+    // Only fetch calendar events once we have checked user settings
+    if (!isLoadingSettings) {
+      fetchCalendarEvents();
+    }
+  }, [user?.id, toast, powerAutomateUrl, isLoadingSettings]);
   
   // Filter meetings by status
   const filteredMeetings = meetings.filter(meeting => 
