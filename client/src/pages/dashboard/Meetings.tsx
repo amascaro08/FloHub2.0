@@ -1,10 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { useAuth } from '@/hooks/useAuth';
+import { CalendarIcon, LinkIcon, PlusCircleIcon } from 'lucide-react';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 // Meeting type definition
 interface Meeting {
   id: number;
+  userId: string;
   title: string;
   description: string;
   date: string;
@@ -15,6 +32,36 @@ interface Meeting {
   notes: string;
   status: 'upcoming' | 'completed' | 'cancelled';
   meetingType: 'internal' | 'client' | 'one-on-one' | 'interview' | 'workshop';
+  calendarEventId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  tasks?: Task[];
+}
+
+// Task type definition
+interface Task {
+  id: number;
+  userId: string;
+  text: string;
+  done: boolean;
+  dueDate?: string | null;
+  source: string;
+  tags: string[];
+  priority: string;
+  notes?: string;
+  createdAt?: string;
+}
+
+// Calendar Event type definition
+interface CalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  allDay?: boolean;
+  location?: string;
+  description?: string;
+  source?: string;
 }
 
 // Component to display meeting details
@@ -22,13 +69,28 @@ const MeetingDetail = ({
   meeting,
   onEdit,
   onDelete,
-  onStatusChange
+  onStatusChange,
+  onCreateTask,
+  onLinkCalendarEvent,
+  calendarEvents
 }: {
   meeting: Meeting;
   onEdit: (meeting: Meeting) => void;
   onDelete: (id: number) => void;
   onStatusChange: (id: number, status: 'upcoming' | 'completed' | 'cancelled') => void;
+  onCreateTask: (meetingId: number, taskData: Partial<Task>) => void;
+  onLinkCalendarEvent: (meetingId: number, calendarEventId: string) => void;
+  calendarEvents: CalendarEvent[];
 }) => {
+  const { toast } = useToast();
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [taskText, setTaskText] = useState('');
+  const [taskDueDate, setTaskDueDate] = useState('');
+  const [taskPriority, setTaskPriority] = useState('medium');
+  const [taskNotes, setTaskNotes] = useState('');
+  
+  const [linkEventOpen, setLinkEventOpen] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState('');
 
   // Format time display
   const formatTime = (timeString: string) => {
@@ -38,6 +100,67 @@ const MeetingDetail = ({
     const displayHour = hour % 12 || 12;
     return `${displayHour}:${minutes} ${period}`;
   };
+  
+  // Handle task creation
+  const handleCreateTask = () => {
+    if (!taskText.trim()) {
+      toast({
+        title: "Error",
+        description: "Task text cannot be empty",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const newTask = {
+      text: taskText,
+      dueDate: taskDueDate ? new Date(taskDueDate).toISOString() : null,
+      priority: taskPriority,
+      notes: taskNotes || `From meeting: ${meeting.title}`,
+      source: 'meeting',
+      tags: ['meeting', meeting.meetingType]
+    };
+    
+    onCreateTask(meeting.id, newTask);
+    
+    // Reset form
+    setTaskText('');
+    setTaskDueDate('');
+    setTaskPriority('medium');
+    setTaskNotes('');
+    setCreateTaskOpen(false);
+    
+    toast({
+      title: "Task created",
+      description: "Task has been added to your task list"
+    });
+  };
+  
+  // Handle linking to calendar event
+  const handleLinkEvent = () => {
+    if (!selectedEventId) {
+      toast({
+        title: "Error",
+        description: "Please select a calendar event",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    onLinkCalendarEvent(meeting.id, selectedEventId);
+    setLinkEventOpen(false);
+    
+    toast({
+      title: "Meeting linked",
+      description: "Meeting has been linked to calendar event"
+    });
+  };
+  
+  // Filter events that match this meeting's date
+  const filteredEvents = calendarEvents.filter(event => {
+    const eventDate = new Date(event.start).toISOString().split('T')[0];
+    return eventDate === meeting.date;
+  });
 
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
@@ -97,6 +220,21 @@ const MeetingDetail = ({
               </p>
             </div>
           </div>
+          
+          {/* Calendar Event Link (if linked) */}
+          {meeting.calendarEventId && (
+            <div className="flex items-center mb-4">
+              <div className="mr-3 h-10 w-10 flex items-center justify-center rounded-full bg-purple-100 text-purple-700">
+                <CalendarIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-700">Linked Calendar Event</h3>
+                <p className="text-sm text-gray-600">
+                  {calendarEvents.find(e => e.id === meeting.calendarEventId)?.title || 'Calendar Event'}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
         
         <div>
@@ -146,6 +284,30 @@ const MeetingDetail = ({
               ))}
             </div>
           </div>
+          
+          {/* Action Buttons */}
+          <div className="mt-4 flex space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center"
+              onClick={() => setCreateTaskOpen(true)}
+            >
+              <PlusCircleIcon className="h-4 w-4 mr-1" />
+              Add Task
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center"
+              onClick={() => setLinkEventOpen(true)}
+              disabled={meeting.calendarEventId !== undefined}
+            >
+              <LinkIcon className="h-4 w-4 mr-1" />
+              Link to Calendar
+            </Button>
+          </div>
         </div>
       </div>
       
@@ -153,6 +315,39 @@ const MeetingDetail = ({
         <h3 className="text-sm font-medium text-gray-700 mb-2">Description</h3>
         <p className="text-sm text-gray-600 whitespace-pre-line">{meeting.description}</p>
       </div>
+      
+      {/* Meeting Tasks Section */}
+      {meeting.tasks && meeting.tasks.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Tasks</h3>
+          <div className="space-y-2">
+            {meeting.tasks.map(task => (
+              <div key={task.id} className="p-3 bg-gray-50 rounded-md flex items-start">
+                <div className={`w-4 h-4 mt-1 mr-2 rounded-full ${task.done ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+                <div className="flex-1">
+                  <p className={`text-sm ${task.done ? 'line-through text-gray-500' : 'text-gray-700'}`}>{task.text}</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {task.dueDate && (
+                      <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
+                        Due: {new Date(task.dueDate).toLocaleDateString()}
+                      </span>
+                    )}
+                    {task.priority && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        task.priority === 'high' ? 'bg-red-100 text-red-700' :
+                        task.priority === 'medium' ? 'bg-orange-100 text-orange-700' :
+                        'bg-green-100 text-green-700'
+                      }`}>
+                        {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       
       <div>
         <h3 className="text-sm font-medium text-gray-700 mb-2">Meeting Notes</h3>
@@ -164,6 +359,112 @@ const MeetingDetail = ({
           )}
         </div>
       </div>
+      
+      {/* Create Task Dialog */}
+      <Dialog open={createTaskOpen} onOpenChange={setCreateTaskOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Task from Meeting</DialogTitle>
+            <DialogDescription>
+              Add a task related to this meeting. It will appear in your task list.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Task description</label>
+              <Input 
+                value={taskText}
+                onChange={(e) => setTaskText(e.target.value)}
+                placeholder="What needs to be done?"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Due date (optional)</label>
+              <Input 
+                type="date"
+                value={taskDueDate}
+                onChange={(e) => setTaskDueDate(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Priority</label>
+              <select
+                value={taskPriority}
+                onChange={(e) => setTaskPriority(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Notes (optional)</label>
+              <Textarea 
+                value={taskNotes}
+                onChange={(e) => setTaskNotes(e.target.value)}
+                placeholder="Any additional details about this task"
+                rows={3}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateTaskOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateTask}>Create Task</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Link Calendar Event Dialog */}
+      <Dialog open={linkEventOpen} onOpenChange={setLinkEventOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link to Calendar Event</DialogTitle>
+            <DialogDescription>
+              Link this meeting to a calendar event on {format(new Date(meeting.date), 'MMMM d, yyyy')}.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            {filteredEvents.length > 0 ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select calendar event</label>
+                <select
+                  value={selectedEventId}
+                  onChange={(e) => setSelectedEventId(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                >
+                  <option value="">-- Select an event --</option>
+                  {filteredEvents.map(event => (
+                    <option key={event.id} value={event.id}>
+                      {event.title} ({format(new Date(event.start), 'h:mm a')} - {format(new Date(event.end), 'h:mm a')})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <p className="text-center py-4 text-gray-500">
+                No calendar events found for {format(new Date(meeting.date), 'MMMM d, yyyy')}.
+              </p>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLinkEventOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={handleLinkEvent} 
+              disabled={!selectedEventId || filteredEvents.length === 0}
+            >
+              Link Event
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -504,10 +805,49 @@ const MeetingListItem = ({
 
 // Meetings Dashboard Component
 export default function MeetingsPage() {
-  // Sample meetings for demonstration
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const userId = user?.id?.toString() || '1'; // Fallback to '1' for demo
+  
+  // Sample calendar events for demo
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([
+    {
+      id: 'cal1',
+      title: 'Team Standup',
+      start: '2025-05-20T09:00:00',
+      end: '2025-05-20T09:30:00',
+      location: 'Conference Room A',
+    },
+    {
+      id: 'cal2',
+      title: 'Client Project Kickoff',
+      start: '2025-05-21T13:00:00',
+      end: '2025-05-21T14:30:00',
+      location: 'Main Conference Room',
+    },
+    {
+      id: 'cal3',
+      title: 'Performance Review with Emma',
+      start: '2025-05-22T10:00:00',
+      end: '2025-05-22T11:00:00',
+      location: 'Office 203',
+    }
+  ]);
+  
+  // Fetch meetings
+  // In a real implementation, this would use:
+  // const { data: meetings = [], isLoading } = useQuery({
+  //   queryKey: ['/api/meetings'],
+  //   queryFn: () => fetch('/api/meetings').then(res => res.json()),
+  //   enabled: !!user,
+  // });
+  
+  // For demo purposes, use useState with sample data
   const [meetings, setMeetings] = useState<Meeting[]>([
     {
       id: 1,
+      userId: userId,
       title: 'Weekly Team Standup',
       description: 'Regular weekly team meeting to discuss progress, blockers, and upcoming priorities.',
       date: '2025-05-20',
@@ -517,10 +857,12 @@ export default function MeetingsPage() {
       attendees: ['John Smith', 'Sarah Johnson', 'Michael Brown', 'Emma Wilson'],
       notes: '',
       status: 'upcoming',
-      meetingType: 'internal'
+      meetingType: 'internal',
+      tasks: [],
     },
     {
       id: 2,
+      userId: userId,
       title: 'Project Kickoff Meeting',
       description: 'Initial kickoff meeting to discuss project goals, timeline, and resource allocation for the new client project.',
       date: '2025-05-21',
@@ -530,10 +872,12 @@ export default function MeetingsPage() {
       attendees: ['John Smith', 'Sarah Johnson', 'Michael Brown', 'Emma Wilson', 'David Lee', 'Client Rep'],
       notes: '',
       status: 'upcoming',
-      meetingType: 'client'
+      meetingType: 'client',
+      tasks: [],
     },
     {
       id: 3,
+      userId: userId,
       title: 'Performance Review',
       description: 'One-on-one performance review meeting to discuss progress, goals, and career development.',
       date: '2025-05-22',
@@ -543,10 +887,12 @@ export default function MeetingsPage() {
       attendees: ['John Smith', 'Emma Wilson'],
       notes: '',
       status: 'upcoming',
-      meetingType: 'one-on-one'
+      meetingType: 'one-on-one',
+      tasks: [],
     },
     {
       id: 4,
+      userId: userId,
       title: 'Software Developer Interview',
       description: 'Interview for the Senior Software Developer position.',
       date: '2025-05-23',
@@ -556,10 +902,12 @@ export default function MeetingsPage() {
       attendees: ['John Smith', 'Sarah Johnson', 'Candidate'],
       notes: '',
       status: 'upcoming',
-      meetingType: 'interview'
+      meetingType: 'interview',
+      tasks: [],
     },
     {
       id: 5,
+      userId: userId,
       title: 'Product Design Workshop',
       description: 'Collaborative workshop to brainstorm new product features and design improvements.',
       date: '2025-05-24',
@@ -569,10 +917,12 @@ export default function MeetingsPage() {
       attendees: ['John Smith', 'Sarah Johnson', 'Michael Brown', 'Emma Wilson', 'Design Team', 'Product Team'],
       notes: '',
       status: 'upcoming',
-      meetingType: 'workshop'
+      meetingType: 'workshop',
+      tasks: [],
     },
     {
       id: 6,
+      userId: userId,
       title: 'Last Month\'s Budget Review',
       description: 'Review of last month\'s budget, expenses, and financial planning for the next quarter.',
       date: '2025-05-15',
@@ -582,7 +932,8 @@ export default function MeetingsPage() {
       attendees: ['John Smith', 'Finance Director', 'Department Heads'],
       notes: 'Discussed budget allocation for Q3. Identified areas for cost optimization. Action items assigned to department heads for detailed expense reports.',
       status: 'completed',
-      meetingType: 'internal'
+      meetingType: 'internal',
+      tasks: [],
     },
   ]);
 

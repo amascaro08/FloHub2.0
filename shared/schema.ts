@@ -213,3 +213,56 @@ export const insertJournalActivitySchema = createInsertSchema(journalActivities)
 
 export type InsertJournalActivity = z.infer<typeof insertJournalActivitySchema>;
 export type JournalActivity = typeof journalActivities.$inferSelect;
+
+// Meetings table
+export const meetings = pgTable("meetings", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  date: text("date").notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  location: text("location"),
+  attendees: text("attendees").array().default([]),
+  notes: text("notes"),
+  status: text("status").default("upcoming"), // "upcoming", "completed", "cancelled"
+  meetingType: text("meeting_type").default("internal"), // "internal", "client", "one-on-one", "interview", "workshop"
+  calendarEventId: text("calendar_event_id"), // Link to a calendar event if this meeting is associated with one
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertMeetingSchema = createInsertSchema(meetings).pick({
+  userId: true,
+  title: true,
+  description: true,
+  date: true,
+  startTime: true,
+  endTime: true,
+  location: true,
+  attendees: true,
+  notes: true,
+  status: true,
+  meetingType: true,
+  calendarEventId: true,
+});
+
+export type InsertMeeting = z.infer<typeof insertMeetingSchema>;
+export type Meeting = typeof meetings.$inferSelect;
+
+// Meeting tasks table - links a meeting to tasks created during/for that meeting
+export const meetingTasks = pgTable("meeting_tasks", {
+  id: serial("id").primaryKey(),
+  meetingId: integer("meeting_id").notNull().references(() => meetings.id),
+  taskId: integer("task_id").notNull().references(() => tasks.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertMeetingTaskSchema = createInsertSchema(meetingTasks).pick({
+  meetingId: true,
+  taskId: true,
+});
+
+export type InsertMeetingTask = z.infer<typeof insertMeetingTaskSchema>;
+export type MeetingTask = typeof meetingTasks.$inferSelect;

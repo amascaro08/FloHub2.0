@@ -14,6 +14,7 @@ import calendarSourcesRoutes from "./routes/calendar-sources";
 import calendarAccountsRoutes from "./routes/calendar-accounts";
 import assistantRoutes from "./routes/assistant";
 import journalRoutes from "./routes/journal";
+import meetingsRoutes from "./routes/meetings";
 import { setupAuthRoutes } from "./routes/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -40,6 +41,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register journal routes
   app.use('/', journalRoutes);
+  
+  // Register meetings routes
+  app.use('/api/meetings', meetingsRoutes);
   // Health check endpoint
   app.get('/health', (_req: Request, res: Response) => {
     res.status(200).send('OK');
