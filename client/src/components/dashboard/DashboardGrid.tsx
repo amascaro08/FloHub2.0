@@ -25,11 +25,8 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useSession } from "next-auth/react";
 import { UserSettings } from "@/types/app";
 
-// Custom At-a-Glance Widget implementation
-import React, { useState, useEffect } from 'react';
-
+// Custom implementation of AtAGlanceWidget directly in this file
 const AtAGlanceWidget = () => {
-  // Fixed data for now
   return (
     <div className="h-full flex flex-col">
       <div className="mb-2">
@@ -63,7 +60,7 @@ const AtAGlanceWidget = () => {
         <div className="h-2 bg-gray-200 rounded-full">
           <div 
             className="h-2 bg-teal-500 rounded-full" 
-            style={{ width: `60%` }}
+            style={{ width: '60%' }}
           ></div>
         </div>
         <div className="text-xs text-gray-500 mt-1">60% of weekly goals completed</div>
