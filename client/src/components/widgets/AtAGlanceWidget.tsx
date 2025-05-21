@@ -393,47 +393,49 @@ const AtAGlanceWidget = () => {
          });
          
          // Generate AI message with personalized prompt based on user preferences
-         const prompt = `You are FloCat, an AI assistant with a ${communicationStyle === 'professional' ? 'professional and efficient' : 
-                                                                communicationStyle === 'friendly' ? 'friendly and supportive' : 
-                                                                communicationStyle === 'humorous' ? 'playful and humorous' : 
-                                                                'witty and sarcastic cat-like'} personality.
-Generate a short "At A Glance" message for ${userName} with: 
+         const prompt = `You are FloCat, my personal AI assistant cat. Talk directly TO ME about my day and priorities.
 
-${focusAreas.includes('meetings') ? `EVENTS: ${limitedEvents.map(event => {
- const eventTime = event.start.dateTime
-   ? formatInTimeZone(new Date(event.start.dateTime), userTimezone, 'h:mm a')
-   : event.start.date;
- const calendarType = event.source === "work" ? "work" : "personal";
- const calendarTags = event.tags && event.tags.length > 0 ? ` (${event.tags.join(', ')})` : '';
- return `${event.summary} at ${eventTime} [${calendarType}${calendarTags}]`;
-}).join(', ') || 'None'}` : ''}
+## IMPORTANT - USE THIS REAL DATA IN YOUR RESPONSE:
+My name: ${userName}
+Time of day: ${currentTimeInterval}
+Weather: ${weather.temp}°F, ${weather.condition} in ${weather.location}
 
-${focusAreas.includes('tasks') ? `TASKS: ${limitedTasks.map(task => task.text).join(', ') || 'None'}` : ''}
+${focusAreas.includes('meetings') ? `My upcoming events: ${limitedEvents.map(event => {
+  const eventTime = event.start.dateTime
+    ? formatInTimeZone(new Date(event.start.dateTime), userTimezone, 'h:mm a')
+    : event.start.date;
+  const calendarType = event.source === "work" ? "work" : "personal";
+  return `"${event.summary}" at ${eventTime} (${calendarType})`;
+}).join(', ') || 'No events today'}` : ''}
 
-${focusAreas.includes('habits') ? `HABITS: ${completedHabits.length}/${todaysHabits.length} completed (${habitCompletionRate}%)
+${focusAreas.includes('tasks') ? `My tasks: ${limitedTasks.map(task => `"${task.text}"`).join(', ') || 'No tasks'}` : ''}
+
+${focusAreas.includes('habits') ? `My habits progress: ${completedHabits.length}/${todaysHabits.length} completed
 ${todaysHabits.map(habit => {
- const isCompleted = completedHabits.some(h => h.id === habit.id);
- return `${isCompleted ? '✅' : '⬜'} ${habit.name}`;
-}).join(', ') || 'None'}` : ''}
+  const isCompleted = completedHabits.some(h => h.id === habit.id);
+  return `${isCompleted ? '✅' : '⬜'} ${habit.name}`;
+}).join('\n')}` : ''}
 
-${focusAreas.includes('notes') ? `NOTES: ${limitedNotes.map(note => note.title).join(', ') || 'None'}` : ''}
+Your response MUST:
+1. Start with a casual cat-like greeting ("Meow" or "Purr" incorporated naturally)
+2. Mention the current weather and briefly how it might affect my day
+3. Name and reference my specific tasks/events by their actual names from the data
+4. If I have tasks, recommend which specific task I should prioritize with a brief explanation
+5. End with an encouraging message using my name (${userName})
 
-${focusAreas.includes('meetings') ? `MEETING NOTES: ${limitedMeetings.map(note => note.title).join(', ') || 'None'}` : ''}
+Response style:
+- Use a ${communicationStyle === 'professional' ? 'clear and efficient' : 
+          communicationStyle === 'friendly' ? 'warm and supportive' : 
+          communicationStyle === 'humorous' ? 'light and playful' : 
+          'witty and quirky'} tone
+- Keep your message under 150 words total
+- Write in first person as if you're talking TO me directly
+- Use cat-themed imagery subtly in your phrasing
+- Format with Markdown including emoji where appropriate
+- Your reminders should be ${reminderIntensity} in intensity
+- Adjust detail level to ${interactionFrequency} frequency settings
 
-Be ${communicationStyle === 'professional' ? 'clear, concise, and direct' : 
-        communicationStyle === 'friendly' ? 'warm and encouraging' : 
-        communicationStyle === 'humorous' ? 'light-hearted with tasteful humor' : 
-        'sassy and witty with cat-themed puns'}. 
-
-Your reminders should be ${reminderIntensity === 'gentle' ? 'gentle and subtle' : 
-                        reminderIntensity === 'moderate' ? 'moderately direct' : 
-                        'assertive and straightforward'}.
-
-Keep it ${interactionFrequency === 'low' ? 'very brief, focusing only on the most important details' : 
-           interactionFrequency === 'medium' ? 'concise but informative (under 150 words)' : 
-           'detailed and comprehensive (under 200 words)'}.
-
-Use markdown formatting and emoji where appropriate. Consider the time of day (${currentTimeInterval}).`;
+DO NOT mention that you're an AI - just be my helpful cat assistant who knows my schedule and tasks.`;
 
 
           // Track the actual fetch for analytics and debugging
@@ -500,36 +502,36 @@ DO NOT mention "AI" or that you're an AI assistant - just be my helpful cat assi
             // If we get a timeout or other error, generate a simple message instead
             if (aiRes.status === 504) {
               console.warn("AI request timed out, using fallback message");
-              const fallbackMessage = `# Hello ${userName}! 😺
+              const fallbackMessage = `# *Purrs softly* Good ${currentTimeInterval}, ${userName}! 😺
 
-## Your Day at a Glance
+It's a ${weather.condition.toLowerCase()} day at ${weather.temp}°F here in ${weather.location}! Perfect weather for a productive day.
 
 ${upcomingEventsForPrompt.length > 0 ? `
-**Upcoming Events:**
+I've been keeping an eye on your schedule, and here's what's coming up:
 ${upcomingEventsForPrompt.slice(0, 3).map(event => {
   const eventTime = event.start.dateTime
     ? formatInTimeZone(new Date(event.start.dateTime), userTimezone, 'h:mm a')
     : event.start.date;
-  const calendarName = event.calendarName || (event.source === "work" ? "Work Calendar" : "Personal Calendar");
-  const calendarTags = event.tags && event.tags.length > 0 ? ` (${event.tags.join(', ')})` : '';
-  return `- ${event.summary} at ${eventTime} - ${calendarName}${calendarTags}`;
+  return `- **${event.summary}** at ${eventTime}`;
 }).join('\n')}
 ` : ''}
 
 ${incompleteTasks.length > 0 ? `
-**Tasks to Complete:**
+I've noticed these tasks need your attention:
 ${incompleteTasks.slice(0, 3).map(task => `- ${task.text}`).join('\n')}
+
+*My whiskers tell me you should focus on "${incompleteTasks[0].text}" first!*
 ` : ''}
 
 ${todaysHabits.length > 0 ? `
-**Habits Progress:** ${completedHabits.length}/${todaysHabits.length} completed
+*Pawsome* progress on your habits today! ${completedHabits.length}/${todaysHabits.length} completed:
 ${todaysHabits.slice(0, 3).map(habit => {
   const isCompleted = completedHabits.some(h => h.id === habit.id);
   return `- ${isCompleted ? '✅' : '⬜'} ${habit.name}`;
 }).join('\n')}
 ` : ''}
 
-Have a purr-fect day!`;
+Keep being amazing, ${userName}! I'll be right here if you need me. 🐱`;
 
               setAiMessage(fallbackMessage);
               setFormattedHtml(parseMarkdown(fallbackMessage));
