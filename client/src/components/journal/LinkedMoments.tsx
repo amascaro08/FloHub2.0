@@ -1,159 +1,160 @@
-import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
-import useSWR from 'swr';
+import React, { useState, useEffect } from 'react';
 
 interface LinkedMomentsProps {
-  date?: string; // Optional date to show moments for a specific day
-}
-
-interface Task {
-  id: string;
-  title: string;
-  completed: boolean;
-  dueDate?: string;
+  date: string;
 }
 
 interface CalendarEvent {
   id: string;
   title: string;
-  start: Date | string; // Can be Date or string when serialized from API
-  end: Date | string;
-  description?: string;
+  date: string;
+  time?: string;
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+interface Task {
+  id: number;
+  text: string;
+  dueDate?: string;
+  done: boolean;
+}
 
-const LinkedMoments: React.FC<LinkedMomentsProps> = ({ date }) => {
-  const [tasks, setTasks] = useState<Task[]>([]);
+export default function LinkedMoments({ date }: LinkedMomentsProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const { data: session, status } = useSession();
-  
-  // Use the provided date or default to today
-  const targetDate = date || new Date().toISOString().split('T')[0];
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch tasks
-  const { data: tasksData } = useSWR(
-    status === 'authenticated' ? '/api/tasks' : null,
-    fetcher
-  );
-
-  // Fetch calendar events
-  const { data: eventsData } = useSWR(
-    status === 'authenticated' ? '/api/calendar/events?calendarId=primary' : null,
-    fetcher
-  );
-
+  // Load events and tasks for the selected date
   useEffect(() => {
-    if (tasksData) {
-      // Filter tasks for the target date
-      const filteredTasks = tasksData.filter((task: Task) => {
-        if (!task.dueDate) return false;
-        return task.dueDate.split('T')[0] === targetDate;
-      });
-      setTasks(filteredTasks);
+    const fetchLinkedData = async () => {
+      setIsLoading(true);
+      
+      try {
+        // Fetch calendar events (simulated)
+        // In a real implementation, this would call your API
+        const dateString = new Date(date).toISOString().split('T')[0];
+        
+        // Try to get calendar events from localStorage or simulate some
+        let foundEvents: CalendarEvent[] = [];
+        try {
+          const storedEvents = localStorage.getItem('calendar_events');
+          if (storedEvents) {
+            const allEvents = JSON.parse(storedEvents);
+            foundEvents = allEvents.filter((event: any) => 
+              event.date && event.date.startsWith(dateString)
+            );
+          }
+        } catch (e) {
+          console.error('Error loading calendar events', e);
+        }
+        
+        // If no events found, create placeholder
+        if (foundEvents.length === 0) {
+          // Just leaving array empty instead of using placeholders
+        }
+        
+        setEvents(foundEvents);
+        
+        // Try to fetch tasks from the API
+        try {
+          const response = await fetch('/api/tasks');
+          if (response.ok) {
+            const allTasks = await response.json();
+            // Filter tasks for the selected date
+            const dateTasks = allTasks.filter((task: Task) => 
+              task.dueDate && task.dueDate.split('T')[0] === dateString
+            );
+            setTasks(dateTasks);
+          } else {
+            setTasks([]);
+          }
+        } catch (e) {
+          console.error('Error fetching tasks', e);
+          setTasks([]);
+        }
+      } catch (error) {
+        console.error('Error fetching linked moments data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    if (date) {
+      fetchLinkedData();
     }
-  }, [tasksData, targetDate]);
+  }, [date]);
 
-  useEffect(() => {
-    if (eventsData && eventsData.events && Array.isArray(eventsData.events)) {
-      // Filter events for the target date
-      const filteredEvents = eventsData.events.filter((event: CalendarEvent) => {
-        if (!event.start) return false;
-        // Ensure we're working with a Date object
-        const eventDate = (typeof event.start === 'string' ? new Date(event.start) : event.start).toISOString().split('T')[0];
-        return eventDate === targetDate;
-      });
-      setEvents(filteredEvents);
-    } else {
-      // Handle case when events data is not available or is not an array
-      setEvents([]);
-    }
-  }, [eventsData, targetDate]);
-
-  const formatTime = (dateTimeStr: string) => {
-    return new Date(dateTimeStr).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+  // Format the date for display
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = { 
+      weekday: 'long',
+      month: 'long', 
+      day: 'numeric',
+      year: new Date(dateString).getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+    };
+    return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
+  if (isLoading) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
+        <h2 className="text-lg font-medium text-gray-800 dark:text-white mb-4">Moments from {formatDate(date)}</h2>
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6 mb-2"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-md p-6">
-      <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Linked Moments</h2>
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
+      <h2 className="text-lg font-medium text-gray-800 dark:text-white mb-4">Moments from {formatDate(date)}</h2>
       
-      <div className="mb-4">
-        <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-teal-500" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-          </svg>
-          Calendar Events
-        </h3>
-        
-        {events.length > 0 ? (
-          <ul className="space-y-2">
-            {events.map(event => (
-              <li key={event.id} className="flex items-start p-2 rounded-lg bg-slate-50 dark:bg-slate-700">
-                <div className="flex-shrink-0 w-10 text-center text-teal-600 dark:text-teal-400 font-medium">
-                  {formatTime(typeof event.start === 'string' ? event.start : event.start.toISOString())}
-                </div>
-                <div className="ml-3">
-                  <p className="text-slate-800 dark:text-slate-200">{event.title}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-slate-500 dark:text-slate-400 text-sm italic">
-            No calendar events for this day
-          </p>
-        )}
-      </div>
-      
-      <div>
-        <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-teal-500" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
-          Tasks
-        </h3>
-        
-        {tasks.length > 0 ? (
-          <ul className="space-y-2">
-            {tasks.map(task => (
-              <li key={task.id} className="flex items-center p-2 rounded-lg bg-slate-50 dark:bg-slate-700">
-                <div className="flex-shrink-0">
-                  <div className={`w-5 h-5 rounded-full border ${
-                    task.completed 
-                      ? 'bg-teal-500 border-teal-500' 
-                      : 'border-slate-400 dark:border-slate-500'
-                  } flex items-center justify-center`}>
-                    {task.completed && (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                </div>
-                <div className="ml-3">
-                  <p className={`${
-                    task.completed 
-                      ? 'line-through text-slate-500 dark:text-slate-400' 
-                      : 'text-slate-800 dark:text-slate-200'
-                  }`}>
-                    {task.title}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-slate-500 dark:text-slate-400 text-sm italic">
-            No tasks due for this day
-          </p>
-        )}
-      </div>
+      {events.length === 0 && tasks.length === 0 ? (
+        <div className="text-center py-4">
+          <p className="text-gray-500 dark:text-gray-400">No events or tasks found for this date.</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Calendar Events */}
+          {events.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Events</h3>
+              <ul className="space-y-2">
+                {events.map(event => (
+                  <li key={event.id} className="flex items-start">
+                    <div className="flex-shrink-0 h-4 w-4 rounded-full bg-blue-500 mt-1 mr-2"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{event.title}</p>
+                      {event.time && <p className="text-xs text-gray-500 dark:text-gray-400">{event.time}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+          {/* Tasks */}
+          {tasks.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tasks</h3>
+              <ul className="space-y-2">
+                {tasks.map(task => (
+                  <li key={task.id} className="flex items-start">
+                    <div className={`flex-shrink-0 h-4 w-4 rounded-full mt-1 mr-2 ${task.done ? 'bg-green-500' : 'bg-amber-500'}`}></div>
+                    <div>
+                      <p className={`text-sm ${task.done ? 'line-through text-gray-500 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {task.text}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
-};
-
-export default LinkedMoments;
+}

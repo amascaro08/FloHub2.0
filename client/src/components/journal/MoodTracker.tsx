@@ -1,180 +1,214 @@
-import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import React, { useState, useEffect } from 'react';
 
-interface MoodTrackerProps {
-  onSave: (mood: { emoji: string; label: string; tags: string[] }) => void;
+interface Mood {
+  emoji: string;
+  label: string;
+  tags: string[];
 }
 
-const MoodTracker: React.FC<MoodTrackerProps> = ({ onSave }) => {
-  const [selectedEmoji, setSelectedEmoji] = useState<string>('😐');
-  const [selectedLabel, setSelectedLabel] = useState<string>('Okay');
+interface MoodOption {
+  emoji: string;
+  label: string;
+  color: string;
+  activeColor: string;
+}
+
+interface MoodTrackerProps {
+  onSave: (mood: Mood) => void;
+}
+
+const moodOptions: MoodOption[] = [
+  { emoji: '😊', label: 'Happy', color: 'bg-yellow-100', activeColor: 'ring-yellow-400' },
+  { emoji: '😃', label: 'Excited', color: 'bg-green-100', activeColor: 'ring-green-400' },
+  { emoji: '😌', label: 'Calm', color: 'bg-blue-100', activeColor: 'ring-blue-400' },
+  { emoji: '😐', label: 'Neutral', color: 'bg-gray-200', activeColor: 'ring-gray-400' },
+  { emoji: '😔', label: 'Sad', color: 'bg-indigo-100', activeColor: 'ring-indigo-400' },
+  { emoji: '😡', label: 'Angry', color: 'bg-red-100', activeColor: 'ring-red-400' },
+  { emoji: '😴', label: 'Tired', color: 'bg-purple-100', activeColor: 'ring-purple-400' },
+  { emoji: '😨', label: 'Anxious', color: 'bg-orange-100', activeColor: 'ring-orange-400' },
+];
+
+// Common mood tags that users can quickly select
+const commonTags = [
+  'Work', 'Family', 'Friends', 'Exercise', 'Food', 'Travel', 
+  'Music', 'Reading', 'Movies', 'Gaming', 'Study', 'Weather',
+  'Shopping', 'Health', 'Productive', 'Unproductive', 'Creative'
+];
+
+export default function MoodTracker({ onSave }: MoodTrackerProps) {
+  const [selectedMood, setSelectedMood] = useState<MoodOption | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [customTag, setCustomTag] = useState<string>('');
-  const [saveConfirmation, setSaveConfirmation] = useState<boolean>(false);
-  const { data: session } = useSession();
-
-  const emojis = ['😞', '😕', '😐', '🙂', '😄'];
-  const labels = ['Sad', 'Down', 'Okay', 'Good', 'Great'];
-  const commonTags = ['focused', 'drained', 'creative', 'anxious', 'calm', 'energetic', 'tired', 'motivated'];
-
+  const [customTag, setCustomTag] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  
   // Load saved mood from localStorage on component mount
   useEffect(() => {
-    if (typeof window !== 'undefined' && session?.user?.email) {
-      const savedMood = localStorage.getItem(`journal_mood_${session.user.email}_${new Date().toISOString().split('T')[0]}`);
-      if (savedMood) {
-        try {
-          const parsed = JSON.parse(savedMood);
-          setSelectedEmoji(parsed.emoji || '😐');
-          setSelectedLabel(parsed.label || 'Okay');
-          setSelectedTags(parsed.tags || []);
-        } catch (e) {
-          console.error('Error parsing saved mood:', e);
+    const today = new Date().toISOString().split('T')[0];
+    const savedMood = localStorage.getItem(`mood_${today}`);
+    
+    if (savedMood) {
+      try {
+        const parsed = JSON.parse(savedMood);
+        
+        // Find the corresponding mood option
+        const moodOption = moodOptions.find(m => m.label === parsed.label);
+        if (moodOption) {
+          setSelectedMood(moodOption);
         }
+        
+        // Set the tags
+        if (Array.isArray(parsed.tags)) {
+          setSelectedTags(parsed.tags);
+        }
+        
+        // Set last saved timestamp
+        if (parsed.timestamp) {
+          setLastSaved(new Date(parsed.timestamp));
+        }
+      } catch (e) {
+        console.error('Error parsing saved mood', e);
       }
     }
-  }, [session]);
-
-  const handleSave = () => {
-    const mood = {
-      emoji: selectedEmoji,
-      label: selectedLabel,
-      tags: selectedTags,
-    };
-    
-    // Save to localStorage with today's date
-    if (session?.user?.email) {
-      localStorage.setItem(
-        `journal_mood_${session.user.email}_${new Date().toISOString().split('T')[0]}`,
-        JSON.stringify(mood)
-      );
-      
-      // Show save confirmation
-      setSaveConfirmation(true);
-      
-      // Hide confirmation after 3 seconds
-      setTimeout(() => {
-        setSaveConfirmation(false);
-      }, 3000);
-    }
-    
-    onSave(mood);
+  }, []);
+  
+  const handleMoodSelect = (mood: MoodOption) => {
+    setSelectedMood(mood);
   };
-
-  const handleEmojiSelect = (emoji: string, index: number) => {
-    setSelectedEmoji(emoji);
-    setSelectedLabel(labels[index]);
+  
+  const handleTagToggle = (tag: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tag)
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
+    );
   };
-
-  const toggleTag = (tag: string) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter(t => t !== tag));
-    } else {
-      setSelectedTags([...selectedTags, tag]);
-    }
-  };
-
-  const addCustomTag = () => {
+  
+  const handleAddCustomTag = () => {
     if (customTag.trim() && !selectedTags.includes(customTag.trim())) {
-      setSelectedTags([...selectedTags, customTag.trim()]);
+      setSelectedTags(prev => [...prev, customTag.trim()]);
       setCustomTag('');
     }
   };
-
-  return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-md p-6">
-      <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Mood Tracker</h2>
+  
+  const handleSave = () => {
+    if (!selectedMood) return;
+    
+    setIsSaving(true);
+    
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const timestamp = new Date().toISOString();
       
-      <div className="flex justify-between items-center mb-6">
-        {emojis.map((emoji, index) => (
+      const mood: Mood = {
+        emoji: selectedMood.emoji,
+        label: selectedMood.label,
+        tags: selectedTags,
+      };
+      
+      // Save to localStorage with timestamp
+      localStorage.setItem(`mood_${today}`, JSON.stringify({
+        ...mood,
+        timestamp
+      }));
+      
+      // Call the onSave prop
+      onSave(mood);
+      
+      // Update last saved timestamp
+      setLastSaved(new Date());
+    } catch (e) {
+      console.error('Error saving mood', e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-medium text-gray-800 dark:text-white">How are you feeling today?</h2>
+        {lastSaved && (
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            Last updated: {lastSaved.toLocaleTimeString()}
+          </div>
+        )}
+      </div>
+      
+      {/* Mood Selection */}
+      <div className="grid grid-cols-4 gap-3 mb-6">
+        {moodOptions.map(mood => (
           <button
-            key={emoji}
-            onClick={() => handleEmojiSelect(emoji, index)}
-            className={`text-3xl p-2 rounded-full transition-all ${
-              selectedEmoji === emoji 
-                ? 'bg-teal-100 dark:bg-teal-900 scale-110 shadow-md' 
-                : 'hover:bg-slate-100 dark:hover:bg-slate-700'
-            }`}
-            aria-label={`Select mood: ${labels[index]}`}
+            key={mood.label}
+            onClick={() => handleMoodSelect(mood)}
+            className={`p-3 rounded-lg flex flex-col items-center justify-center transition-all ${mood.color} 
+              ${selectedMood?.label === mood.label ? `ring-2 ${mood.activeColor}` : 'hover:ring-1 hover:ring-gray-300'}`}
           >
-            {emoji}
+            <span className="text-2xl mb-1">{mood.emoji}</span>
+            <span className="text-xs font-medium">{mood.label}</span>
           </button>
         ))}
       </div>
       
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          How are you feeling?
-        </label>
-        <select
-          value={selectedLabel}
-          onChange={(e) => setSelectedLabel(e.target.value)}
-          className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
-        >
-          {labels.map(label => (
-            <option key={label} value={label}>{label}</option>
-          ))}
-        </select>
-      </div>
-      
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Tags (optional)
-        </label>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {commonTags.map(tag => (
-            <button
-              key={tag}
-              onClick={() => toggleTag(tag)}
-              className={`px-3 py-1 rounded-full text-sm ${
-                selectedTags.includes(tag)
-                  ? 'bg-teal-500 text-white'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-        
-        <div className="flex">
-          <input
-            type="text"
-            value={customTag}
-            onChange={(e) => setCustomTag(e.target.value)}
-            placeholder="Add custom tag..."
-            className="flex-grow p-2 rounded-l-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addCustomTag();
-              }
-            }}
-          />
-          <button
-            onClick={addCustomTag}
-            className="px-3 py-2 rounded-r-lg bg-teal-500 text-white hover:bg-teal-600 transition-colors"
-          >
-            Add
-          </button>
-        </div>
-      </div>
-      
-      <div className="relative">
-        <button
-          onClick={handleSave}
-          className="w-full py-2 rounded-lg bg-teal-500 text-white hover:bg-teal-600 transition-colors"
-        >
-          Save Mood
-        </button>
-        
-        {saveConfirmation && (
-          <div className="absolute top-full left-0 right-0 mt-2 p-2 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-lg text-center text-sm transition-opacity animate-fade-in-out">
-            Mood saved successfully! ✅
+      {/* Tags Section - only show if mood is selected */}
+      {selectedMood && (
+        <>
+          <div className="mb-4">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              What's making you feel {selectedMood.label.toLowerCase()}?
+            </h3>
+            
+            <div className="flex flex-wrap gap-2 mb-3">
+              {commonTags.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => handleTagToggle(tag)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors
+                    ${selectedTags.includes(tag)
+                      ? 'bg-teal-100 text-teal-800 dark:bg-teal-800 dark:text-teal-100'
+                      : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+            
+            <div className="flex mt-2">
+              <input
+                type="text"
+                value={customTag}
+                onChange={(e) => setCustomTag(e.target.value)}
+                placeholder="Add custom tag..."
+                className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-l-md focus:ring-teal-500 focus:border-teal-500 dark:bg-gray-700 dark:text-white"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddCustomTag();
+                  }
+                }}
+              />
+              <button
+                onClick={handleAddCustomTag}
+                disabled={!customTag.trim()}
+                className="px-3 py-2 bg-teal-600 text-white rounded-r-md hover:bg-teal-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+              >
+                Add
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+          
+          <div className="flex justify-end">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+            >
+              {isSaving ? 'Saving...' : 'Save Mood'}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
-};
-
-export default MoodTracker;
+}
