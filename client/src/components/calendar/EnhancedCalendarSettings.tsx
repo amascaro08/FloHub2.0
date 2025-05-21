@@ -108,6 +108,9 @@ const EnhancedCalendarSettings = () => {
     queryKey: ['/api/calendar/sources'],
     retry: 1
   });
+  
+  // Make sure we have properly typed calendar sources
+  const typedCalendarSources = Array.isArray(calendarSources) ? calendarSources : [];
 
   // Mutations for calendar actions
   const updateUserSettingsMutation = useMutation({
@@ -174,15 +177,28 @@ const EnhancedCalendarSettings = () => {
   });
 
   const updateCalendarSourceMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CalendarSource> }) => 
-      fetch(`/api/calendar/sources/${id}`, {
+    mutationFn: ({ id, data }: { id: number; data: Partial<CalendarSource> }) => {
+      console.log('Attempting to update calendar source with ID:', id, 'Data:', data);
+      
+      // Instead of direct update, we'll update user settings
+      return fetch('/api/user-settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          calendarSources: typedCalendarSources.map((source: any) => {
+            if (source.id === id) {
+              return { ...source, ...data };
+            }
+            return source;
+          })
+        })
       }).then(res => {
         if (!res.ok) throw new Error('Failed to update calendar source');
         return res.json();
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/sources'] });
       queryClient.invalidateQueries({ queryKey: ['/api/user-settings'] });
@@ -202,13 +218,22 @@ const EnhancedCalendarSettings = () => {
   });
 
   const deleteCalendarSourceMutation = useMutation({
-    mutationFn: (id: number) => 
-      fetch(`/api/calendar/sources/${id}`, {
-        method: 'DELETE'
+    mutationFn: (id: number) => {
+      console.log('Attempting to delete calendar source with ID:', id);
+      // Instead of direct delete, we'll update user settings
+      return fetch('/api/user-settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          calendarSources: typedCalendarSources.filter((source: any) => source.id !== id)
+        })
       }).then(res => {
-        if (!res.ok) throw new Error('Failed to delete calendar source');
+        if (!res.ok) throw new Error('Failed to remove calendar source');
         return res.json();
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/sources'] });
       queryClient.invalidateQueries({ queryKey: ['/api/user-settings'] });
