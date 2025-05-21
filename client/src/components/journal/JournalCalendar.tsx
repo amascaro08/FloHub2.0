@@ -10,6 +10,11 @@ interface DateInfo {
   hasJournalEntry: boolean;
   hasMood: boolean;
   moodEmoji?: string;
+  activities: string[];
+  sleep?: {
+    duration: number;
+    quality: number;
+  };
 }
 
 export default function JournalCalendar({ onSelectDate, selectedDate }: JournalCalendarProps) {
@@ -41,6 +46,7 @@ export default function JournalCalendar({ onSelectDate, selectedDate }: JournalC
         date: date.toISOString().split('T')[0],
         hasJournalEntry: false,
         hasMood: false,
+        activities: [],
       });
     }
     
@@ -67,11 +73,44 @@ export default function JournalCalendar({ onSelectDate, selectedDate }: JournalC
         }
       }
       
+      // Check if there are activities for this date
+      let activities: string[] = [];
+      const activitiesKey = `activities_${dateString}`;
+      const activitiesData = localStorage.getItem(activitiesKey);
+      
+      if (activitiesData) {
+        try {
+          const parsedActivities = JSON.parse(activitiesData);
+          activities = Object.keys(parsedActivities);
+        } catch (e) {
+          console.error('Error parsing activities data', e);
+        }
+      }
+      
+      // Check if there's sleep data for this date
+      let sleep = undefined;
+      const sleepKey = `sleep_${dateString}`;
+      const sleepData = localStorage.getItem(sleepKey);
+      
+      if (sleepData) {
+        try {
+          const parsedSleep = JSON.parse(sleepData);
+          sleep = {
+            duration: parsedSleep.duration || 0,
+            quality: parsedSleep.quality || 0
+          };
+        } catch (e) {
+          console.error('Error parsing sleep data', e);
+        }
+      }
+      
       currentMonthDays.push({
         date: dateString,
         hasJournalEntry,
         hasMood,
         moodEmoji,
+        activities,
+        sleep
       });
     }
     

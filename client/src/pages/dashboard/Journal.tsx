@@ -566,11 +566,9 @@ export default function JournalPage() {
                     })}
                     
                     {/* Save all activities button */}
-                    {type !== 'sleep' && (
-                      <Button onClick={handleSaveActivities} className="w-full mt-2">
-                        Save All Activities
-                      </Button>
-                    )}
+                    <Button onClick={handleSaveActivities} className="w-full mt-2">
+                      Save All Activities
+                    </Button>
                   </div>
                 )}
                 
