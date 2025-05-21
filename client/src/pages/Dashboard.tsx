@@ -5,7 +5,7 @@ import { Responsive, WidthProvider } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import EnhancedCalendarWidget from '@/components/calendar/EnhancedCalendarWidget';
+import SimpleCalendarWidget from '@/components/calendar/SimpleCalendarWidget';
 import { 
   Calendar, 
   CheckSquare, 

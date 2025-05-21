@@ -4,6 +4,7 @@ import DashboardLayout from "../../components/dashboard/DashboardLayout";
 import { useAuth } from "../../hooks/useAuth";
 import EnhancedCalendarSettings from "../../components/calendar/EnhancedCalendarSettings";
 import DirectCalendarSettings from "../../components/calendar/DirectCalendarSettings";
+import SimpleCalendarSettings from "../../components/calendar/SimpleCalendarSettings";
 import { 
   Tabs, 
   TabsContent, 
@@ -390,7 +391,7 @@ export default function Settings() {
           
           {/* Calendar Settings Tab */}
           <TabsContent value="calendar" className="space-y-4">
-            <DirectCalendarSettings />
+            <SimpleCalendarSettings />
           </TabsContent>
           
           {/* Hidden original calendar content */}
