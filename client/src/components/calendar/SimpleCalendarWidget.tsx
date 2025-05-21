@@ -296,6 +296,8 @@ const SimpleCalendarWidget = () => {
     end: endOfMonth(currentDate)
   });
 
+
+
   // Handle event click
   const handleEventClick = (event: CalendarEvent) => {
     setSelectedEvent(event);
@@ -587,6 +589,50 @@ const SimpleCalendarWidget = () => {
                       {event.calendarName && (
                         <div className="text-xs mt-1 flex justify-between">
                           <span>{event.calendarName}</span>
+                        </div>
+                      )}
+                      
+                      {/* Display Teams meeting info if present */}
+                      {event.description && event.description.includes('Microsoft Teams') && (
+                        <div className="mt-2">
+                          {event.description.includes('https://') && (
+                            <a 
+                              href={event.description.match(/(https:\/\/[^\s"'<>]+)/)?.[1] || '#'}
+                              target="_blank"
+                              rel="noopener noreferrer" 
+                              className="text-xs inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"
+                            >
+                              <span className="mr-1">Join Teams Meeting</span>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 0C5.37 0 0 5.37 0 12C0 18.63 5.37 24 12 24C18.63 24 24 18.63 24 12C24 5.37 18.63 0 12 0ZM9.18 18.12C8.3 18.12 7.55 17.62 7.2 16.85H7.14L7.09 18H5.83V6H7.3V10.7H7.34C7.66 9.95 8.39 9.42 9.33 9.42C11.13 9.42 12.18 11 12.18 13.79C12.18 16.59 11.12 18.12 9.18 18.12ZM16.76 18.12C14.48 18.12 13.19 16.45 13.19 13.8C13.19 11.3 14.48 9.42 16.76 9.42C19.04 9.42 20.34 11.3 20.34 13.8C20.34 16.45 19.05 18.12 16.76 18.12Z" fill="currentColor"/>
+                                <path d="M16.75 10.82C15.77 10.82 15.11 11.99 15.11 13.8C15.11 15.61 15.77 16.72 16.75 16.72C17.76 16.72 18.4 15.61 18.4 13.8C18.4 11.99 17.75 10.82 16.75 10.82Z" fill="currentColor"/>
+                                <path d="M9.11 10.82C8.21 10.82 7.43 11.82 7.43 13.76C7.43 15.7 8.21 16.72 9.11 16.72C10.04 16.72 10.71 15.7 10.71 13.76C10.71 11.82 10.04 10.82 9.11 10.82Z" fill="currentColor"/>
+                              </svg>
+                            </a>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Extract and display meeting details if available */}
+                      {event.description && (
+                        event.description.includes('Meeting ID:') || 
+                        event.description.includes('Passcode:')
+                      ) && (
+                        <div className="mt-1 space-y-1">
+                          {event.description.match(/Meeting ID:?\s*([0-9\s]+)/i) && (
+                            <div className="text-xs">
+                              <span className="font-medium">Meeting ID:</span> {
+                                event.description.match(/Meeting ID:?\s*([0-9\s]+)/i)?.[1]?.trim() || ''
+                              }
+                            </div>
+                          )}
+                          {event.description.match(/Pass(?:code|word):?\s*([a-zA-Z0-9]+)/i) && (
+                            <div className="text-xs">
+                              <span className="font-medium">Passcode:</span> {
+                                event.description.match(/Pass(?:code|word):?\s*([a-zA-Z0-9]+)/i)?.[1]?.trim() || ''
+                              }
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
