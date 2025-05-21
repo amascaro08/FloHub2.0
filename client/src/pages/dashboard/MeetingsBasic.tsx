@@ -8,34 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
-// Calendar Event type definition
-interface CalendarEvent {
-  id: string;
-  calendarId?: string;
-  summary: string; // title
-  description?: string;
-  location?: string;
-  start: { dateTime?: string; timeZone?: string; date?: string };
-  end?: { dateTime?: string; timeZone?: string; date?: string };
-  attendees?: Array<{ email: string; name?: string; responseStatus?: string }>;
-  organizer?: { email: string; displayName?: string };
-  source?: string;
-}
-
-// Meeting type definition
-interface Meeting {
-  id: number;
-  userId: string;
-  title: string;
-  description: string;
-  notes: string;
-  status: 'upcoming' | 'completed' | 'cancelled';
-  meetingType: 'internal' | 'client' | 'one-on-one' | 'interview' | 'workshop';
-  date: string;
-  calendarEventId?: string;
-  tasks?: Task[];
-}
-
 // Task type definition
 interface Task {
   id: number;
@@ -50,10 +22,17 @@ interface Task {
   createdAt?: string;
 }
 
-// Note Template type
-interface NoteTemplate {
-  name: string;
-  template: string;
+// Meeting type definition
+interface Meeting {
+  id: number;
+  userId: string;
+  title: string;
+  description: string;
+  notes: string;
+  status: 'upcoming' | 'completed' | 'cancelled';
+  meetingType: 'internal' | 'client' | 'one-on-one' | 'interview' | 'workshop';
+  date: string;
+  tasks?: Task[];
 }
 
 // Meeting detail component
@@ -74,7 +53,29 @@ const MeetingDetail = ({
 }) => {
   const { toast } = useToast();
   const [taskText, setTaskText] = useState('');
+  const [assignee, setAssignee] = useState('self');
+  const [priority, setPriority] = useState('medium');
 
+  // Create a task quickly
+  const handleQuickTask = () => {
+    if (!taskText.trim()) {
+      toast({
+        title: "Task text is required",
+        description: "Please enter a task description",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    onCreateTask(meeting.id, taskText);
+    setTaskText('');
+    
+    toast({
+      title: "Task created",
+      description: "The task has been added to your task list"
+    });
+  };
+  
   // Extract action items from notes
   const handleExtractTasks = () => {
     const noteLines = meeting.notes.split('\n');
@@ -105,25 +106,6 @@ const MeetingDetail = ({
     toast({
       title: `${actionItems.length} tasks created`,
       description: "Tasks have been added to your task list",
-    });
-  };
-  
-  const handleQuickTask = () => {
-    if (!taskText.trim()) {
-      toast({
-        title: "Task text is required",
-        description: "Please enter a task description",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    onCreateTask(meeting.id, taskText);
-    setTaskText('');
-    
-    toast({
-      title: "Task created",
-      description: "The task has been added to your task list"
     });
   };
 
@@ -210,55 +192,63 @@ const MeetingDetail = ({
             </div>
           </div>
           
-          <div className="mb-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Meeting Type</h3>
-            <div className="flex flex-wrap gap-2">
-              {['internal', 'client', 'one-on-one', 'interview', 'workshop'].map(type => (
-                <button
-                  key={type}
-                  onClick={() => onEdit({
-                    ...meeting,
-                    meetingType: type as any
-                  })}
-                  className={`px-3 py-1 rounded-md text-sm ${
-                    meeting.meetingType === type
-                      ? 'bg-teal-100 text-teal-800 font-medium'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' ')}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          {/* Quick task creation */}
+          {/* Add Task Section */}
           <div className="mt-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <Input
-                value={taskText}
-                onChange={(e) => setTaskText(e.target.value)}
-                placeholder="Add a quick task..."
-                className="flex-1"
-              />
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Add Task</h3>
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <div className="mb-3">
+                <Input
+                  value={taskText}
+                  onChange={(e) => setTaskText(e.target.value)}
+                  placeholder="Enter task description..."
+                  className="w-full"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Assignee</label>
+                  <select 
+                    value={assignee} 
+                    onChange={(e) => setAssignee(e.target.value)}
+                    className="w-full p-2 text-sm border border-gray-300 rounded-md"
+                  >
+                    <option value="self">Myself</option>
+                    <option value="team">Team</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Priority</label>
+                  <select 
+                    value={priority} 
+                    onChange={(e) => setPriority(e.target.value)}
+                    className="w-full p-2 text-sm border border-gray-300 rounded-md"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+              </div>
+              <Button
+                onClick={handleQuickTask}
+                className="w-full bg-teal-600 hover:bg-teal-700"
+              >
+                <PlusCircleIcon className="h-4 w-4 mr-1" />
+                Add Task to Tracker
+              </Button>
+            </div>
+            <div className="mt-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleQuickTask}
+                onClick={handleExtractTasks}
+                className="w-full justify-center"
               >
-                <PlusCircleIcon className="h-4 w-4 mr-1" />
-                Add
+                <ClipboardIcon className="h-4 w-4 mr-1" />
+                Extract Tasks from Notes
               </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExtractTasks}
-              className="w-full justify-center mt-1"
-            >
-              <ClipboardIcon className="h-4 w-4 mr-1" />
-              Extract Tasks from Notes
-            </Button>
           </div>
         </div>
       </div>
@@ -266,7 +256,7 @@ const MeetingDetail = ({
       {/* Meeting Tasks Section */}
       {meeting.tasks && meeting.tasks.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Tasks</h3>
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Tasks from this Meeting</h3>
           <div className="space-y-2">
             {meeting.tasks.map(task => (
               <div key={task.id} className="p-3 bg-gray-50 rounded-md flex items-start">
@@ -306,12 +296,18 @@ const MeetingDetail = ({
           )}
         </div>
         <div className="mt-2 text-xs text-gray-500">
-          <p>Pro Tip: Use "- [ ] Task name" format to mark action items in your notes that can be extracted as tasks.</p>
+          <p>Pro Tip: Use "- [ ] Task description" format to mark action items in your notes that can be extracted as tasks.</p>
         </div>
       </div>
     </div>
   );
 };
+
+// Note Template type
+interface NoteTemplate {
+  name: string;
+  template: string;
+}
 
 // Meeting notes form component
 const MeetingNotesForm = ({
@@ -323,6 +319,7 @@ const MeetingNotesForm = ({
   onSave: (meeting: Meeting) => void;
   onCancel: () => void;
 }) => {
+  const { toast } = useToast();
   const [formData, setFormData] = useState<Meeting>(meeting || {
     id: 0,
     userId: '',
@@ -377,7 +374,11 @@ const MeetingNotesForm = ({
     
     // Validate the form
     if (!formData.title) {
-      alert('Please enter a meeting title');
+      toast({
+        title: "Meeting title required",
+        description: "Please enter a title for your meeting notes",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -387,7 +388,7 @@ const MeetingNotesForm = ({
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
       <h2 className="text-xl font-medium text-gray-800 mb-6">
-        {meeting ? 'Edit Meeting Notes' : 'Create New Meeting Notes'}
+        {meeting && meeting.id > 0 ? 'Edit Meeting Notes' : 'Create New Meeting Notes'}
       </h2>
       
       <form onSubmit={handleSubmit}>
@@ -498,7 +499,7 @@ const MeetingNotesForm = ({
               type="submit"
               className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700"
             >
-              {meeting ? 'Update Notes' : 'Save Notes'}
+              {meeting && meeting.id > 0 ? 'Update Notes' : 'Save Notes'}
             </button>
           </div>
         </div>
@@ -507,121 +508,11 @@ const MeetingNotesForm = ({
   );
 };
 
-// Get a formatted date from a calendar event
-function getEventDate(event: CalendarEvent): string {
-  if (!event.start) return new Date().toISOString().split('T')[0];
-  
-  if (event.start.dateTime) {
-    return new Date(event.start.dateTime).toISOString().split('T')[0];
-  } else if (event.start.date) {
-    return new Date(event.start.date).toISOString().split('T')[0];
-  } else {
-    return new Date().toISOString().split('T')[0];
-  }
-}
-
 // Main Meetings Page
 export default function MeetingsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const userId = user?.id?.toString() || '1'; // Fallback to '1' for demo
-  
-  // Calendar events state
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
-  const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<CalendarEvent | null>(null);
-
-  // Fetch calendar events
-  useEffect(() => {
-    const fetchCalendarEvents = async () => {
-      if (!user?.id) return;
-      
-      setIsLoadingEvents(true);
-      try {
-        // Calculate time range (current month + next month)
-        const now = new Date();
-        const timeMin = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
-        
-        // Build API URL for calendar events
-        const apiUrl = `/api/calendar?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&useCalendarSources=true`;
-        
-        const response = await fetch(apiUrl);
-        if (response.ok) {
-          const data = await response.json();
-          setCalendarEvents(Array.isArray(data) ? data : []);
-        } else {
-          console.error('Failed to fetch calendar events');
-          // If we can't fetch real events, provide sample data
-          setCalendarEvents([
-            {
-              id: 'event1',
-              summary: 'Weekly Team Standup',
-              description: 'Regular team meeting',
-              start: { dateTime: '2025-05-20T10:00:00Z' },
-              end: { dateTime: '2025-05-20T11:00:00Z' },
-              source: 'sample'
-            },
-            {
-              id: 'event2',
-              summary: 'Project Kickoff',
-              description: 'Starting new project',
-              start: { dateTime: '2025-05-21T14:00:00Z' },
-              end: { dateTime: '2025-05-21T15:30:00Z' },
-              source: 'sample'
-            },
-            {
-              id: 'event3',
-              summary: 'Budget Review',
-              description: 'Financial planning',
-              start: { dateTime: '2025-05-23T09:00:00Z' },
-              end: { dateTime: '2025-05-23T10:00:00Z' },
-              source: 'sample'
-            }
-          ]);
-        }
-      } catch (error) {
-        console.error('Error fetching calendar events:', error);
-        toast({
-          title: "Calendar error",
-          description: "Could not load your calendar events. Using sample data instead.",
-          variant: "destructive"
-        });
-        
-        // Sample calendar events as fallback
-        setCalendarEvents([
-          {
-            id: 'event1',
-            summary: 'Weekly Team Standup',
-            description: 'Regular team meeting',
-            start: { dateTime: '2025-05-20T10:00:00Z' },
-            end: { dateTime: '2025-05-20T11:00:00Z' },
-            source: 'sample'
-          },
-          {
-            id: 'event2',
-            summary: 'Project Kickoff',
-            description: 'Starting new project',
-            start: { dateTime: '2025-05-21T14:00:00Z' },
-            end: { dateTime: '2025-05-21T15:30:00Z' },
-            source: 'sample'
-          },
-          {
-            id: 'event3',
-            summary: 'Budget Review',
-            description: 'Financial planning',
-            start: { dateTime: '2025-05-23T09:00:00Z' },
-            end: { dateTime: '2025-05-23T10:00:00Z' },
-            source: 'sample'
-          }
-        ]);
-      } finally {
-        setIsLoadingEvents(false);
-      }
-    };
-    
-    fetchCalendarEvents();
-  }, [user?.id, toast]);
   
   // State
   const [meetings, setMeetings] = useState<Meeting[]>([
@@ -691,11 +582,32 @@ export default function MeetingsPage() {
   const filteredMeetings = meetings.filter(meeting => 
     statusFilter === 'all' || meeting.status === statusFilter
   );
+  
+  // Try to load meetings from API, fallback to local state
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const fetchMeetings = async () => {
+      try {
+        const response = await fetch('/api/meetings');
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setMeetings(data);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching meetings:', error);
+      }
+    };
+    
+    fetchMeetings();
+  }, [user?.id]);
 
   // Handler functions
   const handleCreateTask = (meetingId: number, taskText: string) => {
     // Create a new task
-    const newTaskId = Math.max(...meetings.flatMap(m => m.tasks?.map(t => t.id) || [0])) + 1;
+    const newTaskId = Math.max(...meetings.flatMap(m => m.tasks?.map(t => t.id) || [0]), 0) + 1;
     
     const newTask: Task = {
       id: newTaskId,
@@ -744,9 +656,17 @@ export default function MeetingsPage() {
           priority: 'medium',
           notes: `From meeting: ${meetings.find(m => m.id === meetingId)?.title || 'Unknown meeting'}`,
         }),
+      })
+      .then(response => {
+        if (!response.ok) {
+          console.error('Failed to create task in task tracker');
+        }
+      })
+      .catch(error => {
+        console.error('Error creating task in task tracker:', error);
       });
     } catch (error) {
-      console.error('Error creating task in task list:', error);
+      console.error('Error creating task in task tracker:', error);
     }
   };
   
@@ -766,6 +686,19 @@ export default function MeetingsPage() {
       title: "Meeting notes created",
       description: "Your meeting notes have been saved.",
     });
+    
+    // Try to save to API
+    try {
+      fetch('/api/meetings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newMeeting),
+      });
+    } catch (error) {
+      console.error('Error saving meeting to API:', error);
+    }
   };
   
   // Update meeting
@@ -783,6 +716,19 @@ export default function MeetingsPage() {
       title: "Meeting notes updated",
       description: "Your changes have been saved.",
     });
+    
+    // Try to update via API
+    try {
+      fetch(`/api/meetings/${meeting.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(meeting),
+      });
+    } catch (error) {
+      console.error('Error updating meeting in API:', error);
+    }
   };
 
   // Delete meeting
@@ -795,6 +741,15 @@ export default function MeetingsPage() {
       title: "Meeting deleted",
       description: "The meeting has been removed.",
     });
+    
+    // Try to delete from API
+    try {
+      fetch(`/api/meetings/${id}`, {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      console.error('Error deleting meeting from API:', error);
+    }
   };
 
   // Change meeting status
@@ -814,6 +769,19 @@ export default function MeetingsPage() {
       title: "Status updated",
       description: `Meeting marked as ${status}.`,
     });
+    
+    // Try to update status via API
+    try {
+      fetch(`/api/meetings/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      });
+    } catch (error) {
+      console.error('Error updating meeting status in API:', error);
+    }
   };
 
   return (
@@ -826,7 +794,17 @@ export default function MeetingsPage() {
             {view === 'list' && (
               <Button
                 onClick={() => {
-                  setEditingMeeting(null);
+                  setEditingMeeting({
+                    id: 0,
+                    userId,
+                    title: '',
+                    description: '',
+                    notes: '',
+                    status: 'upcoming',
+                    meetingType: 'internal',
+                    date: new Date().toISOString().split('T')[0],
+                    tasks: []
+                  });
                   setView('form');
                 }}
                 className="bg-teal-600 hover:bg-teal-700"
@@ -974,15 +952,16 @@ export default function MeetingsPage() {
         )}
         
         {/* Meeting Form View */}
-        {view === 'form' && (
+        {view === 'form' && editingMeeting && (
           <MeetingNotesForm
             meeting={editingMeeting}
-            onSave={editingMeeting ? handleUpdateMeeting : handleCreateMeeting}
+            onSave={editingMeeting.id > 0 ? handleUpdateMeeting : handleCreateMeeting}
             onCancel={() => {
-              if (editingMeeting) {
+              if (selectedMeeting) {
                 setEditingMeeting(null);
                 setView('detail');
               } else {
+                setEditingMeeting(null);
                 setView('list');
               }
             }}
