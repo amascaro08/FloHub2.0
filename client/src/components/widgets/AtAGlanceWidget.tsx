@@ -156,40 +156,70 @@ useEffect(() => {
     setAiMessage(null);
 
     try {
-      // Fetch real tasks
+      // Fetch real tasks from your API
       const tasksRes = await fetch('/api/tasks');
+      if (!tasksRes.ok) throw new Error('Failed to fetch tasks');
       const tasksData = await tasksRes.json();
+      
+      // Fetch events
+      const eventsRes = await fetch('/api/calendar');
+      if (!eventsRes.ok) throw new Error('Failed to fetch events');
+      const eventsData = await eventsRes.json();
+      setUpcomingEvents(eventsData);
+
+      // Get real weather data
+      let weatherData;
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+        
+        const weatherRes = await fetch(`/api/weather?lat=${position.coords.latitude}&lon=${position.coords.longitude}`);
+        if (weatherRes.ok) {
+          weatherData = await weatherRes.json();
+          setWeather({
+            temp: Math.round(weatherData.temp),
+            condition: weatherData.condition,
+            location: weatherData.location
+          });
+        }
+      } catch (weatherErr) {
+        console.error('Weather fetch failed:', weatherErr);
+      }
+
+      // Process tasks data
+      const incompleteTasks = tasksData.filter((task: Task) => !task.done);
       setTasks(tasksData);
 
-      // Fetch real weather
-      const currentPosition = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject);
-      });
-
-      const weatherRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${currentPosition.coords.latitude}&lon=${currentPosition.coords.longitude}&units=imperial&appid=${process.env.NEXT_PUBLIC_WEATHER_API_KEY}`);
-      const weatherData = await weatherRes.json();
-      
-      setWeather({
-        temp: Math.round(weatherData.main.temp),
-        condition: weatherData.weather[0].main,
-        location: weatherData.name
-      });
-
-      // Generate dynamic message based on real data
+      // Generate personalized message based on actual data
       const timeOfDay = getTimeBasedGreeting();
-      const incompleteTasks = tasksData.filter(task => !task.done);
-      
-      const dynamicMessage = `# *Purrs softly* Good ${timeOfDay}, ${userName}! 😺
+      const now = new Date();
+      const currentHour = now.getHours();
 
-${weatherData ? `It's ${Math.round(weatherData.main.temp)}°F and ${weatherData.weather[0].main.toLowerCase()} in ${weatherData.name}!` : ''}
+      let personalizedGreeting = '';
+      if (currentHour < 12) {
+        personalizedGreeting = "Meow! Rise and shine";
+      } else if (currentHour < 17) {
+        personalizedGreeting = "Purr! Hope your day is going well";
+      } else {
+        personalizedGreeting = "Meow! Winding down for the day";
+      }
+      
+      const dynamicMessage = `# ${personalizedGreeting}, ${userName}! 😺
+
+${weather ? `The weather is ${weather.temp}°F and ${weather.condition.toLowerCase()} in ${weather.location} - ${weather.temp > 75 ? 'perfect for a lazy sunbath!' : 'cozy indoor weather!'} ☀️` : ''}
 
 ${incompleteTasks.length > 0 ? `
-Here are your priorities for today:
-${incompleteTasks.map(task => `- ${task.text}`).join('\n')}
+Your todo list (${incompleteTasks.length} items pending):
+${incompleteTasks.map((task: Task) => `- ${task.text}${task.priority === 'high' ? ' ⭐' : ''}`).join('\n')}
 
-I suggest focusing on "${incompleteTasks[0].text}" first!` : 'No tasks for now - time for a catnap! 😴'}
+*Paws up!* I think "${incompleteTasks[0].text}" needs attention first! 🐾` : 'Your task list is clear - time for a well-deserved catnap! 😺'}
 
-Keep being amazing! *purrs encouragingly* 🐱`;
+${upcomingEvents.length > 0 ? `
+Upcoming events:
+${upcomingEvents.slice(0, 3).map(event => `- ${event.summary} at ${new Date(event.start.dateTime || event.start.date).toLocaleTimeString()}`).join('\n')}` : ''}
+
+*Purrs contentedly* Keep up the great work, ${userName}! 🌟`;
 
       setAiMessage(dynamicMessage);
       setFormattedHtml(parseMarkdown(dynamicMessage));
