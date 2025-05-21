@@ -389,12 +389,30 @@ Keep it ${interactionFrequency === 'low' ? 'very brief, focusing only on the mos
 Use markdown formatting and emoji where appropriate. Consider the time of day (${currentTimeInterval}).`;
 
 
+          // Track the actual fetch for analytics and debugging
+          console.log("AtAGlanceWidget: Sending personalized prompt to assistant API with real data");
+          console.log("AtAGlanceWidget: Real events data:", limitedEvents.length > 0 ? limitedEvents : "No events today");
+          console.log("AtAGlanceWidget: Real tasks data:", limitedTasks.length > 0 ? limitedTasks : "No active tasks");
+          
           const aiRes = await fetch('/api/assistant', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ history: [], prompt }),
+            body: JSON.stringify({ 
+              history: [], 
+              prompt,
+              // Include metadata to improve response quality
+              metadata: {
+                userName,
+                communicationStyle,
+                focusAreas,
+                eventCount: upcomingEvents.length,
+                taskCount: tasks.length,
+                incompleteTasks: incompleteTasks.length,
+                userTimezone
+              }
+            }),
           });
 
           if (!aiRes.ok) {
