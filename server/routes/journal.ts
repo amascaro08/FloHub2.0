@@ -205,20 +205,7 @@ router.get("/activities", isAuthenticated, async (req: any, res: Response) => {
   }
 });
 
-// Get activities by date
-router.get("/activities/:date", isAuthenticated, async (req: any, res: Response) => {
-  try {
-    const userId = req.user.claims.sub;
-    const { date } = req.params;
-    const activities = await storage.getJournalActivitiesByDate(userId, date);
-    res.json(activities);
-  } catch (error) {
-    console.error("Error fetching activities by date:", error);
-    res.status(500).json({ message: "Failed to fetch activities" });
-  }
-});
-
-// Get activities for a specific month
+// Get activities for a specific month - must be defined BEFORE the :date route to avoid conflicts
 router.get("/activities/month/:year/:month", isAuthenticated, async (req: any, res: Response) => {
   try {
     const userId = req.user.claims.sub;
@@ -240,6 +227,19 @@ router.get("/activities/month/:year/:month", isAuthenticated, async (req: any, r
   } catch (error) {
     console.error("Error fetching activities for month:", error);
     res.status(500).json({ message: "Failed to fetch activities for month" });
+  }
+});
+
+// Get activities by date
+router.get("/activities/:date", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user.claims.sub;
+    const { date } = req.params;
+    const activities = await storage.getJournalActivitiesByDate(userId, date);
+    res.json(activities);
+  } catch (error) {
+    console.error("Error fetching activities by date:", error);
+    res.status(500).json({ message: "Failed to fetch activities" });
   }
 });
 
