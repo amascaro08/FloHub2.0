@@ -462,19 +462,92 @@ const OverviewWidget = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Function to get current tasks
+  const getCurrentTasks = async () => {
+    try {
+      const response = await fetch('/api/tasks');
+      if (!response.ok) throw new Error('Failed to fetch tasks');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      return [];
+    }
+  };
+  
+  // Function to get calendar events
+  const getCalendarEvents = async () => {
+    try {
+      const response = await fetch('/api/calendar/events');
+      if (!response.ok) throw new Error('Failed to fetch calendar events');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching calendar events:', error);
+      return [];
+    }
+  };
+  
+  // Function to get weather data
+  const getWeatherData = async () => {
+    try {
+      // Try to get user's location first (this would normally use browser geolocation)
+      // For demo purposes, let's use a default location (New York)
+      const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=New+York&units=imperial&appid=${process.env.WEATHER_API_KEY || ''}`);
+      if (!response.ok) throw new Error('Failed to fetch weather data');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching weather data:', error);
+      return { name: 'Unknown', main: { temp: 72 }, weather: [{ main: 'Clear' }] };
+    }
+  };
+  
   // Function to request guidance from FloCat
   const fetchFloCatInsights = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // Prepare context for the assistant to make it aware of the user's day
+      // Get real data from various sources
+      const [tasks, events, weather] = await Promise.all([
+        getCurrentTasks(),
+        getCalendarEvents(),
+        getWeatherData()
+      ]);
+      
+      // Count completed tasks and upcoming deadlines
+      const completedTasks = Array.isArray(tasks) ? tasks.filter(task => task.done).length : 0;
+      const pendingTasks = Array.isArray(tasks) ? tasks.filter(task => !task.done).length : 0;
+      
+      // Get today's events
+      const todayEvents = Array.isArray(events) 
+        ? events.filter(event => {
+            if (!event.start?.dateTime) return false;
+            const eventDate = new Date(event.start.dateTime).toISOString().split('T')[0];
+            const todayDate = new Date().toISOString().split('T')[0];
+            return eventDate === todayDate;
+          })
+        : [];
+      
+      // Format weather information
+      const weatherInfo = weather 
+        ? `${Math.round(weather.main?.temp || 72)}°F, ${weather.weather?.[0]?.main || 'Clear'} in ${weather.name || 'your area'}`
+        : 'Weather information unavailable';
+      
+      // Build context for the AI request
       const prompt = `
-        It's ${currentDate}. Provide me with a personalized daily review that includes:
-        1. A friendly greeting with my name
-        2. Summary of my upcoming tasks and meetings
-        3. Brief weather information for my area
-        4. A motivational tip for productivity
+        Today is ${currentDate}. Create a personalized daily review for the user with this information:
+        
+        Tasks:
+        - ${completedTasks} tasks completed
+        - ${pendingTasks} tasks pending
+        
+        Events today: ${todayEvents.length} 
+        ${todayEvents.map(e => `- ${e.summary || 'Untitled'} at ${new Date(e.start.dateTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`).join('\n')}
+        
+        Weather: ${weatherInfo}
+        
+        Provide a conversational, friendly greeting. Mention the most important upcoming meeting if there is one.
+        Comment on task progress. Include the current weather.
+        End with a brief productivity tip relevant to their schedule.
         Keep it conversational and brief (3-4 sentences).
       `;
       
@@ -488,7 +561,9 @@ const OverviewWidget = () => {
           history: [],
           metadata: {
             widget: 'overview',
-            view: 'dashboard'
+            view: 'dashboard',
+            tasks_count: tasks?.length || 0,
+            events_count: todayEvents?.length || 0
           }
         }),
       });
@@ -498,12 +573,10 @@ const OverviewWidget = () => {
       }
       
       const data = await response.json();
-      setFloCatResponse(data.reply || "Hi there! I notice you have a couple of meetings today and a project proposal to complete. The weather looks good, and remember to take short breaks between focused work sessions to maintain your productivity throughout the day!");
+      setFloCatResponse(data.reply);
     } catch (err) {
       console.error('Error fetching FloCat insights:', err);
       setError('Unable to connect with FloCat. Will try again later!');
-      // Fallback response when API fails
-      setFloCatResponse("Hi there! I notice you have a couple of meetings today and a project proposal to complete. The weather looks good, and remember to take short breaks between focused work sessions to maintain your productivity throughout the day!");
     } finally {
       setIsLoading(false);
     }
