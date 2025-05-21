@@ -34,6 +34,7 @@ const LOCAL_STORAGE_KEY = 'floHub_calendarSources';
 
 const SimpleCalendarWidget = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<'today' | 'week' | 'month'>('today');
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isEventDetailsDialogOpen, setIsEventDetailsDialogOpen] = useState(false);
   const [filteredSources, setFilteredSources] = useState<number[]>([]);
@@ -95,10 +96,123 @@ const SimpleCalendarWidget = () => {
   const timeMin = month.toISOString();
   const timeMax = endOfMonth(month).toISOString();
 
-  const { data: events = [], isLoading: isLoadingEvents } = useQuery<CalendarEvent[]>({
+  // Function to directly fetch events from a PowerAutomate URL
+  const fetchPowerAutomateEvents = async (url: string): Promise<CalendarEvent[]> => {
+    try {
+      // Some URLs need slightly different parameters
+      const formattedUrl = url.includes('?') 
+        ? `${url}&timeMin=${timeMin}&timeMax=${timeMax}` 
+        : `${url}?timeMin=${timeMin}&timeMax=${timeMax}`;
+        
+      const response = await fetch(formattedUrl);
+      if (!response.ok) {
+        console.error('Error fetching events from Power Automate URL:', response.statusText);
+        return [];
+      }
+      
+      const data = await response.json();
+      
+      // Different APIs might return data in slightly different formats
+      // Try to handle a few common ones
+      let events = data;
+      
+      // If the API returns a nested structure, try to find the events
+      if (data.value && Array.isArray(data.value)) {
+        events = data.value;
+      } else if (data.items && Array.isArray(data.items)) {
+        events = data.items;
+      } else if (data.events && Array.isArray(data.events)) {
+        events = data.events;
+      }
+      
+      // Process events if needed and return
+      return events.map((event: any, index: number) => {
+        // Convert from startTime/endTime format to start/end format if needed
+        if (event.startTime && event.endTime) {
+          console.log('Converting startTime/endTime format to start/end format');
+          return {
+            id: event.id || `event-${Date.now()}-${index}`,
+            summary: event.subject || event.title || event.name || 'Untitled Event',
+            start: { dateTime: event.startTime },
+            end: { dateTime: event.endTime },
+            description: event.description || event.body || '',
+            calendarName: event.calendar || event.calendarName || 'Work',
+            source: 'work',
+          };
+        } 
+        // Handle Google Calendar API format
+        else if (event.start && event.end) {
+          return {
+            id: event.id || `event-${Date.now()}-${index}`,
+            summary: event.summary || event.title || 'Untitled Event',
+            start: event.start,
+            end: event.end,
+            description: event.description || '',
+            calendarName: event.calendarName || 'Calendar',
+            source: event.source || 'work',
+          };
+        }
+        // Default case - just return with minimal transformation
+        else {
+          return {
+            id: event.id || `event-${Date.now()}-${index}`,
+            summary: event.summary || event.subject || event.title || 'Untitled Event',
+            start: { 
+              dateTime: event.start?.dateTime || event.startDate || event.start || new Date().toISOString() 
+            },
+            end: { 
+              dateTime: event.end?.dateTime || event.endDate || event.end || new Date().toISOString() 
+            },
+            description: event.description || '',
+            calendarName: event.calendarName || 'Calendar',
+            source: event.source || 'work',
+          };
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching Power Automate events:', error);
+      return [];
+    }
+  };
+
+  // Fetch events from API and from Power Automate URLs
+  const { data: apiEvents = [], isLoading: isLoadingApiEvents } = useQuery<CalendarEvent[]>({
     queryKey: ['/api/calendar/events', { timeMin, timeMax }],
     retry: 1
   });
+
+  // Fetch events from enabled calendar sources (Power Automate URLs)
+  const { data: powerAutomateEvents = [], isLoading: isLoadingPAEvents } = useQuery<CalendarEvent[]>({
+    queryKey: ['powerAutomateEvents', { timeMin, timeMax, sources: calendarSources }],
+    queryFn: async () => {
+      // Only fetch from enabled sources
+      const enabledSources = calendarSources.filter(source => source.isEnabled);
+      
+      if (enabledSources.length === 0) {
+        return [];
+      }
+      
+      // Fetch events from each source in parallel
+      const allEventPromises = enabledSources.map(async source => {
+        const sourceEvents = await fetchPowerAutomateEvents(source.sourceId);
+        // Add calendar name to each event
+        return sourceEvents.map(event => ({
+          ...event,
+          calendarName: source.name,
+          calendarId: String(source.id)
+        }));
+      });
+      
+      const allEventsArrays = await Promise.all(allEventPromises);
+      // Flatten arrays of events into a single array
+      return allEventsArrays.flat();
+    },
+    enabled: calendarSources.some(source => source.isEnabled)
+  });
+
+  // Combine events from all sources
+  const events = [...(apiEvents || []), ...(powerAutomateEvents || [])];
+  const isLoadingEvents = isLoadingApiEvents || isLoadingPAEvents;
 
   // When sources load, initialize filtered sources
   useEffect(() => {
@@ -223,9 +337,37 @@ const SimpleCalendarWidget = () => {
             </Button>
           </div>
         </div>
-        <CardDescription className="text-center font-medium pt-1">
-          {format(currentDate, 'MMMM yyyy')}
-        </CardDescription>
+        <div className="flex items-center justify-between pt-2">
+          <CardDescription className="font-medium">
+            {format(currentDate, 'MMMM yyyy')}
+          </CardDescription>
+          <div className="flex space-x-1 text-xs">
+            <Button 
+              variant={view === 'today' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setView('today')}
+              className="h-7 text-xs"
+            >
+              Today
+            </Button>
+            <Button 
+              variant={view === 'week' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setView('week')}
+              className="h-7 text-xs"
+            >
+              Week
+            </Button>
+            <Button 
+              variant={view === 'month' ? 'default' : 'outline'} 
+              size="sm"
+              onClick={() => setView('month')}
+              className="h-7 text-xs"
+            >
+              Month
+            </Button>
+          </div>
+        </div>
       </CardHeader>
       
       <CardContent className="flex-grow overflow-y-auto pb-0">
@@ -264,88 +406,198 @@ const SimpleCalendarWidget = () => {
           </details>
         </div>
         
-        {/* Calendar grid */}
-        {isLoadingEvents ? (
-          <div className="space-y-2">
-            <Skeleton className="h-[300px] w-full" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-7 gap-1 text-center">
-            {/* Day headers */}
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-              <div key={day} className="text-xs font-medium py-1">
-                {day}
-              </div>
-            ))}
-            
-            {/* Calendar days */}
-            {days.map((day) => {
-              const dateKey = format(day, 'yyyy-MM-dd');
-              const dayEvents = eventsByDate[dateKey] || [];
-              const isCurrentMonth = isSameMonth(day, currentDate);
-              const isCurrentDay = isToday(day);
+        {/* Month View */}
+        {view === 'month' && (
+          isLoadingEvents ? (
+            <div className="space-y-2">
+              <Skeleton className="h-[300px] w-full" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-7 gap-1 text-center">
+              {/* Day headers */}
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                <div key={day} className="text-xs font-medium py-1">
+                  {day}
+                </div>
+              ))}
               
-              return (
-                <div
-                  key={day.toString()}
-                  className={`
-                    min-h-[100px] p-1 border relative
-                    ${isCurrentMonth ? '' : 'opacity-40'}
-                    ${isCurrentDay ? 'bg-primary-50 border-primary' : ''}
-                  `}
-                >
-                  <div className={`
-                    text-xs font-medium h-5 w-5 rounded-full flex items-center justify-center
-                    ${isCurrentDay ? 'bg-primary text-primary-foreground' : ''}
-                  `}>
-                    {format(day, 'd')}
+              {/* Calendar days */}
+              {days.map((day) => {
+                const dateKey = format(day, 'yyyy-MM-dd');
+                const dayEvents = eventsByDate[dateKey] || [];
+                const isCurrentMonth = isSameMonth(day, currentDate);
+                const isCurrentDay = isToday(day);
+                
+                return (
+                  <div
+                    key={day.toString()}
+                    className={`
+                      min-h-[80px] p-1 border relative
+                      ${isCurrentMonth ? '' : 'opacity-40'}
+                      ${isCurrentDay ? 'bg-primary-50 border-primary' : ''}
+                    `}
+                  >
+                    <div className={`
+                      text-xs font-medium h-5 w-5 rounded-full flex items-center justify-center
+                      ${isCurrentDay ? 'bg-primary text-primary-foreground' : ''}
+                    `}>
+                      {format(day, 'd')}
+                    </div>
+                    
+                    <div className="mt-1 space-y-1 max-h-[80px] overflow-y-auto text-left">
+                      {dayEvents.length > 0 ? (
+                        dayEvents.map((event) => (
+                          <TooltipProvider key={event.id}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div 
+                                  className={`
+                                    text-xs truncate rounded px-1 py-0.5 cursor-pointer
+                                    ${event.source === 'work' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}
+                                  `}
+                                  onClick={() => handleEventClick(event)}
+                                >
+                                  {event.start.dateTime && (
+                                    <span className="font-medium">
+                                      {format(parseISO(event.start.dateTime), 'HH:mm')} {' '}
+                                    </span>
+                                  )}
+                                  {event.summary}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                <div className="text-xs">
+                                  <p className="font-bold">{event.summary}</p>
+                                  {event.start.dateTime && event.end?.dateTime && (
+                                    <p>
+                                      {format(parseISO(event.start.dateTime), 'MMM d, HH:mm')} - {' '}
+                                      {format(parseISO(event.end.dateTime), 'HH:mm')}
+                                    </p>
+                                  )}
+                                  {event.calendarName && (
+                                    <p className="text-muted-foreground">{event.calendarName}</p>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ))
+                      ) : (
+                        <div className="h-1"></div> // Empty placeholder to maintain height
+                      )}
+                    </div>
                   </div>
-                  
-                  <div className="mt-1 space-y-1 max-h-[80px] overflow-y-auto text-left">
-                    {dayEvents.length > 0 ? (
-                      dayEvents.map((event) => (
-                        <TooltipProvider key={event.id}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div 
-                                className={`
-                                  text-xs truncate rounded px-1 py-0.5 cursor-pointer
-                                  ${event.source === 'work' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}
-                                `}
-                                onClick={() => handleEventClick(event)}
-                              >
-                                {event.start.dateTime && (
-                                  <span className="font-medium">
-                                    {format(parseISO(event.start.dateTime), 'HH:mm')} {' '}
-                                  </span>
-                                )}
-                                {event.summary}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">
-                              <div className="text-xs">
-                                <p className="font-bold">{event.summary}</p>
-                                {event.start.dateTime && event.end?.dateTime && (
-                                  <p>
-                                    {format(parseISO(event.start.dateTime), 'MMM d, HH:mm')} - {' '}
-                                    {format(parseISO(event.end.dateTime), 'HH:mm')}
-                                  </p>
-                                )}
-                                {event.calendarName && (
-                                  <p className="text-muted-foreground">{event.calendarName}</p>
-                                )}
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ))
-                    ) : (
-                      <div className="h-1"></div> // Empty placeholder to maintain height
-                    )}
+                );
+              })}
+            </div>
+          )
+        )}
+        
+        {/* Week View */}
+        {view === 'week' && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-7 text-center">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => {
+                const date = new Date(currentDate);
+                date.setDate(date.getDate() - date.getDay() + index);
+                return (
+                  <div key={day} className="text-xs font-medium p-2">
+                    <div>{day}</div>
+                    <div className={`
+                      h-6 w-6 rounded-full mx-auto flex items-center justify-center text-center
+                      ${isToday(date) ? 'bg-primary text-primary-foreground' : ''}
+                    `}>
+                      {format(date, 'd')}
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+            
+            <div className="space-y-1 mt-2">
+              {Array.from({ length: 7 }).map((_, dayIndex) => {
+                // Get the date for this day in the week
+                const currentWeekDay = new Date(currentDate);
+                currentWeekDay.setDate(currentWeekDay.getDate() - currentWeekDay.getDay() + dayIndex);
+                const dateKey = format(currentWeekDay, 'yyyy-MM-dd');
+                const dayEvents = eventsByDate[dateKey] || [];
+                
+                if (dayEvents.length === 0) return null;
+                
+                return (
+                  <div key={dateKey} className="border-t pt-2">
+                    <div className="font-medium text-xs mb-1">
+                      {format(currentWeekDay, 'EEEE, MMM d')}
+                    </div>
+                    {dayEvents.map(event => (
+                      <div 
+                        key={event.id}
+                        className={`
+                          p-2 mb-1 rounded-md cursor-pointer text-sm
+                          ${event.source === 'work' ? 'bg-blue-50' : 'bg-green-50'}
+                        `}
+                        onClick={() => handleEventClick(event)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="font-medium">{event.summary}</div>
+                          {event.start.dateTime && (
+                            <div className="text-xs">
+                              {format(parseISO(event.start.dateTime), 'HH:mm')}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }).filter(Boolean)}
+            </div>
+          </div>
+        )}
+        
+        {/* Today View */}
+        {view === 'today' && (
+          <div className="space-y-4">
+            <div className="font-medium text-center">
+              {format(new Date(), 'EEEE, MMMM d')}
+            </div>
+            
+            {(() => {
+              const today = new Date();
+              const dateKey = format(today, 'yyyy-MM-dd');
+              const todayEvents = eventsByDate[dateKey] || [];
+              
+              return todayEvents.length > 0 ? (
+                <div className="space-y-2">
+                  {todayEvents.map(event => (
+                    <div 
+                      key={event.id}
+                      className={`
+                        p-3 rounded-md cursor-pointer border-l-4
+                        ${event.source === 'work' ? 'bg-blue-50 border-blue-400' : 'bg-green-50 border-green-400'}
+                      `}
+                      onClick={() => handleEventClick(event)}
+                    >
+                      <div className="font-medium mb-1">{event.summary}</div>
+                      {event.start.dateTime && event.end?.dateTime && (
+                        <div className="text-xs text-gray-600">
+                          {format(parseISO(event.start.dateTime), 'HH:mm')} - {format(parseISO(event.end.dateTime), 'HH:mm')}
+                        </div>
+                      )}
+                      {event.calendarName && (
+                        <div className="text-xs mt-1 flex justify-between">
+                          <span>{event.calendarName}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No events scheduled for today</p>
                 </div>
               );
-            })}
+            })()}
           </div>
         )}
       </CardContent>
