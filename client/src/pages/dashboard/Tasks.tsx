@@ -1,101 +1,94 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 
-// Task type definition
+// Task type definition that aligns with our API
 interface Task {
   id: number;
-  title: string;
-  description?: string;
+  text: string;
   dueDate?: string;
-  priority: 'high' | 'medium' | 'low';
-  status: 'todo' | 'in-progress' | 'completed';
+  done: boolean;
+  source?: string;
   tags?: string[];
+  priority?: 'high' | 'medium' | 'low';
+  notes?: string;
+  firebaseId?: string;
+  userId?: string;
 }
+
+// Status mapping to align with widget
+type TaskStatus = 'todo' | 'in-progress' | 'completed';
 
 // Task Dashboard Component
 export default function TasksPage() {
-  // Sample tasks for demonstration
-  const [tasks, setTasks] = useState<Task[]>([
-    { 
-      id: 1, 
-      title: 'Complete project proposal', 
-      description: 'Finalize the project proposal document including budget and timeline',
-      dueDate: '2025-05-22',
-      priority: 'high',
-      status: 'in-progress',
-      tags: ['work', 'important']
-    },
-    { 
-      id: 2, 
-      title: 'Schedule team meeting', 
-      description: 'Set up a meeting with the development team to discuss the new features',
-      dueDate: '2025-05-21',
-      priority: 'medium',
-      status: 'todo',
-      tags: ['work', 'meeting']
-    },
-    { 
-      id: 3, 
-      title: 'Review code changes', 
-      description: 'Review pull requests and merge approved changes',
-      dueDate: '2025-05-20',
-      priority: 'medium',
-      status: 'todo',
-      tags: ['work', 'development']
-    },
-    { 
-      id: 4, 
-      title: 'Buy groceries', 
-      description: 'Get milk, eggs, bread, and vegetables',
-      dueDate: '2025-05-20',
-      priority: 'low',
-      status: 'todo',
-      tags: ['personal', 'shopping']
-    },
-    { 
-      id: 5, 
-      title: 'Workout session', 
-      description: '30 min cardio + strength training',
-      dueDate: '2025-05-20',
-      priority: 'medium',
-      status: 'todo',
-      tags: ['personal', 'health']
-    },
-    { 
-      id: 6, 
-      title: 'Send follow-up email', 
-      description: 'Follow up with client regarding the project status',
-      dueDate: '2025-05-19',
-      priority: 'high',
-      status: 'completed',
-      tags: ['work', 'client']
-    },
-  ]);
+  // State for tasks from API
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Fetch tasks from API
+  const fetchTasks = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/tasks');
+      if (!response.ok) {
+        throw new Error('Failed to fetch tasks');
+      }
+      const data = await response.json();
+      setTasks(data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching tasks:', err);
+      setError('Failed to load tasks. Please try again later.');
+      // Fallback to empty array, not mock data
+      setTasks([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Fetch tasks on component mount
+  useEffect(() => {
+    fetchTasks();
+  }, []);
 
   const [filter, setFilter] = useState<'all' | 'todo' | 'in-progress' | 'completed'>('all');
   const [sort, setSort] = useState<'priority' | 'dueDate'>('dueDate');
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTask, setNewTask] = useState<Partial<Task>>({
-    title: '',
-    description: '',
+    text: '',
+    notes: '',
     dueDate: '',
     priority: 'medium',
-    status: 'todo',
+    done: false,
+    source: 'personal',
     tags: []
   });
+
+  // Convert done status to appropriate filter categories
+  const getTaskStatus = (task: Task): TaskStatus => {
+    if (task.done) return 'completed';
+    // Check if task has 'in-progress' marker in tags or source
+    if (task.tags?.includes('in-progress') || task.source === 'in-progress') {
+      return 'in-progress';
+    }
+    return 'todo';
+  };
 
   // Filter tasks based on status
   const filteredTasks = tasks.filter(task => {
     if (filter === 'all') return true;
-    return task.status === filter;
+    const taskStatus = getTaskStatus(task);
+    return taskStatus === filter;
   });
 
   // Sort tasks based on criteria
   const sortedTasks = [...filteredTasks].sort((a, b) => {
     if (sort === 'priority') {
-      const priorityOrder = { high: 0, medium: 1, low: 2 };
-      return priorityOrder[a.priority] - priorityOrder[b.priority];
+      const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+      const aPriority = priorityOrder[a.priority || 'medium'] || 1;
+      const bPriority = priorityOrder[b.priority || 'medium'] || 1;
+      return aPriority - bPriority;
     } else {
       // Sort by due date
       if (!a.dueDate) return 1;
@@ -105,41 +98,107 @@ export default function TasksPage() {
   });
 
   // Add a new task
-  const handleAddTask = () => {
-    if (!newTask.title) return;
+  const handleAddTask = async () => {
+    if (!newTask.text) return;
     
-    const taskToAdd: Task = {
-      id: tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1,
-      title: newTask.title || '',
-      description: newTask.description,
+    // Prepare task data for API
+    const taskData = {
+      text: newTask.text,
+      notes: newTask.notes,
       dueDate: newTask.dueDate,
-      priority: newTask.priority as 'high' | 'medium' | 'low',
-      status: newTask.status as 'todo' | 'in-progress' | 'completed',
-      tags: newTask.tags
+      priority: newTask.priority,
+      done: false,
+      source: newTask.source,
+      tags: newTask.tags || []
     };
     
-    setTasks([...tasks, taskToAdd]);
-    setNewTask({
-      title: '',
-      description: '',
-      dueDate: '',
-      priority: 'medium',
-      status: 'todo',
-      tags: []
-    });
-    setShowAddTask(false);
+    // Call API to create task
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(taskData)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create task');
+      }
+      
+      // Refresh tasks after creation
+      fetchTasks();
+      
+      // Reset form
+      setNewTask({
+        text: '',
+        notes: '',
+        dueDate: '',
+        priority: 'medium',
+        done: false,
+        source: 'personal',
+        tags: []
+      });
+      setShowAddTask(false);
+    } catch (err) {
+      console.error('Error creating task:', err);
+      alert('Failed to create task. Please try again.');
+    }
   };
 
-  // Update task status
-  const handleStatusChange = (taskId: number, newStatus: 'todo' | 'in-progress' | 'completed') => {
-    setTasks(tasks.map(task => 
-      task.id === taskId ? { ...task, status: newStatus } : task
-    ));
+  // Update task completion status
+  const handleStatusChange = async (taskId: number, newStatus: TaskStatus) => {
+    try {
+      // Map to API's format (done property)
+      const isDone = newStatus === 'completed';
+      
+      // For in-progress, we'll add a tag
+      let updates = { done: isDone };
+      if (newStatus === 'in-progress') {
+        updates = { 
+          done: false,
+          tags: [...(tasks.find(t => t.id === taskId)?.tags || []), 'in-progress']
+        };
+      }
+      
+      // Call API to update task
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updates)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update task');
+      }
+      
+      // Refresh tasks after update
+      fetchTasks();
+    } catch (err) {
+      console.error('Error updating task:', err);
+      alert('Failed to update task. Please try again.');
+    }
   };
 
   // Delete a task
-  const handleDeleteTask = (taskId: number) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
+  const handleDeleteTask = async (taskId: number) => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete task');
+      }
+      
+      // Refresh tasks after deletion
+      fetchTasks();
+    } catch (err) {
+      console.error('Error deleting task:', err);
+      alert('Failed to delete task. Please try again.');
+    }
   };
 
   // Add a tag to new task
@@ -154,7 +213,7 @@ export default function TasksPage() {
   };
 
   // Get priority badge styles
-  const getPriorityBadge = (priority: 'high' | 'medium' | 'low') => {
+  const getPriorityBadge = (priority?: string) => {
     switch (priority) {
       case 'high':
         return 'bg-red-100 text-red-800';
@@ -166,6 +225,41 @@ export default function TasksPage() {
         return 'bg-gray-100 text-gray-800';
     }
   };
+  
+  // Show loading state
+  if (isLoading && tasks.length === 0) {
+    return (
+      <DashboardLayout title="Tasks">
+        <div className="max-w-6xl mx-auto p-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded mb-6 w-1/4"></div>
+            <div className="h-24 bg-gray-200 rounded mb-6"></div>
+            <div className="h-48 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+  
+  // Show error state
+  if (error && tasks.length === 0) {
+    return (
+      <DashboardLayout title="Tasks">
+        <div className="max-w-6xl mx-auto p-8">
+          <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+            <h2 className="text-red-800 text-lg font-medium mb-2">Error Loading Tasks</h2>
+            <p className="text-red-700">{error}</p>
+            <button 
+              onClick={fetchTasks}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout title="Tasks">
@@ -187,26 +281,26 @@ export default function TasksPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Title*
+                  Task Text*
                 </label>
                 <input
                   type="text"
-                  value={newTask.title}
-                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                  value={newTask.text || ''}
+                  onChange={(e) => setNewTask({ ...newTask, text: e.target.value })}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
-                  placeholder="Task title"
+                  placeholder="What do you need to do?"
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
+                  Notes
                 </label>
                 <textarea
-                  value={newTask.description}
-                  onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                  value={newTask.notes || ''}
+                  onChange={(e) => setNewTask({ ...newTask, notes: e.target.value })}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
-                  placeholder="Task description"
+                  placeholder="Additional details"
                   rows={3}
                 />
               </div>
@@ -361,37 +455,44 @@ export default function TasksPage() {
                       <div className="pt-1">
                         <input
                           type="checkbox"
-                          checked={task.status === 'completed'}
+                          checked={task.done}
                           onChange={() => handleStatusChange(
                             task.id, 
-                            task.status === 'completed' ? 'todo' : 'completed'
+                            task.done ? 'todo' : 'completed'
                           )}
                           className="h-5 w-5 text-teal-600 focus:ring-teal-500 rounded"
                         />
                       </div>
                       <div>
-                        <h3 className={`font-medium ${task.status === 'completed' ? 'line-through text-gray-500' : 'text-gray-800'}`}>
-                          {task.title}
+                        <h3 className={`font-medium ${task.done ? 'line-through text-gray-500' : 'text-gray-800'}`}>
+                          {task.text}
                         </h3>
-                        {task.description && (
-                          <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                        {task.notes && (
+                          <p className="text-sm text-gray-600 mt-1">{task.notes}</p>
                         )}
                         <div className="flex flex-wrap gap-2 mt-2">
-                          <span className={`px-2 py-1 rounded-full text-xs ${getPriorityBadge(task.priority)}`}>
-                            {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
-                          </span>
-                          {task.status === 'in-progress' && (
+                          {task.priority && (
+                            <span className={`px-2 py-1 rounded-full text-xs ${getPriorityBadge(task.priority)}`}>
+                              {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
+                            </span>
+                          )}
+                          {getTaskStatus(task) === 'in-progress' && (
                             <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
                               In Progress
                             </span>
                           )}
                           {task.dueDate && (
                             <span className={`px-2 py-1 rounded-full text-xs ${
-                              new Date(task.dueDate) < new Date() && task.status !== 'completed' 
+                              new Date(task.dueDate) < new Date() && !task.done
                                 ? 'bg-red-100 text-red-800' 
                                 : 'bg-gray-100 text-gray-800'
                             }`}>
                               Due: {new Date(task.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
+                          {task.source && task.source !== 'in-progress' && (
+                            <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
+                              {task.source}
                             </span>
                           )}
                           {task.tags && task.tags.map((tag, index) => (
@@ -403,7 +504,7 @@ export default function TasksPage() {
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                      {task.status !== 'in-progress' && task.status !== 'completed' && (
+                      {getTaskStatus(task) !== 'in-progress' && !task.done && (
                         <button
                           onClick={() => handleStatusChange(task.id, 'in-progress')}
                           className="text-blue-600 hover:text-blue-800"
