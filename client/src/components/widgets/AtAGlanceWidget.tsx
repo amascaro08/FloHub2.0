@@ -407,7 +407,26 @@ Use markdown formatting and emoji where appropriate. Consider the time of day ($
           console.log("AtAGlanceWidget: Real events data:", limitedEvents.length > 0 ? limitedEvents : "No events today");
           console.log("AtAGlanceWidget: Real tasks data:", limitedTasks.length > 0 ? limitedTasks : "No active tasks");
           
-          const fullPrompt = `${prompt}\n\n## IMPORTANT - BASE THIS ON REAL DATA:\nHere are my actual events: ${JSON.stringify(limitedEvents)}\nHere are my actual tasks: ${JSON.stringify(limitedTasks)}\nCurrent time: ${new Date().toLocaleTimeString()}\nCurrent date: ${new Date().toLocaleDateString()}`;
+          // Improve the prompt to make FloCat more personalized and conversational
+          const fullPrompt = `You are FloCat, my personal AI assistant cat. Talk TO ME directly about my day using a ${communicationStyle} tone. 
+          
+Refer to specific tasks from my task list and prioritize what I should focus on. Give practical, specific advice.
+
+## IMPORTANT - THIS IS MY REAL DATA:
+My name: ${userName}
+My actual tasks: ${JSON.stringify(limitedTasks)}
+My calendar events: ${JSON.stringify(limitedEvents)}
+Current time: ${new Date().toLocaleTimeString()}
+Current date: ${new Date().toLocaleDateString()}
+Weather: 72°F, Sunny in New York (use this exact weather)
+
+Make sure to:
+1. Begin by greeting me personally with a cat-like greeting (${communicationStyle} style)
+2. Mention the weather in my location and how it might affect my day
+3. Highlight 1-2 specific tasks I should prioritize by name
+4. End with an encouraging message using my name again
+
+Keep it conversational - like you're my personal assistant talking TO me directly.`;
           
           console.log("AtAGlanceWidget: Using upgraded prompt to ensure real data is used");
           
