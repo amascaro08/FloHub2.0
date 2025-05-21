@@ -163,3 +163,53 @@ export const insertTaskSchema = createInsertSchema(tasks).pick({
 
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type Task = typeof tasks.$inferSelect;
+
+// Journal entries table
+export const journalEntries = pgTable("journal_entries", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  date: text("date").notNull(),
+  content: text("content"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertJournalEntrySchema = createInsertSchema(journalEntries);
+
+export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;
+export type JournalEntry = typeof journalEntries.$inferSelect;
+
+// Journal moods table
+export const journalMoods = pgTable("journal_moods", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  date: text("date").notNull(),
+  emoji: text("emoji").notNull(),
+  label: text("label").notNull(),
+  tags: text("tags").array(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertJournalMoodSchema = createInsertSchema(journalMoods);
+
+export type InsertJournalMood = z.infer<typeof insertJournalMoodSchema>;
+export type JournalMood = typeof journalMoods.$inferSelect;
+
+// Journal activities table
+export const journalActivities = pgTable("journal_activities", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  date: text("date").notNull(),
+  type: text("type").notNull(),
+  name: text("name").notNull(),
+  duration: integer("duration").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertJournalActivitySchema = createInsertSchema(journalActivities);
+
+export type InsertJournalActivity = z.infer<typeof insertJournalActivitySchema>;
+export type JournalActivity = typeof journalActivities.$inferSelect;

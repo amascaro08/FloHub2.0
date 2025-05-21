@@ -5,7 +5,10 @@ import {
   sessions, type Session,
   userSettings, type UserSettings, type InsertUserSettings,
   calendarSources, type CalendarSource, type InsertCalendarSource,
-  tasks, type Task, type InsertTask
+  tasks, type Task, type InsertTask,
+  journalEntries, type JournalEntry, type InsertJournalEntry,
+  journalMoods, type JournalMood, type InsertJournalMood,
+  journalActivities, type JournalActivity, type InsertJournalActivity
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
@@ -52,6 +55,29 @@ export interface IStorage {
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: number, taskData: Partial<InsertTask>): Promise<Task | undefined>;
   deleteTask(id: number): Promise<boolean>;
+  
+  // Journal entry operations
+  getJournalEntries(userId: string): Promise<JournalEntry[]>;
+  getJournalEntriesByDate(userId: string, date: string): Promise<JournalEntry | undefined>;
+  getJournalEntriesForMonth(userId: string, year: number, month: number): Promise<JournalEntry[]>;
+  createJournalEntry(entry: InsertJournalEntry): Promise<JournalEntry>;
+  updateJournalEntry(userId: string, date: string, content: string): Promise<JournalEntry | undefined>;
+  deleteJournalEntry(userId: string, date: string): Promise<boolean>;
+  
+  // Journal mood operations
+  getJournalMoods(userId: string): Promise<JournalMood[]>;
+  getJournalMoodByDate(userId: string, date: string): Promise<JournalMood | undefined>;
+  getJournalMoodsForMonth(userId: string, year: number, month: number): Promise<JournalMood[]>;
+  createJournalMood(mood: InsertJournalMood): Promise<JournalMood>;
+  updateJournalMood(userId: string, date: string, moodData: Partial<InsertJournalMood>): Promise<JournalMood | undefined>;
+  deleteJournalMood(userId: string, date: string): Promise<boolean>;
+  
+  // Journal activity operations
+  getJournalActivities(userId: string): Promise<JournalActivity[]>;
+  getJournalActivitiesByDate(userId: string, date: string): Promise<JournalActivity[]>;
+  createJournalActivity(activity: InsertJournalActivity): Promise<JournalActivity>;
+  updateJournalActivity(id: number, activityData: Partial<InsertJournalActivity>): Promise<JournalActivity | undefined>;
+  deleteJournalActivity(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
