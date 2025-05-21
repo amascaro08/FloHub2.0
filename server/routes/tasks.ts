@@ -17,7 +17,7 @@ const taskSchema = z.object({
 });
 
 // Get all tasks for the current user
-router.get("/api/tasks", isAuthenticated, async (req: any, res) => {
+router.get("/", isAuthenticated, async (req: any, res) => {
   try {
     const userId = req.user?.claims?.sub || "";
     if (!userId) {
@@ -33,7 +33,7 @@ router.get("/api/tasks", isAuthenticated, async (req: any, res) => {
 });
 
 // Create a new task
-router.post("/api/tasks", isAuthenticated, async (req: any, res) => {
+router.post("/", isAuthenticated, async (req: any, res) => {
   try {
     const userId = req.user?.claims?.sub || "";
     if (!userId) {
@@ -68,7 +68,7 @@ router.post("/api/tasks", isAuthenticated, async (req: any, res) => {
 });
 
 // Update a task
-router.put("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
+router.put("/:id", isAuthenticated, async (req: any, res) => {
   try {
     const userId = req.user?.claims?.sub || "";
     if (!userId) {
@@ -115,7 +115,7 @@ router.put("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
 });
 
 // Delete a task
-router.delete("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
+router.delete("/:id", isAuthenticated, async (req: any, res) => {
   try {
     const userId = req.user?.claims?.sub || "";
     if (!userId) {
@@ -141,7 +141,7 @@ router.delete("/api/tasks/:id", isAuthenticated, async (req: any, res) => {
 });
 
 // Toggle task completion status
-router.post("/api/tasks/:id/toggle", isAuthenticated, async (req: any, res) => {
+router.post("/:id/toggle", isAuthenticated, async (req: any, res) => {
   try {
     const userId = req.user?.claims?.sub || "";
     if (!userId) {
