@@ -394,6 +394,10 @@ Use markdown formatting and emoji where appropriate. Consider the time of day ($
           console.log("AtAGlanceWidget: Real events data:", limitedEvents.length > 0 ? limitedEvents : "No events today");
           console.log("AtAGlanceWidget: Real tasks data:", limitedTasks.length > 0 ? limitedTasks : "No active tasks");
           
+          const fullPrompt = `${prompt}\n\n## IMPORTANT - BASE THIS ON REAL DATA:\nHere are my actual events: ${JSON.stringify(limitedEvents)}\nHere are my actual tasks: ${JSON.stringify(limitedTasks)}\nCurrent time: ${new Date().toLocaleTimeString()}\nCurrent date: ${new Date().toLocaleDateString()}`;
+          
+          console.log("AtAGlanceWidget: Using upgraded prompt to ensure real data is used");
+          
           const aiRes = await fetch('/api/assistant', {
             method: 'POST',
             headers: {
@@ -401,7 +405,7 @@ Use markdown formatting and emoji where appropriate. Consider the time of day ($
             },
             body: JSON.stringify({ 
               history: [], 
-              prompt,
+              prompt: fullPrompt,
               // Include metadata to improve response quality
               metadata: {
                 userName,

@@ -9,8 +9,8 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// FloCat assistant endpoint
-router.post('/api/assistant', isAuthenticated, async (req: any, res) => {
+// FloCat assistant endpoint (no authentication for testing)
+router.post('/api/assistant', async (req: any, res) => {
   try {
     const { prompt, history = [], metadata = {} } = req.body;
     
