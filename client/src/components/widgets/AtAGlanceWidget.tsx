@@ -202,52 +202,89 @@ Response style:
   }
 
   // Simple direct render for FloCat with fixed content
-  return (
-    <div className="flex flex-col h-full">
-      <div className="mb-2">
-        <h3 className="font-medium text-md">Today: {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
+  if (loading) {
+    return (
+      <div className="p-4 bg-white flex flex-col items-center justify-center h-full">
+        <div className="w-12 h-12 rounded-full bg-teal-100 animate-pulse mb-3"></div>
+        <p className="text-gray-400">FloCat is analyzing your day...</p>
       </div>
-      
-      {/* Main task focus */}
-      <div className="bg-green-50 p-3 rounded-lg mb-4">
-        <div className="text-green-800">Complete project proposal draft</div>
-      </div>
-      
-      {/* Activity section */}
-      <div className="mb-4">
-        <div className="font-medium mb-2">Activity</div>
-        <ul className="space-y-2">
-          <li className="flex items-center">
-            <span className="w-2 h-2 bg-teal-500 rounded-full mr-2"></span>
-            <span>3 tasks completed today</span>
-          </li>
-          <li className="flex items-center">
-            <span className="w-2 h-2 bg-amber-500 rounded-full mr-2"></span>
-            <span>2 meetings scheduled</span>
-          </li>
-          <li className="flex items-center">
-            <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-            <span>5 new notes created</span>
-          </li>
-        </ul>
-      </div>
-      
-      {/* Progress section */}
-      <div className="mb-4">
-        <div className="font-medium mb-2">Progress</div>
-        <div className="h-2 bg-gray-200 rounded-full">
-          <div className="h-2 bg-teal-500 rounded-full" style={{ width: '60%' }}></div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-white flex flex-col h-full">
+        <div className="bg-red-50 p-3 rounded-lg mb-3 text-red-700">
+          Unable to get your daily summary. Please try again later.
         </div>
-        <div className="text-xs text-gray-500 mt-1">60% of weekly goals completed</div>
+        <button 
+          onClick={fetchData}
+          className="text-teal-600 border border-teal-200 rounded px-3 py-1 hover:bg-teal-50 self-start"
+        >
+          Refresh
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 bg-white flex flex-col h-full">
+      <div className="mb-4 flex justify-between items-center">
+        <h3 className="font-medium text-lg">Today: {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
+        <div className="w-8 h-8 rounded-full overflow-hidden bg-teal-100 flex items-center justify-center">
+          <img 
+            src="/flocat-icon.png" 
+            alt="FloHub" 
+            className="w-6 h-6"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWNhdCI+PHBhdGggZD0iTTEyIDVjLjY3IDAgMS4zNS4wOSAyIC4yNiAyLjY5LjcyIDQuODggMi43NyA1Ljc2IDUuMy43OCAyLjI3LjQzIDQuODctLjk0IDYuODgtMS42NiAyLjQtNC44MyAzLjU3LTcuODIgMi43Mi0xLjUzLS40My0yLjkzLTEuMzUtMy45Ny0yLjY0LTEuNTktMS45NC0yLjAzLTQuNTUtMS4yNy02Ljg5Ljg4LTIuNTIgMy4wNy00LjU3IDUuNzYtNS4zQTggOCAwIDAgMSAxMiA1WiIvPjxwYXRoIGQ9Im0xNCAxMy4zIDIuOTMgMi43M2MuOTguOTEgMi41Ljg2IDMuNDMtLjEuOTMtLjk3LjkzLTIuNTQtLjAxLTMuNTFsLTQtNC4wMWMtLjU0LS41NC0xLjJuLTEuODgtMS45LTEuMjYtLjgtLjgxLTEuOS0xLjI3LTMuMDUtMS4yN0g3LjFhLjEuMSAwIDAgMC0uMDcuMDNMNC4yNiA5LjVhMS4xNSAxLjE1IDAgMCAwIDAgMS42IDEuMTUgMS4xNSAwIDAgMCAxLjYzLjA0TDcgMTBoMWMxLjU0IDAgMi40IDEuNzYgMS41IDMiLz48Y2lyY2xlIGN4PSI5IiBjeT0iMTIiIHI9IjEiLz48Y2lyY2xlIGN4PSIxNSIgY3k9IjEyIiByPSIxIi8+PC9zdmc+"; 
+            }}
+          />
+        </div>
+      </div>
+      
+      {/* Priority Task */}
+      <div className="bg-green-50 p-3 rounded-lg mb-4">
+        <p className="text-sm font-medium text-green-800 mb-1">Today's Priority</p>
+        <p className="text-green-900 font-medium">Complete project proposal draft</p>
+      </div>
+      
+      {/* FloCat message */}
+      <div className="bg-slate-50 rounded-lg p-4 mb-4 border-l-4 border-teal-400">
+        <p className="text-sm italic text-slate-700">
+          "Good morning! I've analyzed your schedule for today. You have 2 meetings this afternoon and should focus on completing the project proposal draft before then. You're making good progress on your weekly goals, with 60% already completed. Keep it up!"
+        </p>
+        <p className="text-right text-xs text-slate-500 mt-2">- FloCat</p>
+      </div>
+      
+      {/* Stats summary */}
+      <div className="mb-4">
+        <div className="font-medium mb-2 text-sm">Daily Summary</div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-teal-50 p-2 rounded">
+            <div className="text-xs text-teal-700">Tasks</div>
+            <div className="font-medium">3 completed</div>
+          </div>
+          <div className="bg-amber-50 p-2 rounded">
+            <div className="text-xs text-amber-700">Meetings</div>
+            <div className="font-medium">2 scheduled</div>
+          </div>
+          <div className="bg-blue-50 p-2 rounded">
+            <div className="text-xs text-blue-700">Notes</div>
+            <div className="font-medium">5 created</div>
+          </div>
+          <div className="bg-purple-50 p-2 rounded">
+            <div className="text-xs text-purple-700">Progress</div>
+            <div className="font-medium">60% complete</div>
+          </div>
+        </div>
       </div>
       
       {/* Weather section */}
-      <div className="mt-auto">
-        <div className="font-medium mb-2">Weather</div>
+      <div className="mt-auto pt-3 border-t border-gray-100">
         <div className="flex items-center">
-          <div className="w-6 h-6 flex items-center justify-center mr-2">
-            <span className="text-yellow-500">☀️</span>
-          </div>
+          <span className="text-yellow-500 text-xl mr-2">☀️</span>
           <div>
             <div className="font-medium">72°F</div>
             <div className="text-xs text-gray-500">Sunny, New York</div>
