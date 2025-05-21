@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -41,6 +41,7 @@ export const userSettings = pgTable("user_settings", {
   globalTags: text("global_tags").array().default([]),
   activeWidgets: text("active_widgets").array().default(["tasks", "calendar", "ataglance", "quicknote"]),
   powerAutomateUrl: text("power_automate_url"),
+  floCatPreferences: jsonb("flocat_preferences"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -52,6 +53,7 @@ export const insertUserSettingsSchema = createInsertSchema(userSettings).pick({
   globalTags: true,
   activeWidgets: true,
   powerAutomateUrl: true,
+  floCatPreferences: true,
 });
 
 export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
