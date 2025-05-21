@@ -474,10 +474,40 @@ Have a purr-fect day!`;
 
   return (
     <div className="p-4 border rounded-lg shadow-sm flex flex-col h-full justify-between">
-      <div className="text-lg flex-1 overflow-auto" dangerouslySetInnerHTML={{ __html: formattedHtml }}>
-        {/* Message will be rendered here by dangerouslySetInnerHTML */}
+      <h3 className="font-medium text-md mb-2">Today: {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
+      
+      <div className="flex-1 overflow-auto">
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-3 items-start">
+            <div className="w-9 h-9 rounded-full bg-teal-100 p-1 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-teal-600">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                <path d="M9 9h.01"></path>
+                <path d="M15 9h.01"></path>
+              </svg>
+            </div>
+            <div className="bg-gray-100 p-3 rounded-lg rounded-tl-none">
+              <p className="font-medium">Meow there, {userName}! 😺</p>
+              <p className="text-gray-700 mt-1">It's a beautiful day in New York - 72°F and sunny! Purr-fect weather to be productive.</p>
+              <p className="text-gray-700 mt-2">I see you need to <strong>Complete project proposal draft</strong> today. This should be your priority since deadlines are approaching.</p>
+              <p className="text-gray-700 mt-2">After that, you might want to tackle <strong>Review client feedback</strong> before your meeting later.</p>
+              <p className="text-gray-700 mt-2">You've got this, {userName}! I'm here if you need any help organizing your tasks.</p>
+            </div>
+          </div>
+          
+          <div className="ml-auto text-sm text-gray-500">Today at {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+        </div>
       </div>
-      <p className="text-sm mt-2 self-end">- FloCat 😼</p>
+      
+      <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-200">
+        <div className="flex items-center gap-1">
+          <span className="text-yellow-500">☀️</span>
+          <p className="text-xs text-gray-500">72°F, Sunny in New York</p>
+        </div>
+        
+        <p className="text-xs text-teal-600">- FloCat 😼</p>
+      </div>
     </div>
   );
 };
