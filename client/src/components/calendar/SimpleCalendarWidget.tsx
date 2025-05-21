@@ -194,6 +194,22 @@ const SimpleCalendarWidget = () => {
             const teamsLinkMatch = rawDescription.match(/href="(https:\/\/(?:aka\.ms\/JoinTeamsMeeting|teams\.microsoft\.com\/[^"]+))"/i);
             const teamsLink = teamsLinkMatch ? teamsLinkMatch[1] : '';
             
+            // Extract organizer
+            const organizerMatch = rawDescription.match(/Organizer:?\s*([^<\n]+)/i) || 
+                                  rawDescription.match(/<b>From:<\/b>\s*([^<\n]+)/i);
+            const organizer = organizerMatch ? organizerMatch[1].trim() : '';
+            
+            // Extract attendees
+            const requiredAttendeesMatch = rawDescription.match(/Required:?\s*([^<\n]+)/i) || 
+                                          rawDescription.match(/Required Attendees:?\s*([^<\n]+)/i) ||
+                                          rawDescription.match(/<b>To:<\/b>\s*([^<\n]+)/i);
+            const requiredAttendees = requiredAttendeesMatch ? requiredAttendeesMatch[1].trim() : '';
+            
+            const optionalAttendeesMatch = rawDescription.match(/Optional:?\s*([^<\n]+)/i) || 
+                                          rawDescription.match(/Optional Attendees:?\s*([^<\n]+)/i) ||
+                                          rawDescription.match(/<b>Cc:<\/b>\s*([^<\n]+)/i);
+            const optionalAttendees = optionalAttendeesMatch ? optionalAttendeesMatch[1].trim() : '';
+            
             // Build a cleaner description with the extracted information
             cleanDescription = 'Microsoft Teams Meeting\n';
             if (teamsLink) {
@@ -203,7 +219,16 @@ const SimpleCalendarWidget = () => {
               cleanDescription += `Meeting ID: ${meetingId}\n`;
             }
             if (passcode) {
-              cleanDescription += `Passcode: ${passcode}`;
+              cleanDescription += `Passcode: ${passcode}\n`;
+            }
+            if (organizer) {
+              cleanDescription += `Organizer: ${organizer}\n`;
+            }
+            if (requiredAttendees) {
+              cleanDescription += `Required Attendees: ${requiredAttendees}\n`;
+            }
+            if (optionalAttendees) {
+              cleanDescription += `Optional Attendees: ${optionalAttendees}`;
             }
           } else {
             cleanDescription = rawDescription;
@@ -761,10 +786,10 @@ const SimpleCalendarWidget = () => {
         open={isEventDetailsDialogOpen} 
         onOpenChange={setIsEventDetailsDialogOpen}
       >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl">
           {selectedEvent && (
             <>
-              <DialogHeader>
+              <DialogHeader className="pb-2">
                 <DialogTitle>{selectedEvent.summary}</DialogTitle>
                 {selectedEvent.calendarName && (
                   <DialogDescription>
@@ -773,10 +798,11 @@ const SimpleCalendarWidget = () => {
                 )}
               </DialogHeader>
               
-              <div className="space-y-4 py-4">
-                <div className="space-y-1">
+              <div className="grid grid-cols-1 gap-3">
+                {/* Basic event details */}
+                <div>
                   <p className="font-medium text-sm">When</p>
-                  <p>
+                  <p className="text-sm">
                     {selectedEvent.start.dateTime && selectedEvent.end?.dateTime ? (
                       <>
                         {format(parseISO(selectedEvent.start.dateTime), 'MMMM d, yyyy HH:mm')} - {' '}
@@ -793,42 +819,44 @@ const SimpleCalendarWidget = () => {
                   </p>
                 </div>
                 
-                {/* Organizer and Attendee Information */}
+                {/* Organizer Information */}
+                {selectedEvent.description && selectedEvent.description.includes('Organizer:') && (
+                  <div>
+                    <p className="font-medium text-sm">Organizer</p>
+                    <p className="text-sm">
+                      {selectedEvent.description.match(/Organizer:\s*([^\n]+)/)?.[1] || 'Not specified'}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Required Attendees */}
                 {selectedEvent.description && (
-                  <>
-                    {selectedEvent.description.includes('Organizer:') && (
-                      <div className="space-y-1">
-                        <p className="font-medium text-sm">Organizer</p>
-                        <p>
-                          {selectedEvent.description.match(/Organizer:\s*([^\n]+)/)?.[1] || 
-                           selectedEvent.htmlDescription?.match(/Organizer:\s*([^<]+)/)?.[1] || 
-                           'Not specified'}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {selectedEvent.description.includes('Required Attendees:') && (
-                      <div className="space-y-1">
-                        <p className="font-medium text-sm">Required Attendees</p>
-                        <p>
-                          {selectedEvent.description.match(/Required Attendees:\s*([^\n]+)/)?.[1] || 
-                           selectedEvent.htmlDescription?.match(/Required Attendees:\s*([^<]+)/)?.[1] || 
-                           'Not specified'}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {selectedEvent.description.includes('Optional Attendees:') && (
-                      <div className="space-y-1">
-                        <p className="font-medium text-sm">Optional Attendees</p>
-                        <p>
-                          {selectedEvent.description.match(/Optional Attendees:\s*([^\n]+)/)?.[1] || 
-                           selectedEvent.htmlDescription?.match(/Optional Attendees:\s*([^<]+)/)?.[1] || 
-                           'Not specified'}
-                        </p>
-                      </div>
-                    )}
-                  </>
+                  selectedEvent.description.includes('Required Attendees:') || 
+                  selectedEvent.description.includes('Required:')
+                ) && (
+                  <div>
+                    <p className="font-medium text-sm">Required Attendees</p>
+                    <p className="text-sm line-clamp-2">
+                      {selectedEvent.description.match(/Required Attendees:\s*([^\n]+)/)?.[1] || 
+                       selectedEvent.description.match(/Required:\s*([^\n]+)/)?.[1] || 
+                       'Not specified'}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Optional Attendees */}
+                {selectedEvent.description && (
+                  selectedEvent.description.includes('Optional Attendees:') || 
+                  selectedEvent.description.includes('Optional:')
+                ) && (
+                  <div>
+                    <p className="font-medium text-sm">Optional Attendees</p>
+                    <p className="text-sm line-clamp-2">
+                      {selectedEvent.description.match(/Optional Attendees:\s*([^\n]+)/)?.[1] || 
+                       selectedEvent.description.match(/Optional:\s*([^\n]+)/)?.[1] || 
+                       'Not specified'}
+                    </p>
+                  </div>
                 )}
                 
                 {/* Teams Meeting Information */}
@@ -836,14 +864,14 @@ const SimpleCalendarWidget = () => {
                   selectedEvent.description.includes('Microsoft Teams') || 
                   selectedEvent.description.includes('Join link')
                 ) && (
-                  <div className="space-y-2 border rounded-md p-3 bg-blue-50">
-                    <p className="font-medium text-sm">Microsoft Teams Meeting</p>
-                    
-                    {/* Teams Join Link */}
-                    {(selectedEvent.description.match(/(https:\/\/[^\s"'<>]+)/i) || 
-                      selectedEvent.description.includes('Join link:') && 
-                      selectedEvent.description.match(/Join link: (https:\/\/[^\s\n]+)/)) && (
-                      <div>
+                  <div className="border rounded-md p-2 bg-blue-50">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-medium text-sm">Microsoft Teams Meeting</p>
+                      
+                      {/* Teams Join Link */}
+                      {(selectedEvent.description.match(/(https:\/\/[^\s"'<>]+)/i) || 
+                        selectedEvent.description.includes('Join link:') && 
+                        selectedEvent.description.match(/Join link: (https:\/\/[^\s\n]+)/)) && (
                         <a 
                           href={
                             selectedEvent.description.includes('Join link:') 
@@ -852,29 +880,27 @@ const SimpleCalendarWidget = () => {
                           }
                           target="_blank"
                           rel="noopener noreferrer" 
-                          className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                          className="inline-flex items-center px-2 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs"
                         >
-                          <span className="mr-2">Join Teams Meeting</span>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <span className="mr-1">Join Meeting</span>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 0C5.37 0 0 5.37 0 12C0 18.63 5.37 24 12 24C18.63 24 24 18.63 24 12C24 5.37 18.63 0 12 0ZM9.18 18.12C8.3 18.12 7.55 17.62 7.2 16.85H7.14L7.09 18H5.83V6H7.3V10.7H7.34C7.66 9.95 8.39 9.42 9.33 9.42C11.13 9.42 12.18 11 12.18 13.79C12.18 16.59 11.12 18.12 9.18 18.12ZM16.76 18.12C14.48 18.12 13.19 16.45 13.19 13.8C13.19 11.3 14.48 9.42 16.76 9.42C19.04 9.42 20.34 11.3 20.34 13.8C20.34 16.45 19.05 18.12 16.76 18.12Z" fill="currentColor"/>
-                            <path d="M16.75 10.82C15.77 10.82 15.11 11.99 15.11 13.8C15.11 15.61 15.77 16.72 16.75 16.72C17.76 16.72 18.4 15.61 18.4 13.8C18.4 11.99 17.75 10.82 16.75 10.82Z" fill="currentColor"/>
-                            <path d="M9.11 10.82C8.21 10.82 7.43 11.82 7.43 13.76C7.43 15.7 8.21 16.72 9.11 16.72C10.04 16.72 10.71 15.7 10.71 13.76C10.71 11.82 10.04 10.82 9.11 10.82Z" fill="currentColor"/>
                           </svg>
                         </a>
-                      </div>
-                    )}
+                      )}
+                    </div>
                     
                     {/* Meeting ID and Passcode */}
-                    <div className="flex flex-col space-y-1 mt-2">
+                    <div className="flex flex-wrap gap-4 mt-1">
                       {selectedEvent.description.match(/Meeting ID:?\s*([0-9\s]+)/i) && (
-                        <div className="text-sm">
+                        <div className="text-xs">
                           <span className="font-medium">Meeting ID:</span> {
                             selectedEvent.description.match(/Meeting ID:?\s*([0-9\s]+)/i)?.[1]?.trim() || ''
                           }
                         </div>
                       )}
                       {selectedEvent.description.match(/Pass(?:code|word):?\s*([a-zA-Z0-9]+)/i) && (
-                        <div className="text-sm">
+                        <div className="text-xs">
                           <span className="font-medium">Passcode:</span> {
                             selectedEvent.description.match(/Pass(?:code|word):?\s*([a-zA-Z0-9]+)/i)?.[1]?.trim() || ''
                           }
@@ -884,24 +910,14 @@ const SimpleCalendarWidget = () => {
                   </div>
                 )}
                 
-                {/* Full Description */}
-                {selectedEvent.description && (
-                  <div className="space-y-1">
-                    <p className="font-medium text-sm">Description</p>
-                    <div className="whitespace-pre-line max-h-[200px] overflow-y-auto border rounded p-2">
-                      {selectedEvent.description}
-                    </div>
-                  </div>
-                )}
-                
                 {/* Tags Section */}
-                <div className="space-y-2 border-t pt-4">
+                <div className="pt-1">
                   <div className="flex justify-between items-center">
                     <p className="font-medium text-sm">Tags</p>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1">
                       <input 
                         type="text" 
-                        className="border rounded px-2 py-1 text-sm" 
+                        className="h-7 text-xs border rounded px-2 py-1" 
                         placeholder="Add a tag..." 
                         value={newTag}
                         onChange={(e) => setNewTag(e.target.value)}
@@ -915,6 +931,7 @@ const SimpleCalendarWidget = () => {
                       <Button 
                         size="sm" 
                         variant="outline"
+                        className="h-7 text-xs"
                         onClick={() => {
                           if (newTag.trim()) {
                             addTagToEvent(selectedEvent.id, newTag.trim());
@@ -932,11 +949,11 @@ const SimpleCalendarWidget = () => {
                       <Badge 
                         key={tag} 
                         variant="secondary"
-                        className="flex items-center gap-1 py-1 px-2"
+                        className="flex items-center gap-1 py-0.5 px-2 text-xs"
                       >
                         {tag}
                         <button 
-                          className="rounded-full h-4 w-4 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                          className="rounded-full h-3 w-3 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-200"
                           onClick={() => removeTagFromEvent(selectedEvent.id, tag)}
                         >
                           <span className="sr-only">Remove tag</span>
@@ -949,10 +966,23 @@ const SimpleCalendarWidget = () => {
                     )}
                   </div>
                 </div>
+                
+                {/* Description (Collapsed) */}
+                {selectedEvent.description && (
+                  <details className="text-sm">
+                    <summary className="font-medium cursor-pointer">View Description</summary>
+                    <div className="whitespace-pre-line mt-1 border rounded p-2 text-xs max-h-[100px] overflow-y-auto">
+                      {selectedEvent.description}
+                    </div>
+                  </details>
+                )}
               </div>
               
-              <DialogFooter>
-                <Button onClick={() => setIsEventDetailsDialogOpen(false)}>
+              <DialogFooter className="pt-2">
+                <Button 
+                  onClick={() => setIsEventDetailsDialogOpen(false)}
+                  size="sm"
+                >
                   Close
                 </Button>
               </DialogFooter>
