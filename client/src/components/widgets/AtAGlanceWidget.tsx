@@ -51,7 +51,7 @@ const AtAGlanceWidget = () => {
   const [formattedHtml, setFormattedHtml] = useState<string>("FloCat is thinking...");
 
   // Fetch user settings
-  const { data: loadedSettings, isLoading: isLoadingSettings } = useQuery<UserSettings>({
+  const { data: loadedSettings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['/api/user-settings'],
     retry: 1,
     enabled: isAuthenticated
@@ -326,10 +326,17 @@ const AtAGlanceWidget = () => {
          const limitedMeetings = meetings.slice(0, 2);
          
          // Get user preferences from settings
-         const communicationStyle = loadedSettings?.floCatPreferences?.communicationStyle || 'friendly';
-         const focusAreas = loadedSettings?.floCatPreferences?.focusAreas || ['meetings', 'tasks', 'habits'];
-         const reminderIntensity = loadedSettings?.floCatPreferences?.reminderIntensity || 'moderate';
-         const interactionFrequency = loadedSettings?.floCatPreferences?.interactionFrequency || 'medium';
+         const floCatPrefs = loadedSettings?.floCatPreferences || {
+           communicationStyle: 'friendly',
+           focusAreas: ['meetings', 'tasks', 'habits'],
+           reminderIntensity: 'moderate',
+           interactionFrequency: 'medium'
+         };
+         
+         const communicationStyle = floCatPrefs.communicationStyle;
+         const focusAreas = floCatPrefs.focusAreas;
+         const reminderIntensity = floCatPrefs.reminderIntensity;
+         const interactionFrequency = floCatPrefs.interactionFrequency;
          
          console.log("AtAGlanceWidget: Using FloCat preferences:", { 
            communicationStyle, 
