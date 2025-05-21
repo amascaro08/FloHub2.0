@@ -18,6 +18,7 @@ import LinkedMoments from "@/components/journal/LinkedMoments";
 import ActivityLog from "@/components/journal/ActivityLog";
 import JournalCalendar from "@/components/journal/JournalCalendar";
 import JournalInsights from "@/components/journal/JournalInsights";
+import EntryViewer from "@/components/journal/EntryViewer";
 
 // Interface for sleep data
 interface SleepData {
@@ -733,6 +734,13 @@ export default function JournalPage() {
           </svg>
         </button>
       </div>
+      
+      {/* Entry Viewer Dialog */}
+      <EntryViewer 
+        date={viewEntryDate}
+        isOpen={viewingEntry}
+        onClose={() => setViewingEntry(false)}
+      />
     </DashboardLayout>
   );
 }
