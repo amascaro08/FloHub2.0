@@ -31,6 +31,9 @@ export interface IStorage {
   updateCalendarSource(id: number, source: Partial<InsertCalendarSource>): Promise<CalendarSource | undefined>;
   deleteCalendarSource(id: number): Promise<boolean>;
   
+  // Calendar accounts operations
+  getCalendarAccounts(): Promise<any[]>;
+  
   // Registration operations
   createRegistration(registration: InsertRegistration): Promise<Registration>;
   getRegistrations(): Promise<Registration[]>;
@@ -52,6 +55,27 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Calendar accounts operations
+  async getCalendarAccounts(): Promise<any[]> {
+    // For demo purposes, return some sample accounts
+    return [
+      {
+        id: 'google-1',
+        provider: 'google',
+        email: 'amascaro08@gmail.com',
+        displayName: 'Adam Mascaro',
+        isConnected: true
+      },
+      {
+        id: 'o365-1',
+        provider: 'o365',
+        email: 'user@office365.com',
+        displayName: 'Office 365 Account',
+        isConnected: false
+      }
+    ];
+  }
+
   // User operations
   async getUser(id: string | number): Promise<User | undefined> {
     // Convert string to number if needed
