@@ -48,6 +48,12 @@ interface UserSettings {
   activeWidgets: string[];
   powerAutomateUrl?: string;
   calendarSources?: CalendarSource[];
+  floCatPreferences?: {
+    communicationStyle: 'professional' | 'friendly' | 'humorous' | 'sarcastic';
+    focusAreas: string[];
+    reminderIntensity: 'gentle' | 'moderate' | 'assertive';
+    interactionFrequency: 'low' | 'medium' | 'high';
+  };
 }
 
 interface CalendarAccount {
@@ -282,10 +288,11 @@ export default function Settings() {
     <DashboardLayout title="Settings">
       <div className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="calendar">Calendar Settings</TabsTrigger>
             <TabsTrigger value="tags">Tags & Categories</TabsTrigger>
+            <TabsTrigger value="flocat">FloCat Assistant</TabsTrigger>
           </TabsList>
           
           {/* General Settings Tab */}
