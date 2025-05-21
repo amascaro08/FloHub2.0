@@ -125,6 +125,7 @@ export default function JournalCalendar({ onSelectDate, selectedDate }: JournalC
         date: date.toISOString().split('T')[0],
         hasJournalEntry: false,
         hasMood: false,
+        activities: [],
       });
     }
     
@@ -233,14 +234,20 @@ export default function JournalCalendar({ onSelectDate, selectedDate }: JournalC
             >
               <span className={`text-xs ${isToday ? 'font-bold' : ''}`}>{day}</span>
               
-              {/* Indicator for journal entry or mood */}
-              {isCurrentMonth && (dayInfo.hasJournalEntry || dayInfo.hasMood) && (
+              {/* Indicators for journal entry, mood, activities, and sleep */}
+              {isCurrentMonth && (
                 <div className="absolute bottom-1 flex space-x-1 items-center">
                   {dayInfo.hasJournalEntry && (
                     <div className="w-1 h-1 bg-teal-500 rounded-full"></div>
                   )}
                   {dayInfo.hasMood && dayInfo.moodEmoji && (
                     <div className="text-[9px]">{dayInfo.moodEmoji}</div>
+                  )}
+                  {dayInfo.activities && dayInfo.activities.length > 0 && (
+                    <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
+                  )}
+                  {dayInfo.sleep && (
+                    <div className="text-[9px]">💤</div>
                   )}
                 </div>
               )}
