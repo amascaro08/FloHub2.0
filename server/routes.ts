@@ -13,6 +13,7 @@ import userSettingsRoutes from "./routes/user-settings";
 import calendarSourcesRoutes from "./routes/calendar-sources";
 import calendarAccountsRoutes from "./routes/calendar-accounts";
 import assistantRoutes from "./routes/assistant";
+import journalRoutes from "./routes/journal";
 import { setupAuthRoutes } from "./routes/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -36,6 +37,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register assistant routes
   app.use('/', assistantRoutes);
+  
+  // Register journal routes
+  app.use('/', journalRoutes);
   // Health check endpoint
   app.get('/health', (_req: Request, res: Response) => {
     res.status(200).send('OK');

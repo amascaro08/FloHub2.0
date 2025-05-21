@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Import journal components
 import TodayEntry from "@/components/journal/TodayEntry";
@@ -9,12 +12,16 @@ import JournalTimeline from "@/components/journal/JournalTimeline";
 import OnThisDay from "@/components/journal/OnThisDay";
 import JournalSummary from "@/components/journal/JournalSummary";
 import LinkedMoments from "@/components/journal/LinkedMoments";
+import ActivityLog from "@/components/journal/ActivityLog";
+import JournalCalendar from "@/components/journal/JournalCalendar";
 
 // Journal page component
 export default function JournalPage() {
+  const { user, isAuthenticated } = useAuth();
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [isMobile, setIsMobile] = useState(false);
   const [showNewEntryButton, setShowNewEntryButton] = useState(false);
+  const [activeTab, setActiveTab] = useState('journal'); // 'journal', 'calendar', or 'activities'
 
   // Check if device is mobile
   useEffect(() => {
@@ -31,19 +38,111 @@ export default function JournalPage() {
     };
   }, []);
 
+  // Sync entries with database
+  useEffect(() => {
+    if (isAuthenticated) {
+      // We could fetch initial data from the database here
+      // but we'll just use localStorage for now and sync later
+      // when components need them
+    }
+  }, [isAuthenticated]);
+
   // Handle saving journal entry
-  const handleSaveEntry = (entry: { content: string; timestamp: string }) => {
+  const handleSaveEntry = async (entry: { content: string; timestamp: string }) => {
     console.log("Saving entry:", entry);
-    // Storage is handled within the TodayEntry component itself
+    
+    if (isAuthenticated) {
+      try {
+        // Save to database
+        const response = await fetch('/api/journal/entries', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            date: selectedDate,
+            content: entry.content
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to save journal entry to database');
+        }
+        
+        console.log('Journal entry saved to database successfully');
+      } catch (error) {
+        console.error('Error saving journal entry to database:', error);
+        // Continue with local storage as fallback
+      }
+    }
   };
 
   // Handle saving mood
-  const handleSaveMood = (mood: { emoji: string; label: string; tags: string[] }) => {
+  const handleSaveMood = async (mood: { emoji: string; label: string; tags: string[] }) => {
     console.log("Saving mood:", mood);
-    // Storage is handled within the MoodTracker component itself
+    
+    if (isAuthenticated) {
+      try {
+        // Save to database
+        const response = await fetch('/api/journal/moods', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            date: selectedDate,
+            emoji: mood.emoji,
+            label: mood.label,
+            tags: mood.tags
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to save mood to database');
+        }
+        
+        console.log('Mood saved to database successfully');
+      } catch (error) {
+        console.error('Error saving mood to database:', error);
+        // Continue with local storage as fallback
+      }
+    }
   };
 
-  // Handle selecting a date from the timeline
+  // Handle adding activity
+  const handleAddActivity = async (activity: any) => {
+    console.log("Adding activity:", activity);
+    
+    if (isAuthenticated) {
+      try {
+        // Save to database
+        const response = await fetch('/api/journal/activities', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            date: selectedDate,
+            type: activity.type,
+            name: activity.name,
+            duration: activity.duration,
+            notes: activity.notes
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to save activity to database');
+        }
+        
+        console.log('Activity saved to database successfully');
+      } catch (error) {
+        console.error('Error saving activity to database:', error);
+        // Continue with local storage as fallback
+      }
+    }
+  };
+
+  // Handle selecting a date from the timeline or calendar
   const handleSelectDate = (date: string) => {
     setSelectedDate(date);
     console.log("Selected date:", date);
@@ -54,45 +153,108 @@ export default function JournalPage() {
     }
   };
 
+  // Main journal component rendering
+  const renderJournalContent = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Left column - main journal content */}
+      <div className="lg:col-span-2 space-y-6">
+        {/* Today's Entry */}
+        <div className={isMobile ? "h-[300px]" : "h-[400px]"}>
+          <TodayEntry onSave={handleSaveEntry} />
+        </div>
+        
+        {/* Journal Timeline */}
+        <JournalTimeline onSelectDate={handleSelectDate} />
+        
+        {/* Journal Summary on mobile only */}
+        {isMobile && (
+          <JournalSummary />
+        )}
+      </div>
+      
+      {/* Right column - mood & insights */}
+      <div className="space-y-6">
+        {/* Mood Tracker */}
+        <MoodTracker onSave={handleSaveMood} />
+        
+        {/* Journal Summary on desktop only */}
+        {!isMobile && (
+          <JournalSummary />
+        )}
+        
+        {/* On This Day */}
+        <OnThisDay onViewEntry={handleSelectDate} />
+        
+        {/* Linked Moments */}
+        <LinkedMoments date={selectedDate} />
+      </div>
+    </div>
+  );
+
+  // Calendar view component
+  const renderCalendarView = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="space-y-6">
+        <JournalCalendar 
+          onSelectDate={handleSelectDate} 
+          selectedDate={selectedDate} 
+        />
+        
+        <LinkedMoments date={selectedDate} />
+      </div>
+      
+      <div className="space-y-6">
+        <div className={isMobile ? "h-[300px]" : "h-[400px]"}>
+          <TodayEntry onSave={handleSaveEntry} />
+        </div>
+        
+        <MoodTracker onSave={handleSaveMood} />
+      </div>
+    </div>
+  );
+
+  // Activities view component
+  const renderActivitiesView = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="space-y-6">
+        <ActivityLog 
+          date={selectedDate} 
+          onAddActivity={handleAddActivity} 
+        />
+        
+        <JournalCalendar 
+          onSelectDate={handleSelectDate} 
+          selectedDate={selectedDate} 
+        />
+      </div>
+      
+      <div className="space-y-6">
+        <LinkedMoments date={selectedDate} />
+        <JournalSummary />
+      </div>
+    </div>
+  );
+
   return (
     <DashboardLayout title="Journal">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Journal</h1>
-        
-        {/* Main content grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Left column - main journal content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Today's Entry */}
-            <div className={isMobile ? "h-[300px]" : "h-[400px]"}>
-              <TodayEntry onSave={handleSaveEntry} />
-            </div>
-            
-            {/* Journal Timeline */}
-            <JournalTimeline onSelectDate={handleSelectDate} />
-            
-            {/* Journal Summary on mobile only */}
-            {isMobile && (
-              <JournalSummary />
-            )}
-          </div>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Journal</h1>
           
-          {/* Right column - mood & insights */}
-          <div className="space-y-6">
-            {/* Mood Tracker */}
-            <MoodTracker onSave={handleSaveMood} />
-            
-            {/* Journal Summary on desktop only */}
-            {!isMobile && (
-              <JournalSummary />
-            )}
-            
-            {/* On This Day */}
-            <OnThisDay onViewEntry={handleSelectDate} />
-            
-            {/* Linked Moments */}
-            <LinkedMoments date={selectedDate} />
-          </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+            <TabsList>
+              <TabsTrigger value="journal">Journal</TabsTrigger>
+              <TabsTrigger value="calendar">Calendar</TabsTrigger>
+              <TabsTrigger value="activities">Activities</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        
+        {/* Tab Content */}
+        <div className="mb-6">
+          {activeTab === 'journal' && renderJournalContent()}
+          {activeTab === 'calendar' && renderCalendarView()}
+          {activeTab === 'activities' && renderActivitiesView()}
         </div>
         
         {/* Floating New Entry button (mobile only) */}

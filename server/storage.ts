@@ -309,6 +309,330 @@ export class DatabaseStorage implements IStorage {
       .returning({ id: tasks.id });
     return result.length > 0;
   }
+
+  // Journal entry operations
+  async getJournalEntries(userId: string): Promise<JournalEntry[]> {
+    try {
+      return await db
+        .select()
+        .from(journalEntries)
+        .where(eq(journalEntries.userId, userId))
+        .orderBy(desc(journalEntries.date));
+    } catch (error) {
+      console.error("Error getting journal entries:", error);
+      return [];
+    }
+  }
+
+  async getJournalEntriesByDate(userId: string, date: string): Promise<JournalEntry | undefined> {
+    try {
+      const entries = await db
+        .select()
+        .from(journalEntries)
+        .where(eq(journalEntries.userId, userId))
+        .where(eq(journalEntries.date, date));
+      
+      return entries[0];
+    } catch (error) {
+      console.error("Error getting journal entry by date:", error);
+      return undefined;
+    }
+  }
+
+  async getJournalEntriesForMonth(userId: string, year: number, month: number): Promise<JournalEntry[]> {
+    try {
+      // Format month with leading zero if needed
+      const startMonth = month < 10 ? `0${month}` : `${month}`;
+      const startDate = `${year}-${startMonth}-01`;
+      
+      // Calculate end date (first day of next month)
+      let endYear = year;
+      let endMonth = month + 1;
+      if (endMonth > 12) {
+        endMonth = 1;
+        endYear += 1;
+      }
+      const endMonthStr = endMonth < 10 ? `0${endMonth}` : `${endMonth}`;
+      const endDate = `${endYear}-${endMonthStr}-01`;
+      
+      // Query entries using >= startDate and < endDate
+      const entries = await db
+        .select()
+        .from(journalEntries)
+        .where(eq(journalEntries.userId, userId))
+        .where(sql => sql`${journalEntries.date} >= ${startDate} AND ${journalEntries.date} < ${endDate}`)
+        .orderBy(journalEntries.date);
+      
+      return entries;
+    } catch (error) {
+      console.error("Error getting journal entries for month:", error);
+      return [];
+    }
+  }
+
+  async createJournalEntry(entry: InsertJournalEntry): Promise<JournalEntry> {
+    try {
+      const [result] = await db
+        .insert(journalEntries)
+        .values(entry)
+        .returning();
+      
+      return result;
+    } catch (error) {
+      console.error("Error creating journal entry:", error);
+      throw error;
+    }
+  }
+
+  async updateJournalEntry(userId: string, date: string, content: string): Promise<JournalEntry | undefined> {
+    try {
+      // First check if entry exists
+      const existingEntry = await this.getJournalEntriesByDate(userId, date);
+      
+      if (existingEntry) {
+        // Update existing entry
+        const [updated] = await db
+          .update(journalEntries)
+          .set({ 
+            content,
+            updatedAt: new Date()
+          })
+          .where(eq(journalEntries.userId, userId))
+          .where(eq(journalEntries.date, date))
+          .returning();
+        
+        return updated;
+      } else {
+        // Create new entry
+        const newEntry: InsertJournalEntry = {
+          userId,
+          date,
+          content,
+        };
+        
+        return await this.createJournalEntry(newEntry);
+      }
+    } catch (error) {
+      console.error("Error updating journal entry:", error);
+      return undefined;
+    }
+  }
+
+  async deleteJournalEntry(userId: string, date: string): Promise<boolean> {
+    try {
+      const deleted = await db
+        .delete(journalEntries)
+        .where(eq(journalEntries.userId, userId))
+        .where(eq(journalEntries.date, date))
+        .returning();
+      
+      return deleted.length > 0;
+    } catch (error) {
+      console.error("Error deleting journal entry:", error);
+      return false;
+    }
+  }
+  
+  // Journal mood operations
+  async getJournalMoods(userId: string): Promise<JournalMood[]> {
+    try {
+      return await db
+        .select()
+        .from(journalMoods)
+        .where(eq(journalMoods.userId, userId))
+        .orderBy(desc(journalMoods.date));
+    } catch (error) {
+      console.error("Error getting journal moods:", error);
+      return [];
+    }
+  }
+
+  async getJournalMoodByDate(userId: string, date: string): Promise<JournalMood | undefined> {
+    try {
+      const moods = await db
+        .select()
+        .from(journalMoods)
+        .where(eq(journalMoods.userId, userId))
+        .where(eq(journalMoods.date, date));
+      
+      return moods[0];
+    } catch (error) {
+      console.error("Error getting journal mood by date:", error);
+      return undefined;
+    }
+  }
+
+  async getJournalMoodsForMonth(userId: string, year: number, month: number): Promise<JournalMood[]> {
+    try {
+      // Format month with leading zero if needed
+      const startMonth = month < 10 ? `0${month}` : `${month}`;
+      const startDate = `${year}-${startMonth}-01`;
+      
+      // Calculate end date (first day of next month)
+      let endYear = year;
+      let endMonth = month + 1;
+      if (endMonth > 12) {
+        endMonth = 1;
+        endYear += 1;
+      }
+      const endMonthStr = endMonth < 10 ? `0${endMonth}` : `${endMonth}`;
+      const endDate = `${endYear}-${endMonthStr}-01`;
+      
+      // Query moods using >= startDate and < endDate
+      const moods = await db
+        .select()
+        .from(journalMoods)
+        .where(eq(journalMoods.userId, userId))
+        .where(sql => sql`${journalMoods.date} >= ${startDate} AND ${journalMoods.date} < ${endDate}`)
+        .orderBy(journalMoods.date);
+      
+      return moods;
+    } catch (error) {
+      console.error("Error getting journal moods for month:", error);
+      return [];
+    }
+  }
+
+  async createJournalMood(mood: InsertJournalMood): Promise<JournalMood> {
+    try {
+      const [result] = await db
+        .insert(journalMoods)
+        .values(mood)
+        .returning();
+      
+      return result;
+    } catch (error) {
+      console.error("Error creating journal mood:", error);
+      throw error;
+    }
+  }
+
+  async updateJournalMood(userId: string, date: string, moodData: Partial<InsertJournalMood>): Promise<JournalMood | undefined> {
+    try {
+      // First check if mood exists
+      const existingMood = await this.getJournalMoodByDate(userId, date);
+      
+      if (existingMood) {
+        // Update existing mood
+        const [updated] = await db
+          .update(journalMoods)
+          .set({ 
+            ...moodData,
+            updatedAt: new Date()
+          })
+          .where(eq(journalMoods.userId, userId))
+          .where(eq(journalMoods.date, date))
+          .returning();
+        
+        return updated;
+      } else if (moodData.emoji && moodData.label) {
+        // Create new mood if we have the required fields
+        const newMood: InsertJournalMood = {
+          userId,
+          date,
+          emoji: moodData.emoji,
+          label: moodData.label,
+          tags: moodData.tags || [],
+        };
+        
+        return await this.createJournalMood(newMood);
+      }
+      
+      return undefined;
+    } catch (error) {
+      console.error("Error updating journal mood:", error);
+      return undefined;
+    }
+  }
+
+  async deleteJournalMood(userId: string, date: string): Promise<boolean> {
+    try {
+      const deleted = await db
+        .delete(journalMoods)
+        .where(eq(journalMoods.userId, userId))
+        .where(eq(journalMoods.date, date))
+        .returning();
+      
+      return deleted.length > 0;
+    } catch (error) {
+      console.error("Error deleting journal mood:", error);
+      return false;
+    }
+  }
+  
+  // Journal activity operations
+  async getJournalActivities(userId: string): Promise<JournalActivity[]> {
+    try {
+      return await db
+        .select()
+        .from(journalActivities)
+        .where(eq(journalActivities.userId, userId))
+        .orderBy(desc(journalActivities.date));
+    } catch (error) {
+      console.error("Error getting journal activities:", error);
+      return [];
+    }
+  }
+
+  async getJournalActivitiesByDate(userId: string, date: string): Promise<JournalActivity[]> {
+    try {
+      return await db
+        .select()
+        .from(journalActivities)
+        .where(eq(journalActivities.userId, userId))
+        .where(eq(journalActivities.date, date))
+        .orderBy(desc(journalActivities.createdAt));
+    } catch (error) {
+      console.error("Error getting journal activities by date:", error);
+      return [];
+    }
+  }
+
+  async createJournalActivity(activity: InsertJournalActivity): Promise<JournalActivity> {
+    try {
+      const [result] = await db
+        .insert(journalActivities)
+        .values(activity)
+        .returning();
+      
+      return result;
+    } catch (error) {
+      console.error("Error creating journal activity:", error);
+      throw error;
+    }
+  }
+
+  async updateJournalActivity(id: number, activityData: Partial<InsertJournalActivity>): Promise<JournalActivity | undefined> {
+    try {
+      const [updated] = await db
+        .update(journalActivities)
+        .set({ 
+          ...activityData,
+          updatedAt: new Date()
+        })
+        .where(eq(journalActivities.id, id))
+        .returning();
+      
+      return updated;
+    } catch (error) {
+      console.error("Error updating journal activity:", error);
+      return undefined;
+    }
+  }
+
+  async deleteJournalActivity(id: number): Promise<boolean> {
+    try {
+      const deleted = await db
+        .delete(journalActivities)
+        .where(eq(journalActivities.id, id))
+        .returning();
+      
+      return deleted.length > 0;
+    } catch (error) {
+      console.error("Error deleting journal activity:", error);
+      return false;
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();
