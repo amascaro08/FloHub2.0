@@ -8,11 +8,11 @@ const AtAGlanceWidget = () => {
       <div className="mb-2">
         <h3 className="font-medium">Today: {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
       </div>
-      
+
       <div className="bg-green-50 rounded p-3 mb-4">
         <p className="text-green-800">Complete project proposal draft</p>
       </div>
-      
+
       <div>
         <p className="font-medium mb-1">Activity</p>
         <ul className="space-y-1 mb-4">
@@ -30,7 +30,7 @@ const AtAGlanceWidget = () => {
           </li>
         </ul>
       </div>
-      
+
       <div className="mb-4">
         <p className="font-medium mb-1">Progress</p>
         <div className="h-2 bg-gray-200 rounded-full">
@@ -41,7 +41,7 @@ const AtAGlanceWidget = () => {
         </div>
         <div className="text-xs text-gray-500 mt-1">60% of weekly goals completed</div>
       </div>
-      
+
       <div className="mt-auto">
         <p className="font-medium mb-1">Weather</p>
         <div className="flex items-center">
