@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { useAuth } from '@/hooks/useAuth';
@@ -127,14 +127,17 @@ const CalendarEventCard = ({
   // Safely extract date using helper function
   const startDateTime = getEventDateTime(event);
   
-  const sourceColors = {
+  const sourceColors: Record<string, string> = {
     'google': 'bg-blue-100 text-blue-800',
     'outlook': 'bg-teal-100 text-teal-800',
-    'work': 'bg-purple-100 text-purple-800'
+    'microsoft': 'bg-teal-100 text-teal-800',
+    'work': 'bg-purple-100 text-purple-800',
+    'o365': 'bg-purple-100 text-purple-800',
+    'office365': 'bg-purple-100 text-purple-800'
   };
   
   const sourceColorClass = event.source ? 
-    sourceColors[event.source] || 'bg-gray-100 text-gray-800' : 
+    (sourceColors[event.source] || 'bg-gray-100 text-gray-800') : 
     'bg-gray-100 text-gray-800';
   
   return (
@@ -925,7 +928,7 @@ export default function MeetingsPage() {
   const queryClient = useQueryClient();
   const userId = user?.id?.toString() || '1'; // Fallback to '1' for demo
   
-  // Sample task data
+  // Sample task data for demo purposes (would come from API in production)
   const sampleTasks = [
     {
       id: 101,
@@ -954,7 +957,7 @@ export default function MeetingsPage() {
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
 
   // Calculate time range for fetching events (current month + next month)
-  const timeRange = useMemo(() => {
+  const timeRange = React.useMemo(() => {
     const now = new Date();
     const timeMin = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const nextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0);
@@ -970,12 +973,15 @@ export default function MeetingsPage() {
         // Build API URL for calendar events
         const apiUrl = `/api/calendar?timeMin=${encodeURIComponent(timeRange.timeMin)}&timeMax=${encodeURIComponent(timeRange.timeMax)}&useCalendarSources=true`;
         
+        console.log('Fetching calendar events from:', apiUrl);
         const response = await fetch(apiUrl);
+        
         if (!response.ok) {
           throw new Error('Failed to fetch calendar events');
         }
         
         const data = await response.json();
+        console.log('Received calendar events:', data);
         setCalendarEvents(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error fetching calendar events:', error);
@@ -1050,10 +1056,31 @@ export default function MeetingsPage() {
     return meetings.find(meeting => meeting.calendarEventId === eventId);
   };
   
-  // Get event by ID
-  const getEventById = (eventId: string): CalendarEvent | undefined => {
-    return calendarEvents.find(event => event.id === eventId);
+  // Get event by ID - safely handling undefined
+  const getEventById = (eventId: string): CalendarEvent | null => {
+    return calendarEvents.find(event => event.id === eventId) || null;
   };
+  
+  // Fetch meetings data from API
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const fetchMeetings = async () => {
+      try {
+        const response = await fetch('/api/meetings');
+        if (response.ok) {
+          const meetingsData = await response.json();
+          if (Array.isArray(meetingsData)) {
+            setMeetings(meetingsData);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching meetings:', error);
+      }
+    };
+    
+    fetchMeetings();
+  }, [user?.id]);
   
   // Handler functions
   const handleCreateTask = (meetingId: number, taskText: string) => {
@@ -1095,6 +1122,8 @@ export default function MeetingsPage() {
   
   // Select a calendar event to create meeting notes
   const handleSelectEvent = (event: CalendarEvent) => {
+    console.log('Selected event:', event);
+    
     // Check if this event already has meeting notes
     const existingMeeting = findMeetingForEvent(event.id);
     
