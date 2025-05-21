@@ -1,15 +1,73 @@
-import express from 'express';
-import { isAuthenticated } from '../replitAuth';
-import { OpenAI } from 'openai';
+import { Router } from "express";
+import { isAuthenticated } from "../replitAuth";
+import { taskService } from "../services/taskService";
+import { storage } from "../storage";
+import OpenAI from "openai";
 
-const router = express.Router();
-
-// Initialize OpenAI client
+// Create OpenAI instance
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// FloCat assistant endpoint (no authentication for testing)
+const router = Router();
+
+// Get comprehensive context for FloCat
+router.get("/api/assistant/context", isAuthenticated, async (req: any, res) => {
+  try {
+    const userId = req.user?.claims?.sub || "";
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    // Get tasks using taskService to ensure we get both PostgreSQL and Firebase data
+    const tasks = await taskService.getUserTasks(userId);
+    
+    // Get calendar events
+    const calendarSources = await storage.getCalendarSources(userId);
+    
+    // Get user settings
+    const userSettings = await storage.getUserSettings(userId);
+    
+    // Return context data
+    res.json({
+      tasks: {
+        all: tasks,
+        completed: tasks.filter(task => task.done),
+        pending: tasks.filter(task => !task.done),
+        priority: tasks.filter(task => !task.done).sort((a, b) => {
+          // Sort by priority first (high > medium > low)
+          const priorityMap: Record<string, number> = { high: 3, medium: 2, low: 1 };
+          const aPriority = priorityMap[a.priority as string] || 0;
+          const bPriority = priorityMap[b.priority as string] || 0;
+          
+          if (aPriority !== bPriority) {
+            return bPriority - aPriority;
+          }
+          
+          // Then sort by due date if priorities are the same
+          if (a.dueDate && b.dueDate) {
+            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+          }
+          
+          // Put tasks with due dates before those without
+          if (a.dueDate) return -1;
+          if (b.dueDate) return 1;
+          
+          return 0;
+        })[0] // Get the highest priority task
+      },
+      calendar: {
+        sources: calendarSources
+      },
+      settings: userSettings
+    });
+  } catch (error) {
+    console.error("Error fetching assistant context:", error);
+    res.status(500).json({ error: "Failed to fetch context" });
+  }
+});
+
+// FloCat assistant endpoint
 router.post('/api/assistant', async (req: any, res) => {
   try {
     const { prompt, history = [], metadata = {} } = req.body;
@@ -50,23 +108,10 @@ router.post('/api/assistant', async (req: any, res) => {
       responseLength: reply.length 
     });
 
-    return res.status(200).json({ reply });
-  } catch (error: any) {
-    console.error('Assistant API error:', error);
-    
-    // Handle rate limits and other OpenAI-specific errors
-    if (error.status === 429) {
-      return res.status(429).json({ 
-        error: 'Rate limit exceeded. Please try again later.',
-        fallback: true
-      });
-    }
-    
-    // Return error with appropriate status code
-    return res.status(error.status || 500).json({ 
-      error: error.message || 'An error occurred processing your request',
-      fallback: true
-    });
+    res.json({ reply });
+  } catch (error) {
+    console.error('Error in assistant endpoint:', error);
+    res.status(500).json({ error: 'An error occurred while processing your request' });
   }
 });
 

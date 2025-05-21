@@ -536,16 +536,32 @@ const OverviewWidget = () => {
     }
   ]);
   
-  // Function to request guidance from FloCat with real data from APIs
+  // Function to request guidance from FloCat using the dedicated API
   const fetchFloCatInsights = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // Use the calendar events directly from the CalendarWidget state
-      // For the priority task, we'll use the same one shown in the widget
-      const priorityTaskText = "Complete project proposal draft";
-      const priorityTaskDueTime = "5:00 PM";
+      // Get context from API endpoint (tasks, calendar events, etc.)
+      const contextResponse = await fetch('/api/assistant/context');
+      
+      if (!contextResponse.ok) {
+        throw new Error('Failed to get assistant context');
+      }
+      
+      // This will include real-time tasks from both PostgreSQL and Firebase
+      const contextData = await contextResponse.json();
+      
+      // Extract key information for FloCat
+      const completedTasks = contextData.tasks.completed || [];
+      const pendingTasks = contextData.tasks.pending || [];
+      const priorityTask = contextData.tasks.priority || actualTasks.find(task => !task.done);
+      
+      // Format priority task with due date
+      const priorityTaskText = priorityTask ? priorityTask.text : "Complete project proposal draft";
+      const priorityTaskDueTime = priorityTask?.dueDate 
+        ? new Date(priorityTask.dueDate).toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'})
+        : "5:00 PM";
       
       // Get today's events sorted chronologically
       const todayEvents = [...actualEvents].sort((a, b) => {
@@ -563,7 +579,7 @@ const OverviewWidget = () => {
         return `- ${event.summary} (${time})`;
       }).join('\n');
       
-      // Use weather data shown in the widget
+      // Weather information (this would ideally come from a dedicated API)
       const weatherInfo = {
         temperature: "72°F",
         condition: "Sunny", 
@@ -575,8 +591,8 @@ const OverviewWidget = () => {
         Today is ${currentDate}. Create a personalized daily review for the user with this information:
         
         Tasks:
-        - 1 task completed (Send email to client)
-        - 2 tasks pending
+        - ${completedTasks.length} ${completedTasks.length === 1 ? 'task' : 'tasks'} completed 
+        - ${pendingTasks.length} ${pendingTasks.length === 1 ? 'task' : 'tasks'} pending
         
         Today's priority task: 
         ${priorityTaskText} (due today at ${priorityTaskDueTime})
@@ -606,7 +622,9 @@ const OverviewWidget = () => {
           history: [],
           metadata: {
             widget: 'overview',
-            view: 'dashboard'
+            view: 'dashboard',
+            taskCount: completedTasks.length + pendingTasks.length,
+            eventCount: todayEvents.length
           }
         }),
       });
