@@ -196,7 +196,7 @@ router.get('/events', sessionAuth, async (req: any, res: Response) => {
     
     for (const source of enabledSources) {
       try {
-        let events = [];
+        let events: CalendarEvent[] = [];
         
         if (source.type === 'url') {
           // For Power Automate URL sources
@@ -236,31 +236,44 @@ async function fetchEventsFromUrl(url: string, timeMin: string, timeMax: string)
   try {
     console.log(`Fetching events from URL: ${url}`);
     
-    // For testing, we'll use sample data to make sure events appear
-    // while troubleshooting the actual URL integration
-    const sampleEvents = getSamplePowerAutomateEvents();
-    console.log('Generated sample events for Power Automate URL:', sampleEvents.length);
-    
-    // We'll still try to fetch from the URL
+    // We'll make a direct URL request without generating sample data first
     try {
-      // Add time range parameters to URL if it supports it
-      const separator = url.includes('?') ? '&' : '?';
-      const urlWithParams = `${url}${separator}timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`;
+      // For Power Automate Flow URLs, you might need specific formatting
+      // Let's try both with and without the time parameters
       
-      console.log(`Making request to: ${urlWithParams}`);
-      const response = await fetch(urlWithParams);
+      // First try with the URL as provided (for already configured URLs)
+      console.log(`Making direct request to Power Automate URL: ${url}`);
+      let response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      // If that didn't work, try with time parameters
+      if (!response.ok) {
+        console.log(`Direct URL request failed, trying with time parameters`);
+        const separator = url.includes('?') ? '&' : '?';
+        const urlWithParams = `${url}${separator}timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`;
+        
+        console.log(`Making request to: ${urlWithParams}`);
+        response = await fetch(urlWithParams);
+      }
       
       if (!response.ok) {
-        console.log(`URL response not OK: ${response.status} ${response.statusText}`);
-        return sampleEvents; // Return sample data if URL fetch fails
+        console.error(`URL response not OK: ${response.status} ${response.statusText}`);
+        const responseText = await response.text();
+        console.error(`Response body: ${responseText}`);
+        throw new Error(`Failed to fetch events: ${response.statusText}`);
       }
       
       const data = await response.json() as CalendarApiResponse;
-      console.log('Response data format:', JSON.stringify(data).substring(0, 200) + '...');
+      console.log(`Response data received, processing...`);
       
       // Handle different response formats
       if (Array.isArray(data)) {
-        console.log('Data is an array of events');
+        console.log('Data is an array of events, length:', data.length);
         
         // Convert the format from Power Automate (startTime/endTime) to the format our app expects (start/end)
         return data.map((event: any) => {
@@ -269,31 +282,81 @@ async function fetchEventsFromUrl(url: string, timeMin: string, timeMax: string)
             console.log('Converting startTime/endTime format to start/end format');
             return {
               id: event.id || `event-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-              title: event.title || event.summary || 'Untitled Event',
-              description: event.description || '',
+              summary: event.title || event.summary || 'Untitled Event',
+              description: event.description || event.bodyPreview || '',
               start: { dateTime: event.startTime },
               end: { dateTime: event.endTime },
               location: event.location || '',
+              source: 'powerautomate'
             };
           }
-          return event;
+          // For other formats, ensure required fields are present
+          return {
+            ...event,
+            id: event.id || `event-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            summary: event.summary || event.title || event.subject || 'Untitled Event',
+            source: 'powerautomate'
+          };
         });
       } else if ('events' in data && Array.isArray(data.events)) {
-        console.log('Data has events property');
-        return data.events;
+        console.log('Data has events property, length:', data.events.length);
+        return data.events.map(event => ({
+          ...event,
+          source: 'powerautomate'
+        }));
       } else if ('value' in data && Array.isArray(data.value)) {
-        console.log('Data has value property');
-        return data.value;
+        console.log('Data has value property (Microsoft format), length:', data.value.length);
+        return data.value.map(event => ({
+          id: event.id,
+          summary: event.subject || 'Untitled Event',
+          description: event.bodyPreview || '',
+          start: event.start,
+          end: event.end,
+          location: typeof event.location === 'object' && event.location?.displayName ? 
+                   event.location.displayName : 
+                   (typeof event.location === 'string' ? event.location : ''),
+          organizer: event.organizer,
+          attendees: event.attendees,
+          source: 'powerautomate'
+        }));
       } else if ('items' in data && Array.isArray(data.items)) {
-        console.log('Data has items property');
-        return data.items;
+        console.log('Data has items property (Google format), length:', data.items.length);
+        return data.items.map(event => ({
+          ...event,
+          source: 'powerautomate'
+        }));
       }
       
-      console.log('Could not parse data in any known format, using sample events');
-      return sampleEvents;
+      console.error('Could not parse data in any known format:', Object.keys(data));
+      throw new Error('Calendar data format not recognized');
     } catch (error) {
       console.error('Error fetching events from URL:', error);
-      return sampleEvents; // Return sample data if any error occurs
+      
+      // On error, check if o365Url parameter was specified directly in query
+      const o365UrlParam = new URL(url).searchParams.get('o365Url');
+      if (o365UrlParam) {
+        // Try again with the provided o365Url parameter
+        try {
+          console.log(`Trying with extracted o365Url parameter: ${o365UrlParam}`);
+          const directResponse = await fetch(o365UrlParam);
+          if (directResponse.ok) {
+            const data = await directResponse.json();
+            if (Array.isArray(data) && data.length > 0) {
+              console.log('Successfully retrieved events from o365Url parameter');
+              return data.map(event => ({
+                ...event,
+                source: 'powerautomate-direct'
+              }));
+            }
+          }
+        } catch (innerError) {
+          console.error('Also failed with o365Url parameter:', innerError);
+        }
+      }
+      
+      // Generate some current sample events as last resort
+      console.log('Using sample events due to failure fetching from URL');
+      return getSamplePowerAutomateEvents();
     }
   } catch (error) {
     console.error('Unexpected error in fetchEventsFromUrl:', error);

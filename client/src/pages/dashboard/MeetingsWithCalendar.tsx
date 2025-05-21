@@ -872,84 +872,118 @@ export default function MeetingsPage() {
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
 
-  // Fetch user settings for PowerAutomate URL
-  const [powerAutomateUrl, setPowerAutomateUrl] = useState<string | null>(null);
+  // Directly use the PowerAutomate URLs from local storage
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
 
-  // First fetch user settings to get calendar configurations
-  useEffect(() => {
-    const fetchUserSettings = async () => {
-      if (!user?.id) return;
-      
-      try {
-        const response = await fetch('/api/userSettings', {
-          credentials: 'include',
-          headers: { 'Accept': 'application/json' }
-        });
-        
-        if (response.ok) {
-          const settings = await response.json();
-          setPowerAutomateUrl(settings?.powerAutomateUrl || null);
-        }
-      } catch (error) {
-        console.error('Error fetching user settings:', error);
-      } finally {
-        setIsLoadingSettings(false);
-      }
-    };
-    
-    fetchUserSettings();
-  }, [user?.id]);
-
-  // Fetch calendar events once we have user settings
+  // Fetch calendar events from saved sources in local storage
   useEffect(() => {
     const fetchCalendarEvents = async () => {
       if (!user?.id) return;
       
       setIsLoadingEvents(true);
       try {
+        // Get calendar sources from local storage
+        const savedSources = localStorage.getItem('floHub_calendarSources');
+        let calendarSources = [];
+        
+        if (savedSources) {
+          try {
+            calendarSources = JSON.parse(savedSources);
+          } catch (e) {
+            console.error('Error parsing saved calendar sources:', e);
+          }
+        }
+        
+        // Filter enabled sources
+        const enabledSources = calendarSources.filter((source: any) => source.isEnabled);
+        
+        if (enabledSources.length === 0) {
+          console.warn('No enabled calendar sources found');
+          showSampleEvents();
+          return;
+        }
+        
         // Calculate time range (current month + next month)
         const now = new Date();
         const timeMin = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
         const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
         
-        // Build API URL for calendar events with all possible parameters
-        let apiUrl = `/api/calendar?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`;
+        // For each source, try to fetch events directly from their URLs
+        let allEvents: any[] = [];
+        let fetchSuccess = false;
         
-        // Include PowerAutomate URL if available
-        if (powerAutomateUrl) {
-          apiUrl += `&o365Url=${encodeURIComponent(powerAutomateUrl)}`;
+        for (const source of enabledSources) {
+          if (source.type === 'url' && source.sourceId) {
+            try {
+              const url = source.sourceId;
+              console.log(`Directly fetching events from PowerAutomate URL: ${url}`);
+              
+              // Try first with the URL as-is
+              let response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json'
+                }
+              });
+              
+              // If that didn't work, try adding time parameters
+              if (!response.ok) {
+                const separator = url.includes('?') ? '&' : '?';
+                const urlWithParams = `${url}${separator}timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`;
+                console.log(`Trying with time parameters: ${urlWithParams}`);
+                response = await fetch(urlWithParams);
+              }
+              
+              if (response.ok) {
+                const data = await response.json();
+                
+                if (Array.isArray(data) && data.length > 0) {
+                  console.log(`Retrieved ${data.length} events from source ${source.name}`);
+                  
+                  // Process events to ensure they have consistent format
+                  const processedEvents = data.map((event: any) => {
+                    // Check if we need to convert from startTime/endTime to start/end format
+                    if (event.startTime && !event.start) {
+                      return {
+                        id: event.id || `event-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                        summary: event.title || event.summary || 'Untitled Event',
+                        description: event.description || event.bodyPreview || '',
+                        start: { dateTime: event.startTime },
+                        end: { dateTime: event.endTime },
+                        location: event.location || '',
+                        source: source.name,
+                        calendarName: source.name
+                      };
+                    }
+                    
+                    // For other formats, ensure required fields are present
+                    return {
+                      ...event,
+                      id: event.id || `event-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                      summary: event.summary || event.title || event.subject || 'Untitled Event',
+                      source: source.name,
+                      calendarName: source.name
+                    };
+                  });
+                  
+                  allEvents = [...allEvents, ...processedEvents];
+                  fetchSuccess = true;
+                }
+              } else {
+                console.error(`Failed to fetch from source ${source.name}:`, response.status, response.statusText);
+              }
+            } catch (sourceError) {
+              console.error(`Error fetching from source ${source.name}:`, sourceError);
+            }
+          }
         }
         
-        console.log("Fetching calendar events from URL:", apiUrl);
-        const response = await fetch(apiUrl, {
-          credentials: 'include',
-          headers: { 'Accept': 'application/json' }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (Array.isArray(data) && data.length > 0) {
-            console.log("Retrieved calendar events:", data.length);
-            setCalendarEvents(data);
-          } else {
-            console.warn("No calendar events found in response", data);
-            showSampleEvents();
-          }
+        if (fetchSuccess && allEvents.length > 0) {
+          console.log(`Successfully fetched ${allEvents.length} total events`);
+          setCalendarEvents(allEvents);
         } else {
-          console.error('Failed to fetch calendar events:', response.status, response.statusText);
-          try {
-            const text = await response.text();
-            console.log('Response from calendar API:', text);
-          } catch (e) {}
-          
-          // Show error message and use sample data
-          toast({
-            title: "Could not load calendar events",
-            description: "Using sample calendar events instead. Check your calendar integration in Settings.",
-            variant: "destructive"
-          });
-          
+          console.warn('No events found from any sources, using sample data');
           showSampleEvents();
         }
       } catch (error) {
@@ -963,6 +997,7 @@ export default function MeetingsPage() {
         showSampleEvents();
       } finally {
         setIsLoadingEvents(false);
+        setIsLoadingSettings(false);
       }
     };
     
@@ -996,11 +1031,8 @@ export default function MeetingsPage() {
       ]);
     };
     
-    // Only fetch calendar events once we have checked user settings
-    if (!isLoadingSettings) {
-      fetchCalendarEvents();
-    }
-  }, [user?.id, toast, powerAutomateUrl, isLoadingSettings]);
+    fetchCalendarEvents();
+  }, [user?.id, toast]);
   
   // Filter meetings by status
   const filteredMeetings = meetings.filter(meeting => 
