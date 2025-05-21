@@ -20,7 +20,7 @@ const taskSchema = z.object({
 router.get("/", isAuthenticated, async (req: any, res) => {
   try {
     // Get user ID from session
-    const userId = req.session?.user?.id;
+    const userId = req.session.userId;
     if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
     }
