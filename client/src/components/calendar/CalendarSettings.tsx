@@ -42,20 +42,23 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { apiRequest, queryClient } from '../../lib/queryClient';
 
 interface CalendarSource {
-  id: string;
+  id: number;
   name: string;
-  type: 'google' | 'o365' | 'other';
+  type: 'google' | 'o365' | 'url' | 'ical';
   sourceId: string;
   isEnabled: boolean;
-  tags?: string[];
-  lastSync?: string;
+  userId: string;
+  connectionData?: string;
+  tags: string[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface CalendarAccount {
   id: string;
-  provider: 'google' | 'microsoft' | 'other';
+  provider: string;
   email: string;
-  name: string;
+  displayName: string;
   isConnected: boolean;
   lastSync?: string;
 }
@@ -63,12 +66,12 @@ interface CalendarAccount {
 const CalendarSettings = () => {
   const queryClient = useQueryClient();
   const [addingSource, setAddingSource] = useState(false);
-  const [newSource, setNewSource] = useState<Partial<CalendarSource>>({
+  const [newSource, setNewSource] = useState({
     name: '',
-    type: 'google',
+    type: 'url' as const,
     sourceId: '',
     isEnabled: true,
-    tags: []
+    tags: [] as string[]
   });
   const [newTag, setNewTag] = useState('');
   const [selectedTab, setSelectedTab] = useState('accounts');
@@ -76,14 +79,14 @@ const CalendarSettings = () => {
   const [isPowerAutomateDialogOpen, setIsPowerAutomateDialogOpen] = useState(false);
 
   // Fetch calendar accounts (Google, Microsoft)
-  const { data: accounts, isLoading: isLoadingAccounts } = useQuery({
+  const { data: accounts = [], isLoading: isLoadingAccounts } = useQuery({
     queryKey: ['/api/calendar/accounts'],
     retry: 1
   });
 
   // Fetch user settings (includes calendar sources)
   const { data: settings, isLoading: isLoadingSettings } = useQuery({
-    queryKey: ['/api/userSettings'],
+    queryKey: ['/api/user-settings'],
     retry: 1,
     // Provide a default value for settings to avoid type errors
     placeholderData: {
@@ -101,9 +104,9 @@ const CalendarSettings = () => {
 
   // Mutations for calendar actions
   const saveSettingsMutation = useMutation({
-    mutationFn: (newSettings: any) => apiRequest('/api/userSettings', 'POST', newSettings),
+    mutationFn: (newSettings: any) => apiRequest('/api/user-settings', 'PUT', newSettings),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/userSettings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user-settings'] });
     }
   });
 
