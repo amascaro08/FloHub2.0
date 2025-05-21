@@ -12,6 +12,7 @@ const userSettingsSchema = z.object({
   globalTags: z.array(z.string()).optional(),
   selectedCals: z.array(z.string()).optional(),
   powerAutomateUrl: z.string().optional(),
+  calendarSources: z.array(z.any()).optional(), // Allow calendar sources to be updated through user settings
 });
 
 // Get user settings
@@ -60,8 +61,11 @@ router.put('/api/user-settings', isAuthenticated, async (req: any, res) => {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
+    // Extract calendar sources from request for special handling
+    const { calendarSources, ...otherSettings } = req.body;
+
     // Validate settings
-    const validationResult = userSettingsSchema.safeParse(req.body);
+    const validationResult = userSettingsSchema.omit({ calendarSources: true }).safeParse(otherSettings);
     if (!validationResult.success) {
       return res.status(400).json({ 
         error: 'Invalid settings data', 
@@ -71,7 +75,48 @@ router.put('/api/user-settings', isAuthenticated, async (req: any, res) => {
 
     const settingsData = validationResult.data;
 
-    // Update the settings
+    // Update calendar sources if provided
+    if (Array.isArray(calendarSources)) {
+      console.log('Updating calendar sources through settings API:', calendarSources);
+      
+      // Get existing sources to compare
+      const existingSources = await storage.getCalendarSources(userId);
+      
+      // For each calendar source in the request
+      for (const source of calendarSources) {
+        if (source.id) {
+          // Update existing source
+          const existingSource = existingSources.find(s => s.id === source.id);
+          if (existingSource) {
+            // Only update if it belongs to this user
+            if (existingSource.userId === userId) {
+              console.log(`Updating calendar source ${source.id}:`, source);
+              await storage.updateCalendarSource(source.id, {
+                ...source,
+                userId // Ensure userId is set correctly
+              });
+            }
+          }
+        } else {
+          // Create new source
+          console.log('Creating new calendar source:', source);
+          await storage.createCalendarSource({
+            ...source,
+            userId
+          });
+        }
+      }
+      
+      // Delete sources that are no longer in the list
+      for (const existingSource of existingSources) {
+        if (!calendarSources.some(s => s.id === existingSource.id)) {
+          console.log(`Deleting calendar source ${existingSource.id}`);
+          await storage.deleteCalendarSource(existingSource.id);
+        }
+      }
+    }
+
+    // Update other settings
     const updatedSettings = await storage.updateUserSettings(userId, settingsData);
     if (!updatedSettings) {
       // If settings don't exist, create them
@@ -79,15 +124,22 @@ router.put('/api/user-settings', isAuthenticated, async (req: any, res) => {
         userId,
         ...settingsData
       });
-      return res.json(newSettings);
+      
+      // Get updated calendar sources
+      const updatedCalendarSources = await storage.getCalendarSources(userId);
+      
+      return res.json({
+        ...newSettings,
+        calendarSources: updatedCalendarSources
+      });
     }
     
-    // Return updated settings with calendar sources
-    const calendarSources = await storage.getCalendarSources(userId);
+    // Get updated calendar sources
+    const updatedCalendarSources = await storage.getCalendarSources(userId);
     
     return res.json({
       ...updatedSettings,
-      calendarSources
+      calendarSources: updatedCalendarSources
     });
   } catch (error) {
     console.error('Error updating user settings:', error);
