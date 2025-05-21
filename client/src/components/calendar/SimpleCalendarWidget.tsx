@@ -25,6 +25,7 @@ interface CalendarEvent {
   end?: { dateTime?: string; date?: string };
   source?: "personal" | "work";
   description?: string;
+  htmlDescription?: string; // For storing the original HTML description
   calendarName?: string;
   tags?: string[];
 }
@@ -38,6 +39,7 @@ const SimpleCalendarWidget = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isEventDetailsDialogOpen, setIsEventDetailsDialogOpen] = useState(false);
   const [filteredSources, setFilteredSources] = useState<number[]>([]);
+  const [newTag, setNewTag] = useState("");
   
   // Get calendar sources from localStorage
   const [calendarSources, setCalendarSources] = useState<any[]>(() => {
@@ -71,6 +73,53 @@ const SimpleCalendarWidget = () => {
       }
     ];
   });
+  
+  // Store event tags in localStorage
+  const EVENT_TAGS_STORAGE_KEY = 'floHub_eventTags';
+  
+  // Get event tags from localStorage
+  const [eventTags, setEventTags] = useState<Record<string, string[]>>(() => {
+    const savedTags = localStorage.getItem(EVENT_TAGS_STORAGE_KEY);
+    if (savedTags) {
+      try {
+        return JSON.parse(savedTags);
+      } catch (e) {
+        console.error("Error parsing event tags from localStorage:", e);
+        return {};
+      }
+    }
+    return {};
+  });
+  
+  // Save event tags to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem(EVENT_TAGS_STORAGE_KEY, JSON.stringify(eventTags));
+  }, [eventTags]);
+  
+  // Add a tag to an event
+  const addTagToEvent = (eventId: string, tag: string) => {
+    setEventTags(prevTags => {
+      const updatedTags = { ...prevTags };
+      if (!updatedTags[eventId]) {
+        updatedTags[eventId] = [];
+      }
+      if (!updatedTags[eventId].includes(tag)) {
+        updatedTags[eventId] = [...updatedTags[eventId], tag];
+      }
+      return updatedTags;
+    });
+  };
+  
+  // Remove a tag from an event
+  const removeTagFromEvent = (eventId: string, tag: string) => {
+    setEventTags(prevTags => {
+      const updatedTags = { ...prevTags };
+      if (updatedTags[eventId]) {
+        updatedTags[eventId] = updatedTags[eventId].filter(t => t !== tag);
+      }
+      return updatedTags;
+    });
+  };
 
   // Stay in sync with localStorage changes
   useEffect(() => {
@@ -706,7 +755,7 @@ const SimpleCalendarWidget = () => {
         open={isEventDetailsDialogOpen} 
         onOpenChange={setIsEventDetailsDialogOpen}
       >
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           {selectedEvent && (
             <>
               <DialogHeader>
@@ -738,25 +787,162 @@ const SimpleCalendarWidget = () => {
                   </p>
                 </div>
                 
+                {/* Organizer and Attendee Information */}
                 {selectedEvent.description && (
-                  <div className="space-y-1">
-                    <p className="font-medium text-sm">Description</p>
-                    <p className="whitespace-pre-line">{selectedEvent.description}</p>
-                  </div>
+                  <>
+                    {selectedEvent.description.includes('Organizer:') && (
+                      <div className="space-y-1">
+                        <p className="font-medium text-sm">Organizer</p>
+                        <p>
+                          {selectedEvent.description.match(/Organizer:\s*([^\n]+)/)?.[1] || 
+                           selectedEvent.htmlDescription?.match(/Organizer:\s*([^<]+)/)?.[1] || 
+                           'Not specified'}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {selectedEvent.description.includes('Required Attendees:') && (
+                      <div className="space-y-1">
+                        <p className="font-medium text-sm">Required Attendees</p>
+                        <p>
+                          {selectedEvent.description.match(/Required Attendees:\s*([^\n]+)/)?.[1] || 
+                           selectedEvent.htmlDescription?.match(/Required Attendees:\s*([^<]+)/)?.[1] || 
+                           'Not specified'}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {selectedEvent.description.includes('Optional Attendees:') && (
+                      <div className="space-y-1">
+                        <p className="font-medium text-sm">Optional Attendees</p>
+                        <p>
+                          {selectedEvent.description.match(/Optional Attendees:\s*([^\n]+)/)?.[1] || 
+                           selectedEvent.htmlDescription?.match(/Optional Attendees:\s*([^<]+)/)?.[1] || 
+                           'Not specified'}
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
                 
-                {selectedEvent.tags && selectedEvent.tags.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="font-medium text-sm">Tags</p>
-                    <div className="flex flex-wrap gap-1">
-                      {selectedEvent.tags.map(tag => (
-                        <Badge key={tag} variant="outline">
-                          {tag}
-                        </Badge>
-                      ))}
+                {/* Teams Meeting Information */}
+                {selectedEvent.description && (
+                  selectedEvent.description.includes('Microsoft Teams') || 
+                  selectedEvent.description.includes('Join link')
+                ) && (
+                  <div className="space-y-2 border rounded-md p-3 bg-blue-50">
+                    <p className="font-medium text-sm">Microsoft Teams Meeting</p>
+                    
+                    {/* Teams Join Link */}
+                    {(selectedEvent.description.match(/(https:\/\/[^\s"'<>]+)/i) || 
+                      selectedEvent.description.includes('Join link:') && 
+                      selectedEvent.description.match(/Join link: (https:\/\/[^\s\n]+)/)) && (
+                      <div>
+                        <a 
+                          href={
+                            selectedEvent.description.includes('Join link:') 
+                              ? selectedEvent.description.match(/Join link: (https:\/\/[^\s\n]+)/)?.[1] 
+                              : selectedEvent.description.match(/(https:\/\/[^\s"'<>]+)/i)?.[1] || '#'
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer" 
+                          className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                        >
+                          <span className="mr-2">Join Teams Meeting</span>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 0C5.37 0 0 5.37 0 12C0 18.63 5.37 24 12 24C18.63 24 24 18.63 24 12C24 5.37 18.63 0 12 0ZM9.18 18.12C8.3 18.12 7.55 17.62 7.2 16.85H7.14L7.09 18H5.83V6H7.3V10.7H7.34C7.66 9.95 8.39 9.42 9.33 9.42C11.13 9.42 12.18 11 12.18 13.79C12.18 16.59 11.12 18.12 9.18 18.12ZM16.76 18.12C14.48 18.12 13.19 16.45 13.19 13.8C13.19 11.3 14.48 9.42 16.76 9.42C19.04 9.42 20.34 11.3 20.34 13.8C20.34 16.45 19.05 18.12 16.76 18.12Z" fill="currentColor"/>
+                            <path d="M16.75 10.82C15.77 10.82 15.11 11.99 15.11 13.8C15.11 15.61 15.77 16.72 16.75 16.72C17.76 16.72 18.4 15.61 18.4 13.8C18.4 11.99 17.75 10.82 16.75 10.82Z" fill="currentColor"/>
+                            <path d="M9.11 10.82C8.21 10.82 7.43 11.82 7.43 13.76C7.43 15.7 8.21 16.72 9.11 16.72C10.04 16.72 10.71 15.7 10.71 13.76C10.71 11.82 10.04 10.82 9.11 10.82Z" fill="currentColor"/>
+                          </svg>
+                        </a>
+                      </div>
+                    )}
+                    
+                    {/* Meeting ID and Passcode */}
+                    <div className="flex flex-col space-y-1 mt-2">
+                      {selectedEvent.description.match(/Meeting ID:?\s*([0-9\s]+)/i) && (
+                        <div className="text-sm">
+                          <span className="font-medium">Meeting ID:</span> {
+                            selectedEvent.description.match(/Meeting ID:?\s*([0-9\s]+)/i)?.[1]?.trim() || ''
+                          }
+                        </div>
+                      )}
+                      {selectedEvent.description.match(/Pass(?:code|word):?\s*([a-zA-Z0-9]+)/i) && (
+                        <div className="text-sm">
+                          <span className="font-medium">Passcode:</span> {
+                            selectedEvent.description.match(/Pass(?:code|word):?\s*([a-zA-Z0-9]+)/i)?.[1]?.trim() || ''
+                          }
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
+                
+                {/* Full Description */}
+                {selectedEvent.description && (
+                  <div className="space-y-1">
+                    <p className="font-medium text-sm">Description</p>
+                    <div className="whitespace-pre-line max-h-[200px] overflow-y-auto border rounded p-2">
+                      {selectedEvent.description}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Tags Section */}
+                <div className="space-y-2 border-t pt-4">
+                  <div className="flex justify-between items-center">
+                    <p className="font-medium text-sm">Tags</p>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        className="border rounded px-2 py-1 text-sm" 
+                        placeholder="Add a tag..." 
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newTag.trim()) {
+                            addTagToEvent(selectedEvent.id, newTag.trim());
+                            setNewTag('');
+                          }
+                        }}
+                      />
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          if (newTag.trim()) {
+                            addTagToEvent(selectedEvent.id, newTag.trim());
+                            setNewTag('');
+                          }
+                        }}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {(selectedEvent.tags || []).map(tag => (
+                      <Badge 
+                        key={tag} 
+                        variant="secondary"
+                        className="flex items-center gap-1 py-1 px-2"
+                      >
+                        {tag}
+                        <button 
+                          className="rounded-full h-4 w-4 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                          onClick={() => removeTagFromEvent(selectedEvent.id, tag)}
+                        >
+                          <span className="sr-only">Remove tag</span>
+                          ×
+                        </button>
+                      </Badge>
+                    ))}
+                    {!(selectedEvent.tags || []).length && (
+                      <span className="text-gray-500 text-xs">No tags added yet</span>
+                    )}
+                  </div>
+                </div>
               </div>
               
               <DialogFooter>
