@@ -6,6 +6,13 @@ import { storage } from '../storage';
 const router = express.Router();
 
 // Validation schemas
+const floCatPreferencesSchema = z.object({
+  communicationStyle: z.enum(['professional', 'friendly', 'humorous', 'sarcastic']).optional(),
+  focusAreas: z.array(z.string()).optional(),
+  reminderIntensity: z.enum(['gentle', 'moderate', 'assertive']).optional(),
+  interactionFrequency: z.enum(['low', 'medium', 'high']).optional()
+});
+
 const userSettingsSchema = z.object({
   defaultView: z.string().optional(),
   activeWidgets: z.array(z.string()).optional(),
@@ -13,6 +20,7 @@ const userSettingsSchema = z.object({
   selectedCals: z.array(z.string()).optional(),
   powerAutomateUrl: z.string().optional(),
   calendarSources: z.array(z.any()).optional(), // Allow calendar sources to be updated through user settings
+  floCatPreferences: floCatPreferencesSchema.optional()
 });
 
 // Get user settings

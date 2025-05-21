@@ -92,6 +92,13 @@ export default function Settings() {
   
   // Default calendar view
   const [defaultView, setDefaultView] = useState('week');
+  
+  // FloCat preferences
+  const [communicationStyle, setCommunicationStyle] = useState<'professional' | 'friendly' | 'humorous' | 'sarcastic'>('friendly');
+  const [focusAreas, setFocusAreas] = useState<string[]>(['meetings', 'tasks', 'habits']);
+  const [reminderIntensity, setReminderIntensity] = useState<'gentle' | 'moderate' | 'assertive'>('moderate');
+  const [interactionFrequency, setInteractionFrequency] = useState<'low' | 'medium' | 'high'>('medium');
+  const [newFocusArea, setNewFocusArea] = useState('');
 
   // Fetch calendar accounts (Google, Microsoft)
   const { data: accounts, isLoading: isLoadingAccounts } = useQuery({
@@ -113,6 +120,14 @@ export default function Settings() {
       setDefaultView(settings.defaultView || 'week');
       setActiveWidgets(settings.activeWidgets || ['calendar', 'tasks', 'ataglance', 'quicknote']);
       setPowerAutomateUrl(settings.powerAutomateUrl || '');
+      
+      // Initialize FloCat preferences if available
+      if (settings.floCatPreferences) {
+        setCommunicationStyle(settings.floCatPreferences.communicationStyle || 'friendly');
+        setFocusAreas(settings.floCatPreferences.focusAreas || ['meetings', 'tasks', 'habits']);
+        setReminderIntensity(settings.floCatPreferences.reminderIntensity || 'moderate');
+        setInteractionFrequency(settings.floCatPreferences.interactionFrequency || 'medium');
+      }
     }
   }, [settings]);
 
@@ -205,6 +220,32 @@ export default function Settings() {
       defaultView,
       activeWidgets,
     });
+  };
+  
+  // Handle form submission for FloCat settings
+  const handleSubmitFloCatSettings = () => {
+    updateSettingsMutation.mutate({
+      floCatPreferences: {
+        communicationStyle,
+        focusAreas,
+        reminderIntensity,
+        interactionFrequency
+      }
+    });
+  };
+  
+  // Handle adding focus area
+  const handleAddFocusArea = () => {
+    if (!newFocusArea.trim()) return;
+    if (!focusAreas.includes(newFocusArea.trim())) {
+      setFocusAreas([...focusAreas, newFocusArea.trim()]);
+    }
+    setNewFocusArea('');
+  };
+  
+  // Handle removing focus area
+  const handleRemoveFocusArea = (areaToRemove: string) => {
+    setFocusAreas(focusAreas.filter(area => area !== areaToRemove));
   };
 
   // Handle form submission for adding/updating calendar source
@@ -399,6 +440,123 @@ export default function Settings() {
           {/* Calendar Settings Tab */}
           <TabsContent value="calendar" className="space-y-4">
             <SimpleCalendarSettings />
+          </TabsContent>
+          
+          {/* FloCat Assistant Settings Tab */}
+          <TabsContent value="flocat" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>FloCat Assistant Preferences</CardTitle>
+                <CardDescription>
+                  Customize how FloCat interacts with you and what information it prioritizes
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Communication Style Preference */}
+                <div className="space-y-2">
+                  <Label htmlFor="communicationStyle">Communication Style</Label>
+                  <Select value={communicationStyle} onValueChange={(value: any) => setCommunicationStyle(value)}>
+                    <SelectTrigger id="communicationStyle">
+                      <SelectValue placeholder="Select communication style" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="professional">Professional</SelectItem>
+                      <SelectItem value="friendly">Friendly</SelectItem>
+                      <SelectItem value="humorous">Humorous</SelectItem>
+                      <SelectItem value="sarcastic">Sarcastic</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-gray-500">
+                    {communicationStyle === 'professional' && "FloCat will communicate in a direct, professional manner"}
+                    {communicationStyle === 'friendly' && "FloCat will be warm and supportive in its communications"}
+                    {communicationStyle === 'humorous' && "FloCat will include light humor in its messages"}
+                    {communicationStyle === 'sarcastic' && "FloCat will add a touch of sarcasm and wit to messages"}
+                  </p>
+                </div>
+                
+                {/* Reminder Intensity */}
+                <div className="space-y-2">
+                  <Label htmlFor="reminderIntensity">Reminder Intensity</Label>
+                  <Select value={reminderIntensity} onValueChange={(value: any) => setReminderIntensity(value)}>
+                    <SelectTrigger id="reminderIntensity">
+                      <SelectValue placeholder="Select reminder intensity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gentle">Gentle</SelectItem>
+                      <SelectItem value="moderate">Moderate</SelectItem>
+                      <SelectItem value="assertive">Assertive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-gray-500">
+                    How strongly FloCat will remind you about upcoming events and uncompleted tasks
+                  </p>
+                </div>
+                
+                {/* Interaction Frequency */}
+                <div className="space-y-2">
+                  <Label htmlFor="interactionFrequency">Interaction Frequency</Label>
+                  <Select value={interactionFrequency} onValueChange={(value: any) => setInteractionFrequency(value)}>
+                    <SelectTrigger id="interactionFrequency">
+                      <SelectValue placeholder="Select interaction frequency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low (Essential updates only)</SelectItem>
+                      <SelectItem value="medium">Medium (Regular check-ins)</SelectItem>
+                      <SelectItem value="high">High (Frequent updates)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-gray-500">
+                    How often FloCat will provide updates and suggestions
+                  </p>
+                </div>
+                
+                {/* Focus Areas */}
+                <div className="space-y-2">
+                  <Label>Focus Areas</Label>
+                  <p className="text-sm text-gray-500 mb-2">
+                    Select which types of information FloCat should prioritize
+                  </p>
+                  
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {focusAreas.map(area => (
+                      <Badge key={area} variant="secondary" className="px-3 py-1 space-x-1">
+                        <span>{area}</span>
+                        <button 
+                          onClick={() => handleRemoveFocusArea(area)}
+                          className="ml-1 text-gray-500 hover:text-gray-700 focus:outline-none"
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <Input
+                      placeholder="Add new focus area"
+                      value={newFocusArea}
+                      onChange={(e) => setNewFocusArea(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddFocusArea()}
+                      className="flex-1"
+                    />
+                    <Button onClick={handleAddFocusArea} variant="outline" size="sm">
+                      <Plus className="h-4 w-4 mr-1" /> Add
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button 
+                  onClick={handleSubmitFloCatSettings}
+                  disabled={updateSettingsMutation.isPending}
+                >
+                  {updateSettingsMutation.isPending && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Save FloCat Preferences
+                </Button>
+              </CardFooter>
+            </Card>
           </TabsContent>
           
           {/* Hidden original calendar content */}

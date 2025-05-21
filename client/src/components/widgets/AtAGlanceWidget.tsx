@@ -326,28 +326,61 @@ const AtAGlanceWidget = () => {
          const limitedNotes = notes.slice(0, 2);
          const limitedMeetings = meetings.slice(0, 2);
          
-         // Generate AI message with a more compact prompt
-         const prompt = `You are FloCat, an AI assistant with a friendly, sarcastic cat personality 🐾.
-Generate a short "At A Glance" message for ${userName} with:
+         // Get user preferences from settings
+         const communicationStyle = loadedSettings?.floCatPreferences?.communicationStyle || 'friendly';
+         const focusAreas = loadedSettings?.floCatPreferences?.focusAreas || ['meetings', 'tasks', 'habits'];
+         const reminderIntensity = loadedSettings?.floCatPreferences?.reminderIntensity || 'moderate';
+         const interactionFrequency = loadedSettings?.floCatPreferences?.interactionFrequency || 'medium';
+         
+         console.log("AtAGlanceWidget: Using FloCat preferences:", { 
+           communicationStyle, 
+           focusAreas, 
+           reminderIntensity,
+           interactionFrequency
+         });
+         
+         // Generate AI message with personalized prompt based on user preferences
+         const prompt = `You are FloCat, an AI assistant with a ${communicationStyle === 'professional' ? 'professional and efficient' : 
+                                                                communicationStyle === 'friendly' ? 'friendly and supportive' : 
+                                                                communicationStyle === 'humorous' ? 'playful and humorous' : 
+                                                                'witty and sarcastic cat-like'} personality.
+Generate a short "At A Glance" message for ${userName} with: 
 
-EVENTS: ${limitedEvents.map(event => {
+${focusAreas.includes('meetings') ? `EVENTS: ${limitedEvents.map(event => {
  const eventTime = event.start.dateTime
    ? formatInTimeZone(new Date(event.start.dateTime), userTimezone, 'h:mm a')
    : event.start.date;
  const calendarType = event.source === "work" ? "work" : "personal";
  const calendarTags = event.tags && event.tags.length > 0 ? ` (${event.tags.join(', ')})` : '';
  return `${event.summary} at ${eventTime} [${calendarType}${calendarTags}]`;
-}).join(', ') || 'None'}
+}).join(', ') || 'None'}` : ''}
 
-TASKS: ${limitedTasks.map(task => task.text).join(', ') || 'None'}
+${focusAreas.includes('tasks') ? `TASKS: ${limitedTasks.map(task => task.text).join(', ') || 'None'}` : ''}
 
-HABITS: ${completedHabits.length}/${todaysHabits.length} completed (${habitCompletionRate}%)
+${focusAreas.includes('habits') ? `HABITS: ${completedHabits.length}/${todaysHabits.length} completed (${habitCompletionRate}%)
 ${todaysHabits.map(habit => {
  const isCompleted = completedHabits.some(h => h.id === habit.id);
  return `${isCompleted ? '✅' : '⬜'} ${habit.name}`;
-}).join(', ') || 'None'}
+}).join(', ') || 'None'}` : ''}
 
-Be witty and brief (under 200 words). Use markdown formatting. Consider the time (${currentTimeInterval}).`;
+${focusAreas.includes('notes') ? `NOTES: ${limitedNotes.map(note => note.title).join(', ') || 'None'}` : ''}
+
+${focusAreas.includes('meetings') ? `MEETING NOTES: ${limitedMeetings.map(note => note.title).join(', ') || 'None'}` : ''}
+
+Be ${communicationStyle === 'professional' ? 'clear, concise, and direct' : 
+        communicationStyle === 'friendly' ? 'warm and encouraging' : 
+        communicationStyle === 'humorous' ? 'light-hearted with tasteful humor' : 
+        'sassy and witty with cat-themed puns'}. 
+
+Your reminders should be ${reminderIntensity === 'gentle' ? 'gentle and subtle' : 
+                        reminderIntensity === 'moderate' ? 'moderately direct' : 
+                        'assertive and straightforward'}.
+
+Keep it ${interactionFrequency === 'low' ? 'very brief, focusing only on the most important details' : 
+           interactionFrequency === 'medium' ? 'concise but informative (under 150 words)' : 
+           'detailed and comprehensive (under 200 words)'}.
+
+Use markdown formatting and emoji where appropriate. Consider the time of day (${currentTimeInterval}).`;
 
 
           const aiRes = await fetch('/api/assistant', {
