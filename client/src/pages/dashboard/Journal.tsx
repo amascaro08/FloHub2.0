@@ -25,15 +25,47 @@ interface SleepData {
   notes: string;
 }
 
-// Activity type with icon mapping
+// Mood type with emoji and color mapping (Daylio style)
+const moodTypes = [
+  { value: 'amazing', label: 'Amazing', emoji: '😁', color: 'bg-green-500 text-white', description: 'Best day ever!' },
+  { value: 'good', label: 'Good', emoji: '🙂', color: 'bg-teal-500 text-white', description: 'Pretty good day' },
+  { value: 'meh', label: 'Meh', emoji: '😐', color: 'bg-yellow-500 text-white', description: 'Just okay' },
+  { value: 'bad', label: 'Bad', emoji: '😔', color: 'bg-orange-500 text-white', description: 'Not a great day' },
+  { value: 'awful', label: 'Awful', emoji: '😞', color: 'bg-red-500 text-white', description: 'Terrible day' },
+];
+
+// Activity type with icon mapping (Daylio style)
 const activityTypes = [
-  { value: 'exercise', label: 'Exercise', icon: '🏃‍♂️', color: 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100' },
-  { value: 'meditation', label: 'Meditation', icon: '🧘', color: 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100' },
-  { value: 'reading', label: 'Reading', icon: '📚', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100' },
-  { value: 'learning', label: 'Learning', icon: '🧠', color: 'bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100' },
-  { value: 'creative', label: 'Creative', icon: '🎨', color: 'bg-pink-100 text-pink-800 dark:bg-pink-800 dark:text-pink-100' },
-  { value: 'social', label: 'Social', icon: '👥', color: 'bg-orange-100 text-orange-800 dark:bg-orange-800 dark:text-orange-100' },
-  { value: 'sleep', label: 'Sleep', icon: '😴', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-100' },
+  // Wellbeing activities
+  { value: 'exercise', label: 'Exercise', icon: '🏃‍♂️', color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100', category: 'wellbeing' },
+  { value: 'meditation', label: 'Meditation', icon: '🧘', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100', category: 'wellbeing' },
+  { value: 'yoga', label: 'Yoga', icon: '🧘‍♀️', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-100', category: 'wellbeing' },
+  { value: 'sleep', label: 'Good Sleep', icon: '😴', color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-100', category: 'wellbeing' },
+  { value: 'nature', label: 'Nature', icon: '🌳', color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100', category: 'wellbeing' },
+  
+  // Learning activities
+  { value: 'reading', label: 'Reading', icon: '📚', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100', category: 'learning' },
+  { value: 'learning', label: 'Learning', icon: '🧠', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-100', category: 'learning' },
+  { value: 'podcast', label: 'Podcast', icon: '🎧', color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-100', category: 'learning' },
+  { value: 'course', label: 'Course', icon: '🎓', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100', category: 'learning' },
+  
+  // Social activities
+  { value: 'friends', label: 'Friends', icon: '👥', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-100', category: 'social' },
+  { value: 'family', label: 'Family', icon: '👨‍👩‍👧‍👦', color: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-100', category: 'social' },
+  { value: 'date', label: 'Date', icon: '❤️', color: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-100', category: 'social' },
+  { value: 'party', label: 'Party', icon: '🎉', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-100', category: 'social' },
+  
+  // Creative activities
+  { value: 'creative', label: 'Creative', icon: '🎨', color: 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-100', category: 'creative' },
+  { value: 'music', label: 'Music', icon: '🎵', color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-100', category: 'creative' },
+  { value: 'writing', label: 'Writing', icon: '✍️', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100', category: 'creative' },
+  { value: 'cooking', label: 'Cooking', icon: '🍳', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100', category: 'creative' },
+  
+  // Productivity
+  { value: 'work', label: 'Work', icon: '💼', color: 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-100', category: 'productivity' },
+  { value: 'cleaning', label: 'Cleaning', icon: '🧹', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100', category: 'productivity' },
+  { value: 'errands', label: 'Errands', icon: '📝', color: 'bg-lime-100 text-lime-700 dark:bg-lime-900 dark:text-lime-100', category: 'productivity' },
+  { value: 'finances', label: 'Finances', icon: '💰', color: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100', category: 'productivity' },
 ];
 
 // Journal entry prompts to help users write more meaningful entries
@@ -433,149 +465,169 @@ export default function JournalPage() {
           
           {/* Middle Column - Today's Entry & Mood */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Mood Tracker */}
+            {/* Daylio-style Mood Selector */}
             <Card>
               <CardContent className="p-4">
-                <h2 className="text-lg font-medium text-gray-800 dark:text-white mb-2">How are you feeling today?</h2>
-                <MoodTracker onSave={handleSaveMood} />
+                <h2 className="text-lg font-medium text-gray-800 dark:text-white mb-4">How are you feeling today?</h2>
+                
+                <div className="grid grid-cols-5 gap-2">
+                  {moodTypes.map(mood => (
+                    <button
+                      key={mood.value}
+                      onClick={() => handleSaveMood({
+                        emoji: mood.emoji,
+                        label: mood.label,
+                        tags: [mood.value]
+                      })}
+                      className={`p-3 rounded-lg flex flex-col items-center justify-center transition-colors
+                        ${mood.color} hover:opacity-90`}
+                    >
+                      <span className="text-3xl mb-2">{mood.emoji}</span>
+                      <span className="text-sm font-medium">{mood.label}</span>
+                    </button>
+                  ))}
+                </div>
+                
+                <div className="mt-4 text-sm text-gray-500 dark:text-gray-400 text-center">
+                  Tap a mood to instantly record how you're feeling
+                </div>
               </CardContent>
             </Card>
             
             {/* Activities Section */}
             <Card>
               <CardContent className="p-4">
-                <h2 className="text-lg font-medium text-gray-800 dark:text-white mb-4">Activities</h2>
+                <h2 className="text-lg font-medium text-gray-800 dark:text-white mb-4">What have you been up to?</h2>
                 
-                {/* Activity Type Selection */}
-                <div className="grid grid-cols-4 gap-2 mb-4">
+                {/* Activity Categories */}
+                <div className="mb-4">
+                  <div className="grid grid-cols-5 gap-2 mb-4">
+                    {['wellbeing', 'learning', 'social', 'creative', 'productivity'].map(category => (
+                      <button
+                        key={category}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium text-center transition-colors
+                          ${category === 'wellbeing' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' :
+                           category === 'learning' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100' :
+                           category === 'social' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100' :
+                           category === 'creative' ? 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-100' :
+                           'bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100'
+                          }`}
+                      >
+                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Activity Type Selection - Grid Style */}
+                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3 mb-4">
                   {activityTypes.map(type => (
                     <button
                       key={type.value}
                       onClick={() => handleToggleActivity(type.value)}
-                      className={`p-3 rounded-lg flex flex-col items-center justify-center transition-all
+                      className={`relative p-3 rounded-lg flex flex-col items-center justify-center transition-all
                         ${selectedActivities[type.value] 
-                          ? `ring-2 ring-teal-400 ${type.color}` 
-                          : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                          ? `${type.color} ring-2 ring-teal-500 dark:ring-teal-400` 
+                          : `${type.color} opacity-60 hover:opacity-100`}`}
                     >
                       <span className="text-2xl mb-1">{type.icon}</span>
-                      <span className="text-xs font-medium">{type.label}</span>
+                      <span className="text-[10px] font-medium text-center leading-tight">{type.label}</span>
+                      
+                      {/* Checkmark badge */}
+                      {selectedActivities[type.value] && (
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-teal-500 dark:bg-teal-400 rounded-full flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>
                 
-                {/* Activity Details Section */}
-                {Object.keys(selectedActivities).length > 0 && (
-                  <div className="space-y-4 mt-4">
-                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Activity Details</h3>
+                {/* Sleep Tracking Section */}
+                <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <h3 className="text-md font-medium text-gray-800 dark:text-white mb-3">Sleep Tracking</h3>
+                  
+                  <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-lg p-4">
+                    <div className="flex items-center mb-3">
+                      <span className="text-2xl mr-2">😴</span>
+                      <span className="font-medium">Sleep Quality</span>
+                    </div>
                     
-                    {Object.entries(selectedActivities).map(([type, details]) => {
-                      const activityType = activityTypes.find(t => t.value === type);
-                      if (!activityType) return null;
-                      
-                      return (
-                        <div key={type} className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
-                          <div className="flex items-center mb-2">
-                            <span className="text-xl mr-2">{activityType.icon}</span>
-                            <span className="font-medium">{activityType.label}</span>
-                          </div>
-                          
-                          {type === 'sleep' ? (
-                            <div className="space-y-4">
-                              <div>
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-sm">Sleep Duration: {sleepData.duration} hours</span>
-                                </div>
-                                <Slider 
-                                  value={[sleepData.duration]} 
-                                  min={1} 
-                                  max={12} 
-                                  step={0.5}
-                                  onValueChange={(value) => 
-                                    setSleepData(prev => ({...prev, duration: value[0]}))
-                                  }
-                                />
-                              </div>
-                              
-                              <div>
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-sm">Sleep Quality: {sleepData.quality}/5</span>
-                                </div>
-                                <Slider 
-                                  value={[sleepData.quality]} 
-                                  min={1} 
-                                  max={5} 
-                                  step={1}
-                                  onValueChange={(value) => 
-                                    setSleepData(prev => ({...prev, quality: value[0]}))
-                                  }
-                                />
-                              </div>
-                              
-                              <div>
-                                <span className="text-sm">Notes:</span>
-                                <Input
-                                  value={sleepData.notes}
-                                  onChange={(e) => 
-                                    setSleepData(prev => ({...prev, notes: e.target.value}))
-                                  }
-                                  placeholder="Did you dream? Any disruptions?"
-                                  className="mt-1"
-                                />
-                              </div>
-                              
-                              <Button 
-                                size="sm" 
-                                onClick={handleSaveSleep}
-                                className="mt-2"
-                              >
-                                Save Sleep Data
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="space-y-4">
-                              <div>
-                                <div className="flex justify-between mb-1">
-                                  <span className="text-sm">Duration: {details.duration} minutes</span>
-                                </div>
-                                <Slider 
-                                  value={[details.duration]} 
-                                  min={5} 
-                                  max={180} 
-                                  step={5}
-                                  onValueChange={(value) => 
-                                    handleUpdateActivity(type, 'duration', value[0])
-                                  }
-                                />
-                              </div>
-                              
-                              <div>
-                                <span className="text-sm">Notes:</span>
-                                <Input
-                                  value={details.notes}
-                                  onChange={(e) => 
-                                    handleUpdateActivity(type, 'notes', e.target.value)
-                                  }
-                                  placeholder={`Any details about your ${activityType.label.toLowerCase()} activity?`}
-                                  className="mt-1"
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    <div className="grid grid-cols-5 gap-2 mb-4">
+                      {[1, 2, 3, 4, 5].map(quality => (
+                        <button
+                          key={quality}
+                          onClick={() => setSleepData(prev => ({...prev, quality}))}
+                          className={`p-2 rounded-lg flex flex-col items-center justify-center transition-colors
+                            ${sleepData.quality === quality 
+                              ? 'bg-indigo-200 dark:bg-indigo-700 ring-2 ring-indigo-500' 
+                              : 'bg-indigo-100 dark:bg-indigo-900 hover:bg-indigo-200 dark:hover:bg-indigo-800'}`}
+                        >
+                          <span className="text-xl">{
+                            quality === 1 ? '😫' :
+                            quality === 2 ? '😔' :
+                            quality === 3 ? '😐' :
+                            quality === 4 ? '😊' : '😁'
+                          }</span>
+                          <span className="text-[10px] font-medium mt-1">{
+                            quality === 1 ? 'Awful' :
+                            quality === 2 ? 'Poor' :
+                            quality === 3 ? 'Okay' :
+                            quality === 4 ? 'Good' : 'Great'
+                          }</span>
+                        </button>
+                      ))}
+                    </div>
                     
-                    {/* Save all activities button */}
-                    <Button onClick={handleSaveActivities} className="w-full mt-2">
-                      Save All Activities
+                    <div className="mb-4">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-sm font-medium">Sleep Duration: {sleepData.duration} hours</span>
+                      </div>
+                      <Slider 
+                        value={[sleepData.duration]} 
+                        min={1} 
+                        max={12} 
+                        step={0.5}
+                        onValueChange={(value) => 
+                          setSleepData(prev => ({...prev, duration: value[0]}))
+                        }
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <div className="mb-4">
+                      <span className="text-sm font-medium">Notes:</span>
+                      <Input
+                        value={sleepData.notes}
+                        onChange={(e) => 
+                          setSleepData(prev => ({...prev, notes: e.target.value}))
+                        }
+                        placeholder="Did you dream? Any disruptions?"
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <Button 
+                      size="sm" 
+                      onClick={handleSaveSleep}
+                      className="w-full"
+                    >
+                      Save Sleep Data
                     </Button>
                   </div>
-                )}
+                </div>
                 
-                {Object.keys(selectedActivities).length === 0 && (
-                  <div className="text-center py-4 text-gray-500 dark:text-gray-400">
-                    <p>Select activities you did today</p>
-                  </div>
+                {/* Save all activities button */}
+                {Object.keys(selectedActivities).length > 0 && (
+                  <Button 
+                    onClick={handleSaveActivities} 
+                    className="w-full mt-4"
+                    variant="default"
+                  >
+                    Save All Activities
+                  </Button>
                 )}
               </CardContent>
             </Card>
@@ -617,14 +669,14 @@ export default function JournalPage() {
           </div>
         </div>
         
-        {/* Floating New Entry button (mobile only) */}
+        {/* Floating quick-add button (mobile only) */}
         {showNewEntryButton && (
           <button
             className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-teal-500 text-white shadow-lg flex items-center justify-center z-10 hover:bg-teal-600 transition-colors"
-            aria-label="New Journal Entry"
+            aria-label="Quick Add"
             onClick={() => {
-              // Scroll to the journal entry section
-              document.querySelector('h2:contains("Journal Entry")')?.scrollIntoView({ behavior: 'smooth' });
+              // Scroll to the mood section
+              document.querySelector('h2')?.scrollIntoView({ behavior: 'smooth' });
             }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
