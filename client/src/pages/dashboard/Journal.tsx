@@ -17,6 +17,7 @@ import JournalSummary from "@/components/journal/JournalSummary";
 import LinkedMoments from "@/components/journal/LinkedMoments";
 import ActivityLog from "@/components/journal/ActivityLog";
 import JournalCalendar from "@/components/journal/JournalCalendar";
+import JournalInsights from "@/components/journal/JournalInsights";
 
 // Interface for sleep data
 interface SleepData {
@@ -683,7 +684,13 @@ export default function JournalPage() {
               </CardContent>
             </Card>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* FloCat Insights Section */}
+            <JournalInsights 
+              selectedDate={selectedDate} 
+              refreshTrigger={refreshTrigger} 
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
               <LinkedMoments date={selectedDate} />
               <JournalSummary />
             </div>
