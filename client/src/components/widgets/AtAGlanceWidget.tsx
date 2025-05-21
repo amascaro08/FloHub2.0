@@ -608,7 +608,13 @@ Have a purr-fect day!`;
       <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-200">
         <p className="text-xs text-gray-500">72°F, Sunny in New York</p>
         <button 
-          onClick={fetchData} 
+          onClick={() => {
+            setLoading(true);
+            setError(null);
+            setTimeout(() => {
+              fetchData();
+            }, 100);
+          }} 
           className="text-xs text-teal-600 hover:text-teal-800 flex items-center gap-1"
           disabled={loading}
         >
