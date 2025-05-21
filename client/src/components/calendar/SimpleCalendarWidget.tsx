@@ -386,7 +386,13 @@ const SimpleCalendarWidget = () => {
 
   // Handle event click
   const handleEventClick = (event: CalendarEvent) => {
-    setSelectedEvent(event);
+    // Apply any saved tags to the event before displaying
+    const eventWithTags = {
+      ...event,
+      tags: eventTags[event.id] || []
+    };
+    
+    setSelectedEvent(eventWithTags);
     setIsEventDetailsDialogOpen(true);
   };
 
