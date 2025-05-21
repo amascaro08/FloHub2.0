@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface JournalCalendarProps {
   onSelectDate: (date: string) => void;
   selectedDate: string;
+  refreshTrigger?: number; // Add this to trigger refresh
 }
 
 interface DateInfo {
@@ -17,122 +19,207 @@ interface DateInfo {
   };
 }
 
-export default function JournalCalendar({ onSelectDate, selectedDate }: JournalCalendarProps) {
+export default function JournalCalendar({ onSelectDate, selectedDate, refreshTrigger = 0 }: JournalCalendarProps) {
+  const { user, isAuthenticated } = useAuth();
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [calendarDays, setCalendarDays] = useState<DateInfo[]>([]);
   
   // Generate calendar days for the current month
   useEffect(() => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    
-    // Get the first day of the month
-    const firstDay = new Date(year, month, 1);
-    const firstDayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    
-    // Get the last day of the month
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    
-    // Get days from previous month to fill in the first row
-    const prevMonthDays = [];
-    const prevMonth = new Date(year, month, 0);
-    const daysInPrevMonth = prevMonth.getDate();
-    
-    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-      const day = daysInPrevMonth - i;
-      const date = new Date(year, month - 1, day);
-      prevMonthDays.push({
-        date: date.toISOString().split('T')[0],
-        hasJournalEntry: false,
-        hasMood: false,
-        activities: [],
-      });
-    }
-    
-    // Get days from current month
-    const currentMonthDays = [];
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      const dateString = date.toISOString().split('T')[0];
+    const loadCalendarData = async () => {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
       
-      // Check if there's a journal entry for this date
-      const hasJournalEntry = localStorage.getItem(`journal_entry_${dateString}`) !== null;
+      // Get the first day of the month
+      const firstDay = new Date(year, month, 1);
+      const firstDayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
       
-      // Check if there's a mood for this date
-      const moodData = localStorage.getItem(`mood_${dateString}`);
-      const hasMood = moodData !== null;
-      let moodEmoji = undefined;
+      // Get the last day of the month
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
       
-      if (hasMood) {
+      // Get days from previous month to fill in the first row
+      const prevMonthDays = [];
+      const prevMonth = new Date(year, month, 0);
+      const daysInPrevMonth = prevMonth.getDate();
+      
+      for (let i = firstDayOfWeek - 1; i >= 0; i--) {
+        const day = daysInPrevMonth - i;
+        const date = new Date(year, month - 1, day);
+        prevMonthDays.push({
+          date: date.toISOString().split('T')[0],
+          hasJournalEntry: false,
+          hasMood: false,
+          activities: [],
+        });
+      }
+      
+      // Get days from current month
+      const currentMonthDays = [];
+      
+      // If authenticated, prefetch the month's data from the API
+      let monthEntries: Record<string, any> = {};
+      let monthMoods: Record<string, any> = {};
+      let monthActivities: Record<string, any> = {};
+      
+      if (isAuthenticated) {
         try {
-          const parsedMood = JSON.parse(moodData || '{}');
-          moodEmoji = parsedMood.emoji;
-        } catch (e) {
-          console.error('Error parsing mood data', e);
+          // Fetch journal entries for the month
+          const entriesResponse = await fetch(`/api/journal/entries/month/${year}/${month + 1}`);
+          if (entriesResponse.ok) {
+            const entries = await entriesResponse.json();
+            entries.forEach((entry: any) => {
+              monthEntries[entry.date] = entry;
+            });
+          }
+          
+          // Fetch moods for the month
+          const moodsResponse = await fetch(`/api/journal/moods/month/${year}/${month + 1}`);
+          if (moodsResponse.ok) {
+            const moods = await moodsResponse.json();
+            moods.forEach((mood: any) => {
+              monthMoods[mood.date] = mood;
+            });
+          }
+          
+          // Fetch activities for the month
+          const activitiesResponse = await fetch(`/api/journal/activities/month/${year}/${month + 1}`);
+          if (activitiesResponse.ok) {
+            const activities = await activitiesResponse.json();
+            activities.forEach((activity: any) => {
+              if (!monthActivities[activity.date]) {
+                monthActivities[activity.date] = [];
+              }
+              monthActivities[activity.date].push(activity);
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching month data:', error);
         }
       }
       
-      // Check if there are activities for this date
-      let activities: string[] = [];
-      const activitiesKey = `activities_${dateString}`;
-      const activitiesData = localStorage.getItem(activitiesKey);
-      
-      if (activitiesData) {
-        try {
-          const parsedActivities = JSON.parse(activitiesData);
-          activities = Object.keys(parsedActivities);
-        } catch (e) {
-          console.error('Error parsing activities data', e);
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const dateString = date.toISOString().split('T')[0];
+        
+        // Check if there's a journal entry for this date
+        let hasJournalEntry = false;
+        
+        if (monthEntries[dateString]) {
+          hasJournalEntry = true;
+        } else {
+          // Fallback to localStorage
+          hasJournalEntry = localStorage.getItem(`journal_entry_${dateString}`) !== null;
         }
+        
+        // Check if there's a mood for this date
+        let hasMood = false;
+        let moodEmoji = undefined;
+        
+        if (monthMoods[dateString]) {
+          hasMood = true;
+          moodEmoji = monthMoods[dateString].emoji;
+        } else {
+          // Fallback to localStorage
+          const moodData = localStorage.getItem(`mood_${dateString}`);
+          hasMood = moodData !== null;
+          
+          if (hasMood) {
+            try {
+              const parsedMood = JSON.parse(moodData || '{}');
+              moodEmoji = parsedMood.emoji;
+            } catch (e) {
+              console.error('Error parsing mood data', e);
+            }
+          }
+        }
+        
+        // Check if there are activities for this date
+        let activities: string[] = [];
+        
+        if (monthActivities[dateString]) {
+          activities = monthActivities[dateString].map((a: any) => a.type);
+        } else {
+          // Fallback to localStorage
+          const activitiesKey = `activities_${dateString}`;
+          const activitiesData = localStorage.getItem(activitiesKey);
+          
+          if (activitiesData) {
+            try {
+              const parsedActivities = JSON.parse(activitiesData);
+              activities = Object.keys(parsedActivities);
+            } catch (e) {
+              console.error('Error parsing activities data', e);
+            }
+          }
+        }
+        
+        // Check if there's sleep data for this date
+        let sleep = undefined;
+        const hasSleepActivity = activities.includes('sleep');
+        
+        if (!hasSleepActivity) {
+          // Check localStorage as fallback
+          const sleepKey = `sleep_${dateString}`;
+          const sleepData = localStorage.getItem(sleepKey);
+          
+          if (sleepData) {
+            try {
+              const parsedSleep = JSON.parse(sleepData);
+              sleep = {
+                duration: parsedSleep.duration || 0,
+                quality: parsedSleep.quality || 0
+              };
+            } catch (e) {
+              console.error('Error parsing sleep data', e);
+            }
+          }
+        } else {
+          // If we have a sleep activity, use it
+          const sleepActivity = monthActivities[dateString]?.find((a: any) => a.type === 'sleep');
+          if (sleepActivity) {
+            // Extract duration and quality from notes
+            const qualityMatch = sleepActivity.notes?.match(/Quality: (\d)\/5/);
+            const quality = qualityMatch ? parseInt(qualityMatch[1]) : 3;
+            
+            sleep = {
+              duration: sleepActivity.duration / 60, // Convert minutes to hours
+              quality
+            };
+          }
+        }
+        
+        currentMonthDays.push({
+          date: dateString,
+          hasJournalEntry,
+          hasMood,
+          moodEmoji,
+          activities,
+          sleep
+        });
       }
       
-      // Check if there's sleep data for this date
-      let sleep = undefined;
-      const sleepKey = `sleep_${dateString}`;
-      const sleepData = localStorage.getItem(sleepKey);
+      // Get days from next month to fill the last row
+      const totalDaysSoFar = prevMonthDays.length + currentMonthDays.length;
+      const nextMonthDays = [];
+      const daysNeeded = 42 - totalDaysSoFar; // 6 rows of 7 days
       
-      if (sleepData) {
-        try {
-          const parsedSleep = JSON.parse(sleepData);
-          sleep = {
-            duration: parsedSleep.duration || 0,
-            quality: parsedSleep.quality || 0
-          };
-        } catch (e) {
-          console.error('Error parsing sleep data', e);
-        }
+      for (let day = 1; day <= daysNeeded; day++) {
+        const date = new Date(year, month + 1, day);
+        nextMonthDays.push({
+          date: date.toISOString().split('T')[0],
+          hasJournalEntry: false,
+          hasMood: false,
+          activities: [],
+        });
       }
       
-      currentMonthDays.push({
-        date: dateString,
-        hasJournalEntry,
-        hasMood,
-        moodEmoji,
-        activities,
-        sleep
-      });
-    }
+      // Combine all days
+      setCalendarDays([...prevMonthDays, ...currentMonthDays, ...nextMonthDays]);
+    };
     
-    // Get days from next month to fill the last row
-    const totalDaysSoFar = prevMonthDays.length + currentMonthDays.length;
-    const nextMonthDays = [];
-    const daysNeeded = 42 - totalDaysSoFar; // 6 rows of 7 days
-    
-    for (let day = 1; day <= daysNeeded; day++) {
-      const date = new Date(year, month + 1, day);
-      nextMonthDays.push({
-        date: date.toISOString().split('T')[0],
-        hasJournalEntry: false,
-        hasMood: false,
-        activities: [],
-      });
-    }
-    
-    // Combine all days
-    setCalendarDays([...prevMonthDays, ...currentMonthDays, ...nextMonthDays]);
-  }, [currentMonth]);
-  
+    loadCalendarData();
+  }, [currentMonth, refreshTrigger, isAuthenticated]);
   const goToPreviousMonth = () => {
     setCurrentMonth(prevMonth => {
       const newMonth = new Date(prevMonth);

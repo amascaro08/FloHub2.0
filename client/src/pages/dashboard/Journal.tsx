@@ -90,6 +90,10 @@ export default function JournalPage() {
   const [showNewEntryButton, setShowNewEntryButton] = useState(false);
   const [currentPrompt, setCurrentPrompt] = useState('');
   const [journalContent, setJournalContent] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Current mood selection
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
   
   // Activity state
   const [selectedActivities, setSelectedActivities] = useState<{[key: string]: {
@@ -192,6 +196,13 @@ export default function JournalPage() {
     
     console.log("Saving entry:", journalContent);
     
+    // Save to localStorage for immediate feedback
+    const entry = { 
+      content: journalContent, 
+      timestamp: new Date().toISOString() 
+    };
+    localStorage.setItem(`journal_entry_${selectedDate}`, JSON.stringify(entry));
+    
     if (isAuthenticated) {
       try {
         // Save to database
@@ -212,36 +223,24 @@ export default function JournalPage() {
         
         console.log('Journal entry saved to database successfully');
         
-        // Save to localStorage as backup
-        const entry = { 
-          content: journalContent, 
-          timestamp: new Date().toISOString() 
-        };
-        localStorage.setItem(`journal_entry_${selectedDate}`, JSON.stringify(entry));
+        // Trigger a refresh of the calendar view
+        setRefreshTrigger(prev => prev + 1);
         
       } catch (error) {
         console.error('Error saving journal entry to database:', error);
-        
-        // Save to localStorage as fallback
-        const entry = { 
-          content: journalContent, 
-          timestamp: new Date().toISOString() 
-        };
-        localStorage.setItem(`journal_entry_${selectedDate}`, JSON.stringify(entry));
       }
-    } else {
-      // Save to localStorage if not authenticated
-      const entry = { 
-        content: journalContent, 
-        timestamp: new Date().toISOString() 
-      };
-      localStorage.setItem(`journal_entry_${selectedDate}`, JSON.stringify(entry));
     }
   };
 
   // Handle saving mood
   const handleSaveMood = async (mood: { emoji: string; label: string; tags: string[] }) => {
     console.log("Saving mood:", mood);
+    
+    // Update selected mood visual indicator
+    setSelectedMood(mood.tags[0]);
+    
+    // Save to localStorage for immediate feedback
+    localStorage.setItem(`mood_${selectedDate}`, JSON.stringify(mood));
     
     if (isAuthenticated) {
       try {
@@ -264,6 +263,9 @@ export default function JournalPage() {
         }
         
         console.log('Mood saved to database successfully');
+        
+        // Trigger a refresh of the calendar view
+        setRefreshTrigger(prev => prev + 1);
       } catch (error) {
         console.error('Error saving mood to database:', error);
         // Continue with local storage as fallback
@@ -275,8 +277,17 @@ export default function JournalPage() {
   const handleSaveSleep = async () => {
     console.log("Saving sleep data:", sleepData);
     
-    // Save to localStorage
+    // Save to localStorage for immediate feedback
     localStorage.setItem(`sleep_${selectedDate}`, JSON.stringify(sleepData));
+    
+    // Add sleep to selected activities
+    setSelectedActivities(prev => ({
+      ...prev,
+      sleep: {
+        duration: sleepData.duration * 60, // Convert to minutes
+        notes: `Quality: ${sleepData.quality}/5. ${sleepData.notes}`
+      }
+    }));
     
     if (isAuthenticated) {
       try {
@@ -300,6 +311,9 @@ export default function JournalPage() {
         }
         
         console.log('Sleep data saved to database successfully');
+        
+        // Trigger a refresh of the calendar view
+        setRefreshTrigger(prev => prev + 1);
       } catch (error) {
         console.error('Error saving sleep data to database:', error);
       }
@@ -349,6 +363,9 @@ export default function JournalPage() {
   const handleSaveActivities = async () => {
     console.log("Saving activities:", selectedActivities);
     
+    // Save to localStorage for immediate feedback
+    localStorage.setItem(`activities_${selectedDate}`, JSON.stringify(selectedActivities));
+    
     if (isAuthenticated) {
       try {
         // Save each activity to the database
@@ -372,6 +389,9 @@ export default function JournalPage() {
         }
         
         console.log('Activities saved to database successfully');
+        
+        // Trigger a refresh of the calendar view
+        setRefreshTrigger(prev => prev + 1);
       } catch (error) {
         console.error('Error saving activities to database:', error);
       }
@@ -454,6 +474,7 @@ export default function JournalPage() {
                 <JournalCalendar 
                   onSelectDate={handleSelectDate}
                   selectedDate={selectedDate}
+                  refreshTrigger={refreshTrigger}
                 />
               </CardContent>
             </Card>

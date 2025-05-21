@@ -218,6 +218,31 @@ router.get("/activities/:date", isAuthenticated, async (req: any, res: Response)
   }
 });
 
+// Get activities for a specific month
+router.get("/activities/month/:year/:month", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user.claims.sub;
+    const { year, month } = req.params;
+    
+    // Get all activities for the user
+    const allActivities = await storage.getJournalActivities(userId);
+    
+    // Filter to only include activities from the specified month
+    const monthStart = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const monthEnd = new Date(parseInt(year), parseInt(month), 0);
+    
+    const activitiesForMonth = allActivities.filter(activity => {
+      const activityDate = new Date(activity.date);
+      return activityDate >= monthStart && activityDate <= monthEnd;
+    });
+    
+    res.json(activitiesForMonth);
+  } catch (error) {
+    console.error("Error fetching activities for month:", error);
+    res.status(500).json({ message: "Failed to fetch activities for month" });
+  }
+});
+
 // Create a new activity
 router.post("/activities", isAuthenticated, async (req: any, res: Response) => {
   try {
