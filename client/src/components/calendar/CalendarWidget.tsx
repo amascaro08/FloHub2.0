@@ -53,7 +53,7 @@ const CalendarWidget = () => {
 
   // Fetch user settings
   const { data: settings, isLoading: isLoadingSettings } = useQuery<UserSettings>({
-    queryKey: ['/api/userSettings'],
+    queryKey: ['/api/user-settings'],
     retry: 1,
     // Provide default settings to prevent type errors
     placeholderData: {

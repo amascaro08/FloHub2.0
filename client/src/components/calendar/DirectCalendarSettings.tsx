@@ -82,14 +82,22 @@ const DirectCalendarSettings = () => {
     tags: []
   });
 
-  // Fetch user settings
+  // Fetch user settings and calendar sources
   const { data: userSettings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['/api/user-settings'],
     retry: 1
   });
   
-  // Ensure we have an array of calendar sources
-  const calendarSources = userSettings?.calendarSources || [];
+  // Fetch calendar sources directly to ensure we have the most up-to-date data
+  const { data: fetchedSources = [], isLoading: isLoadingSources } = useQuery({
+    queryKey: ['/api/calendar/sources'],
+    retry: 1
+  });
+  
+  // Use fetched sources first, fall back to settings.calendarSources, or empty array
+  const calendarSources = Array.isArray(fetchedSources) && fetchedSources.length > 0 
+    ? fetchedSources 
+    : (userSettings?.calendarSources || []);
 
   // Mutation to update user settings (including calendar sources)
   const updateSettingsMutation = useMutation({
@@ -155,15 +163,53 @@ const DirectCalendarSettings = () => {
   // Toggle calendar source enabled/disabled
   const toggleCalendarSource = (id: number, isEnabled: boolean) => {
     try {
-      const updatedSources = calendarSources.map((source: any) => {
-        if (source.id === id) {
-          return { ...source, isEnabled };
+      // First, update source directly via the API
+      fetch(`/api/calendar/sources/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isEnabled })
+      })
+      .then(response => {
+        if (response.status === 403) {
+          // If direct update fails due to permissions, use user settings approach
+          const updatedSources = calendarSources.map((source: any) => {
+            if (source.id === id) {
+              return { ...source, isEnabled };
+            }
+            return source;
+          });
+      
+          return fetch('/api/user-settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              calendarSources: updatedSources
+            })
+          });
         }
-        return source;
-      });
-
-      updateSettingsMutation.mutate({
-        calendarSources: updatedSources
+        return response;
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to toggle calendar source');
+        }
+        
+        // Invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ['/api/calendar/sources'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/user-settings'] });
+        
+        toast({
+          title: "Calendar updated",
+          description: isEnabled ? "Calendar has been enabled" : "Calendar has been disabled"
+        });
+      })
+      .catch(error => {
+        console.error('Toggle calendar enabled error:', error);
+        toast({
+          title: "Error toggling calendar",
+          description: "Failed to toggle calendar source. Please try again.",
+          variant: "destructive"
+        });
       });
     } catch (error) {
       console.error('Toggle calendar enabled error:', error);
@@ -178,13 +224,49 @@ const DirectCalendarSettings = () => {
   // Delete calendar source
   const deleteCalendarSource = (id: number) => {
     try {
-      const updatedSources = calendarSources.filter((source: any) => source.id !== id);
-
-      updateSettingsMutation.mutate({
-        calendarSources: updatedSources
+      // First try direct API delete
+      fetch(`/api/calendar/sources/${id}`, {
+        method: 'DELETE'
+      })
+      .then(response => {
+        if (response.status === 403) {
+          // If direct delete fails due to permissions, use user settings approach
+          const updatedSources = calendarSources.filter((source: any) => source.id !== id);
+          
+          return fetch('/api/user-settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              calendarSources: updatedSources
+            })
+          });
+        }
+        return response;
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to remove calendar source');
+        }
+        
+        // Invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ['/api/calendar/sources'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/user-settings'] });
+        
+        toast({
+          title: "Calendar removed",
+          description: "The calendar source has been removed successfully."
+        });
+        
+        setConfirmDeleteId(null); // Close confirmation dialog
+      })
+      .catch(error => {
+        console.error('Remove calendar source error:', error);
+        toast({
+          title: "Error removing calendar",
+          description: "Failed to remove calendar source. Please try again.",
+          variant: "destructive"
+        });
       });
-
-      setConfirmDeleteId(null); // Close confirmation dialog
     } catch (error) {
       console.error('Remove calendar source error:', error);
       toast({
