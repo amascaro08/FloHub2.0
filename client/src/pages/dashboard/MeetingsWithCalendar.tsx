@@ -885,41 +885,28 @@ export default function MeetingsPage() {
         const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
         
         // Build API URL for calendar events
-        const apiUrl = `/api/calendar?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&useCalendarSources=true`;
+        const apiUrl = `/api/calendar?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`;
         
-        const response = await fetch(apiUrl);
+        console.log("Fetching calendar events from URL:", apiUrl);
+        const response = await fetch(apiUrl, {
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
         if (response.ok) {
           const data = await response.json();
           setCalendarEvents(Array.isArray(data) ? data : []);
         } else {
-          console.error('Failed to fetch calendar events');
-          // If we can't fetch real events, provide sample data
-          setCalendarEvents([
-            {
-              id: 'event1',
-              summary: 'Weekly Team Standup',
-              description: 'Regular team meeting',
-              start: { dateTime: '2025-05-20T10:00:00Z' },
-              end: { dateTime: '2025-05-20T11:00:00Z' },
-              source: 'sample'
-            },
-            {
-              id: 'event2',
-              summary: 'Project Kickoff',
-              description: 'Starting new project',
-              start: { dateTime: '2025-05-21T14:00:00Z' },
-              end: { dateTime: '2025-05-21T15:30:00Z' },
-              source: 'sample'
-            },
-            {
-              id: 'event3',
-              summary: 'Budget Review',
-              description: 'Financial planning',
-              start: { dateTime: '2025-05-23T09:00:00Z' },
-              end: { dateTime: '2025-05-23T10:00:00Z' },
-              source: 'sample'
-            }
-          ]);
+          console.error('Failed to fetch calendar events:', response.status, response.statusText);
+          console.log('Response from calendar API:', await response.text());
+          
+          // Show error message to user
+          toast({
+            title: "Could not load calendar events",
+            description: "Please make sure you're logged in and have connected your calendar accounts in Settings.",
+            variant: "destructive"
+          });
         }
       } catch (error) {
         console.error('Error fetching calendar events:', error);
