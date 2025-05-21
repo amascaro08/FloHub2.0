@@ -1,10 +1,50 @@
-// server/routes/meetings.ts
 import express, { Request, Response } from 'express';
 import { db } from '../db';
-import { z } from 'zod';
-import { eq, and } from 'drizzle-orm';
-import { meetings, meetingTasks, tasks, insertMeetingSchema, insertMeetingTaskSchema } from '@shared/schema';
 import { isAuthenticated } from '../replitAuth';
+import { meetings, insertMeetingSchema, insertMeetingTaskSchema, meetingTasks } from '@shared/schema';
+import { eq, and } from 'drizzle-orm';
+import { storage } from '../storage';
+import { z } from 'zod';
+
+// Calendar Event type
+interface CalendarEvent {
+  id: string;
+  calendarId?: string;
+  summary: string;
+  description?: string;
+  location?: string;
+  start: { dateTime: string; timeZone?: string } | { date: string };
+  end: { dateTime: string; timeZone?: string } | { date: string };
+  attendees?: Array<{ email: string; name?: string; responseStatus?: string }>;
+  organizer?: { email: string; displayName?: string };
+  source?: 'google' | 'outlook' | 'work';
+  hangoutLink?: string;
+  htmlLink?: string;
+  conference?: any;
+  color?: string;
+}
+
+// Extend meeting schema to include calendarEventId
+const createMeetingSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  notes: z.string().optional(),
+  status: z.enum(['upcoming', 'completed', 'cancelled']).default('upcoming'),
+  meetingType: z.enum(['internal', 'client', 'one-on-one', 'interview', 'workshop']).default('internal'),
+  calendarEventId: z.string().optional(),
+});
+
+const updateMeetingSchema = createMeetingSchema.partial();
+
+// Meeting task schema
+const createTaskSchema = z.object({
+  text: z.string().min(1, "Task text is required"),
+  meetingId: z.number().int().positive(),
+  done: z.boolean().default(false),
+  dueDate: z.string().optional().nullable(),
+  priority: z.enum(['low', 'medium', 'high']).default('medium'),
+  tags: z.array(z.string()).default([]),
+});
 
 const router = express.Router();
 
@@ -12,8 +52,28 @@ const router = express.Router();
 router.get('/', isAuthenticated, async (req: any, res: Response) => {
   try {
     const userId = req.user.claims.sub;
-    const userMeetings = await db.select().from(meetings).where(eq(meetings.userId, userId));
-    res.json(userMeetings);
+    
+    // Fetch meetings
+    const userMeetings = await db.select()
+      .from(meetings)
+      .where(eq(meetings.userId, userId))
+      .orderBy(meetings.updatedAt);
+    
+    // For each meeting, fetch its tasks
+    const meetingsWithTasks = await Promise.all(
+      userMeetings.map(async (meeting) => {
+        const tasks = await db.select()
+          .from(meetingTasks)
+          .where(eq(meetingTasks.meetingId, meeting.id));
+        
+        return {
+          ...meeting,
+          tasks,
+        };
+      })
+    );
+    
+    res.status(200).json(meetingsWithTasks);
   } catch (error) {
     console.error('Error fetching meetings:', error);
     res.status(500).json({ message: 'Failed to fetch meetings' });
@@ -26,8 +86,12 @@ router.get('/:id', isAuthenticated, async (req: any, res: Response) => {
     const userId = req.user.claims.sub;
     const meetingId = parseInt(req.params.id);
     
-    const [meeting] = await db
-      .select()
+    if (isNaN(meetingId)) {
+      return res.status(400).json({ message: 'Invalid meeting ID' });
+    }
+    
+    // Fetch the meeting
+    const [meeting] = await db.select()
       .from(meetings)
       .where(and(
         eq(meetings.id, meetingId),
@@ -38,21 +102,14 @@ router.get('/:id', isAuthenticated, async (req: any, res: Response) => {
       return res.status(404).json({ message: 'Meeting not found' });
     }
     
-    // Get tasks associated with this meeting
-    const meetingTasksData = await db
-      .select({
-        meetingTask: meetingTasks,
-        task: tasks
-      })
+    // Fetch tasks for this meeting
+    const tasks = await db.select()
       .from(meetingTasks)
-      .innerJoin(tasks, eq(meetingTasks.taskId, tasks.id))
       .where(eq(meetingTasks.meetingId, meetingId));
     
-    const associatedTasks = meetingTasksData.map(item => item.task);
-    
-    res.json({
+    res.status(200).json({
       ...meeting,
-      tasks: associatedTasks
+      tasks,
     });
   } catch (error) {
     console.error('Error fetching meeting:', error);
@@ -64,17 +121,35 @@ router.get('/:id', isAuthenticated, async (req: any, res: Response) => {
 router.post('/', isAuthenticated, async (req: any, res: Response) => {
   try {
     const userId = req.user.claims.sub;
-    const meetingData = insertMeetingSchema.parse({
-      ...req.body,
-      userId
-    });
     
-    const [newMeeting] = await db.insert(meetings).values(meetingData).returning();
-    res.status(201).json(newMeeting);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ message: 'Invalid meeting data', errors: error.errors });
+    // Validate request body
+    const validationResult = createMeetingSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ message: 'Invalid meeting data', errors: validationResult.error.format() });
     }
+    
+    const meetingData = validationResult.data;
+    
+    // Create meeting
+    const [createdMeeting] = await db.insert(meetings)
+      .values({
+        userId,
+        title: meetingData.title,
+        description: meetingData.description || '',
+        notes: meetingData.notes || '',
+        status: meetingData.status,
+        meetingType: meetingData.meetingType,
+        calendarEventId: meetingData.calendarEventId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    
+    res.status(201).json({
+      ...createdMeeting,
+      tasks: [],
+    });
+  } catch (error) {
     console.error('Error creating meeting:', error);
     res.status(500).json({ message: 'Failed to create meeting' });
   }
@@ -86,9 +161,20 @@ router.put('/:id', isAuthenticated, async (req: any, res: Response) => {
     const userId = req.user.claims.sub;
     const meetingId = parseInt(req.params.id);
     
-    // Check if the meeting exists and belongs to the user
-    const [existingMeeting] = await db
-      .select()
+    if (isNaN(meetingId)) {
+      return res.status(400).json({ message: 'Invalid meeting ID' });
+    }
+    
+    // Validate request body
+    const validationResult = updateMeetingSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ message: 'Invalid meeting data', errors: validationResult.error.format() });
+    }
+    
+    const meetingData = validationResult.data;
+    
+    // Check if meeting exists and belongs to user
+    const [existingMeeting] = await db.select()
       .from(meetings)
       .where(and(
         eq(meetings.id, meetingId),
@@ -99,17 +185,24 @@ router.put('/:id', isAuthenticated, async (req: any, res: Response) => {
       return res.status(404).json({ message: 'Meeting not found' });
     }
     
-    // Update the meeting
-    const [updatedMeeting] = await db
-      .update(meetings)
+    // Update meeting
+    const [updatedMeeting] = await db.update(meetings)
       .set({
-        ...req.body,
-        updatedAt: new Date()
+        ...meetingData,
+        updatedAt: new Date(),
       })
       .where(eq(meetings.id, meetingId))
       .returning();
     
-    res.json(updatedMeeting);
+    // Fetch tasks for this meeting
+    const tasks = await db.select()
+      .from(meetingTasks)
+      .where(eq(meetingTasks.meetingId, meetingId));
+    
+    res.status(200).json({
+      ...updatedMeeting,
+      tasks,
+    });
   } catch (error) {
     console.error('Error updating meeting:', error);
     res.status(500).json({ message: 'Failed to update meeting' });
@@ -122,9 +215,12 @@ router.delete('/:id', isAuthenticated, async (req: any, res: Response) => {
     const userId = req.user.claims.sub;
     const meetingId = parseInt(req.params.id);
     
-    // Check if the meeting exists and belongs to the user
-    const [existingMeeting] = await db
-      .select()
+    if (isNaN(meetingId)) {
+      return res.status(400).json({ message: 'Invalid meeting ID' });
+    }
+    
+    // Check if meeting exists and belongs to user
+    const [existingMeeting] = await db.select()
       .from(meetings)
       .where(and(
         eq(meetings.id, meetingId),
@@ -135,81 +231,45 @@ router.delete('/:id', isAuthenticated, async (req: any, res: Response) => {
       return res.status(404).json({ message: 'Meeting not found' });
     }
     
-    // Delete associated meeting tasks first
-    await db
-      .delete(meetingTasks)
+    // Delete related tasks first
+    await db.delete(meetingTasks)
       .where(eq(meetingTasks.meetingId, meetingId));
     
-    // Delete the meeting
-    await db
-      .delete(meetings)
+    // Delete meeting
+    await db.delete(meetings)
       .where(eq(meetings.id, meetingId));
     
-    res.json({ message: 'Meeting deleted successfully' });
+    res.status(200).json({ message: 'Meeting deleted successfully' });
   } catch (error) {
     console.error('Error deleting meeting:', error);
     res.status(500).json({ message: 'Failed to delete meeting' });
   }
 });
 
-// Add a task to a meeting
+// Create a task for a meeting
 router.post('/:id/tasks', isAuthenticated, async (req: any, res: Response) => {
   try {
     const userId = req.user.claims.sub;
     const meetingId = parseInt(req.params.id);
     
-    // Check if the meeting exists and belongs to the user
-    const [existingMeeting] = await db
-      .select()
-      .from(meetings)
-      .where(and(
-        eq(meetings.id, meetingId),
-        eq(meetings.userId, userId)
-      ));
-    
-    if (!existingMeeting) {
-      return res.status(404).json({ message: 'Meeting not found' });
+    if (isNaN(meetingId)) {
+      return res.status(400).json({ message: 'Invalid meeting ID' });
     }
     
-    // Create a new task first
-    const taskData = {
-      userId,
-      text: req.body.text,
-      done: false,
-      dueDate: req.body.dueDate,
-      source: req.body.source || 'meeting',
-      tags: req.body.tags || [],
-      priority: req.body.priority || 'medium',
-      notes: req.body.notes || `From meeting: ${existingMeeting.title}`
-    };
-    
-    const [newTask] = await db.insert(tasks).values(taskData).returning();
-    
-    // Now link the task to the meeting
-    const meetingTaskData = {
+    // Validate request body
+    const validationResult = createTaskSchema.safeParse({
+      ...req.body,
       meetingId,
-      taskId: newTask.id
-    };
+    });
     
-    await db.insert(meetingTasks).values(meetingTaskData);
+    if (!validationResult.success) {
+      return res.status(400).json({ message: 'Invalid task data', errors: validationResult.error.format() });
+    }
     
-    res.status(201).json(newTask);
-  } catch (error) {
-    console.error('Error adding task to meeting:', error);
-    res.status(500).json({ message: 'Failed to add task to meeting' });
-  }
-});
-
-// Remove a task from a meeting
-router.delete('/:meetingId/tasks/:taskId', isAuthenticated, async (req: any, res: Response) => {
-  try {
-    const userId = req.user.claims.sub;
-    const meetingId = parseInt(req.params.meetingId);
-    const taskId = parseInt(req.params.taskId);
+    const taskData = validationResult.data;
     
-    // Check if the meeting exists and belongs to the user
-    const [existingMeeting] = await db
-      .select()
+    // Check if meeting exists and belongs to user
+    const [existingMeeting] = await db.select()
       .from(meetings)
       .where(and(
         eq(meetings.id, meetingId),
@@ -220,59 +280,78 @@ router.delete('/:meetingId/tasks/:taskId', isAuthenticated, async (req: any, res
       return res.status(404).json({ message: 'Meeting not found' });
     }
     
-    // Delete the meeting-task relationship
-    await db
-      .delete(meetingTasks)
-      .where(and(
-        eq(meetingTasks.meetingId, meetingId),
-        eq(meetingTasks.taskId, taskId)
-      ));
-    
-    res.json({ message: 'Task removed from meeting' });
-  } catch (error) {
-    console.error('Error removing task from meeting:', error);
-    res.status(500).json({ message: 'Failed to remove task from meeting' });
-  }
-});
-
-// Link a meeting to a calendar event
-router.put('/:id/calendar-event', isAuthenticated, async (req: any, res: Response) => {
-  try {
-    const userId = req.user.claims.sub;
-    const meetingId = parseInt(req.params.id);
-    const { calendarEventId } = req.body;
-    
-    if (!calendarEventId) {
-      return res.status(400).json({ message: 'Calendar event ID is required' });
-    }
-    
-    // Check if the meeting exists and belongs to the user
-    const [existingMeeting] = await db
-      .select()
-      .from(meetings)
-      .where(and(
-        eq(meetings.id, meetingId),
-        eq(meetings.userId, userId)
-      ));
-    
-    if (!existingMeeting) {
-      return res.status(404).json({ message: 'Meeting not found' });
-    }
-    
-    // Update the meeting with the calendar event ID
-    const [updatedMeeting] = await db
-      .update(meetings)
-      .set({
-        calendarEventId,
-        updatedAt: new Date()
+    // Create the task
+    const [createdTask] = await db.insert(meetingTasks)
+      .values({
+        userId,
+        meetingId,
+        text: taskData.text,
+        done: taskData.done,
+        dueDate: taskData.dueDate,
+        priority: taskData.priority,
+        tags: taskData.tags,
+        source: 'meeting',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       })
-      .where(eq(meetings.id, meetingId))
       .returning();
     
-    res.json(updatedMeeting);
+    // Also create this task in the main tasks table if needed
+    try {
+      await storage.createTask({
+        userId,
+        text: taskData.text,
+        done: taskData.done,
+        dueDate: taskData.dueDate,
+        source: 'meeting',
+        tags: [...taskData.tags, 'meeting'],
+        priority: taskData.priority,
+        notes: `From meeting: ${existingMeeting.title}`,
+      });
+    } catch (taskError) {
+      console.error('Error creating task in main tasks table:', taskError);
+      // Continue even if creating in the main tasks table fails
+    }
+    
+    res.status(201).json(createdTask);
   } catch (error) {
-    console.error('Error linking meeting to calendar event:', error);
-    res.status(500).json({ message: 'Failed to link meeting to calendar event' });
+    console.error('Error creating meeting task:', error);
+    res.status(500).json({ message: 'Failed to create task' });
+  }
+});
+
+// Get meetings for a specific calendar event
+router.get('/calendar/:eventId', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user.claims.sub;
+    const eventId = req.params.eventId;
+    
+    // Fetch meetings linked to this calendar event
+    const linkedMeetings = await db.select()
+      .from(meetings)
+      .where(and(
+        eq(meetings.userId, userId),
+        eq(meetings.calendarEventId, eventId)
+      ));
+    
+    // For each meeting, fetch its tasks
+    const meetingsWithTasks = await Promise.all(
+      linkedMeetings.map(async (meeting) => {
+        const tasks = await db.select()
+          .from(meetingTasks)
+          .where(eq(meetingTasks.meetingId, meeting.id));
+        
+        return {
+          ...meeting,
+          tasks,
+        };
+      })
+    );
+    
+    res.status(200).json(meetingsWithTasks);
+  } catch (error) {
+    console.error('Error fetching meetings for calendar event:', error);
+    res.status(500).json({ message: 'Failed to fetch meetings for calendar event' });
   }
 });
 

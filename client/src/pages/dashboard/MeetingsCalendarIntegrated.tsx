@@ -43,11 +43,11 @@ interface CalendarEvent {
   summary: string; // title
   description?: string;
   location?: string;
-  start: { dateTime: string; timeZone?: string } | { date: string };
-  end: { dateTime: string; timeZone?: string } | { date: string };
+  start: { dateTime?: string; timeZone?: string; date?: string };
+  end?: { dateTime?: string; timeZone?: string; date?: string };
   attendees?: Array<{ email: string; name?: string; responseStatus?: string }>;
   organizer?: { email: string; displayName?: string };
-  source?: 'google' | 'outlook' | 'work';
+  source?: string;
   hangoutLink?: string;
   htmlLink?: string;
   conference?: any;
@@ -60,19 +60,52 @@ interface NoteTemplate {
   template: string;
 }
 
+// Helper to get event date from calendar event
+const getEventDateTime = (event: CalendarEvent): Date => {
+  if (!event.start) return new Date();
+  
+  if (event.start.dateTime) {
+    return parseISO(event.start.dateTime);
+  } else if (event.start.date) {
+    return parseISO(event.start.date);
+  } else {
+    return new Date();
+  }
+};
+
 // Helper to format calendar event time
 const formatEventTime = (event: CalendarEvent) => {
   if (!event.start) return 'TBD';
   
-  const startDateTime = event.start.dateTime ? 
-    parseISO(event.start.dateTime) : 
-    (event.start.date ? parseISO(event.start.date) : new Date());
-    
-  const endDateTime = event.end?.dateTime ? 
-    parseISO(event.end.dateTime) : 
-    (event.end?.date ? parseISO(event.end.date) : new Date());
-    
-  const isAllDay = Boolean(event.start.date);
+  // Safely extract start date/time
+  let startDateTime: Date;
+  let isAllDay = false;
+  
+  if ('dateTime' in event.start && event.start.dateTime) {
+    startDateTime = parseISO(event.start.dateTime);
+  } else if ('date' in event.start && event.start.date) {
+    startDateTime = parseISO(event.start.date);
+    isAllDay = true;
+  } else {
+    startDateTime = new Date();
+  }
+  
+  // Safely extract end date/time
+  let endDateTime: Date;
+  
+  if (event.end) {
+    if ('dateTime' in event.end && event.end.dateTime) {
+      endDateTime = parseISO(event.end.dateTime);
+    } else if ('date' in event.end && event.end.date) {
+      endDateTime = parseISO(event.end.date);
+    } else {
+      endDateTime = new Date(startDateTime);
+      endDateTime.setHours(startDateTime.getHours() + 1); // Default 1 hour duration
+    }
+  } else {
+    endDateTime = new Date(startDateTime);
+    endDateTime.setHours(startDateTime.getHours() + 1); // Default 1 hour duration
+  }
   
   if (isAllDay) {
     return 'All day';
@@ -91,9 +124,8 @@ const CalendarEventCard = ({
   onSelectEvent: (event: CalendarEvent) => void;
   isMeetingLinked: (eventId: string) => boolean;
 }) => {
-  const startDateTime = event.start.dateTime ? 
-    parseISO(event.start.dateTime) : 
-    (event.start.date ? parseISO(event.start.date) : new Date());
+  // Safely extract date using helper function
+  const startDateTime = getEventDateTime(event);
   
   const sourceColors = {
     'google': 'bg-blue-100 text-blue-800',
@@ -917,77 +949,50 @@ export default function MeetingsPage() {
     }
   ];
   
-  // Sample calendar events 
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([
-    {
-      id: 'event1',
-      summary: 'Weekly Team Standup',
-      description: 'Regular weekly team meeting to discuss progress, blockers, and upcoming priorities.',
-      location: 'Conference Room A',
-      start: { dateTime: '2025-05-20T09:00:00Z' },
-      end: { dateTime: '2025-05-20T09:30:00Z' },
-      attendees: [
-        { email: 'john@example.com', name: 'John Smith' },
-        { email: 'sarah@example.com', name: 'Sarah Johnson' },
-        { email: 'michael@example.com', name: 'Michael Brown' },
-        { email: 'emma@example.com', name: 'Emma Wilson' }
-      ],
-      source: 'google'
-    },
-    {
-      id: 'event2',
-      summary: 'Project Kickoff Meeting',
-      description: 'Initial kickoff meeting to discuss project goals, timeline, and resource allocation for the new client project.',
-      location: 'Main Conference Room',
-      start: { dateTime: '2025-05-21T13:00:00Z' },
-      end: { dateTime: '2025-05-21T14:30:00Z' },
-      attendees: [
-        { email: 'john@example.com', name: 'John Smith' },
-        { email: 'sarah@example.com', name: 'Sarah Johnson' },
-        { email: 'michael@example.com', name: 'Michael Brown' },
-        { email: 'emma@example.com', name: 'Emma Wilson' },
-        { email: 'david@example.com', name: 'David Lee' },
-        { email: 'client@example.com', name: 'Client Rep' }
-      ],
-      source: 'outlook'
-    },
-    {
-      id: 'event3',
-      summary: 'Performance Review with Emma',
-      description: 'One-on-one performance review meeting to discuss progress, goals, and career development.',
-      location: 'Office 203',
-      start: { dateTime: '2025-05-22T10:00:00Z' },
-      end: { dateTime: '2025-05-22T11:00:00Z' },
-      attendees: [
-        { email: 'john@example.com', name: 'John Smith' },
-        { email: 'emma@example.com', name: 'Emma Wilson' }
-      ],
-      source: 'outlook'
-    },
-    {
-      id: 'event4',
-      summary: 'Budget Review Meeting',
-      description: 'Review of last month\'s budget, expenses, and financial planning for the next quarter.',
-      location: 'Finance Department',
-      start: { dateTime: '2025-05-15T11:00:00Z' },
-      end: { dateTime: '2025-05-15T12:00:00Z' },
-      attendees: [
-        { email: 'john@example.com', name: 'John Smith' },
-        { email: 'finance@example.com', name: 'Finance Director' },
-        { email: 'department@example.com', name: 'Department Heads' }
-      ],
-      source: 'google'
-    },
-    {
-      id: 'event5',
-      summary: 'All-day Company Event',
-      description: 'Annual company retreat',
-      location: 'Mountain Resort',
-      start: { date: '2025-05-25' },
-      end: { date: '2025-05-26' },
-      source: 'work'
+  // Fetch real calendar events
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+
+  // Calculate time range for fetching events (current month + next month)
+  const timeRange = useMemo(() => {
+    const now = new Date();
+    const timeMin = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+    const timeMax = nextMonth.toISOString();
+    return { timeMin, timeMax };
+  }, []);
+
+  // Fetch calendar events from API
+  useEffect(() => {
+    const fetchCalendarEvents = async () => {
+      setIsLoadingEvents(true);
+      try {
+        // Build API URL for calendar events
+        const apiUrl = `/api/calendar?timeMin=${encodeURIComponent(timeRange.timeMin)}&timeMax=${encodeURIComponent(timeRange.timeMax)}&useCalendarSources=true`;
+        
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+          throw new Error('Failed to fetch calendar events');
+        }
+        
+        const data = await response.json();
+        setCalendarEvents(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Error fetching calendar events:', error);
+        toast({
+          title: "Failed to load calendar events",
+          description: "There was an error loading your calendar events. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoadingEvents(false);
+      }
+    };
+
+    if (user?.id) {
+      fetchCalendarEvents();
     }
-  ]);
+  }, [user?.id, timeRange, toast]);
   
   // Sample meetings for demonstration
   const [meetings, setMeetings] = useState<Meeting[]>([
