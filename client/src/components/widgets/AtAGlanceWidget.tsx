@@ -48,7 +48,7 @@ const AtAGlanceWidget = () => {
   const [aiMessage, setAiMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [formattedHtml, setFormattedHtml] = useState<string>("FloCat is thinking...");
+  const [formattedHtml, setFormattedHtml] = useState<string>("<div class='flex items-center gap-2'><img src='/flocat-icon.png' alt='FloCat' class='w-8 h-8' /> <p>FloCat is thinking...</p></div>");
 
   // Fetch user settings
   const { data: loadedSettings, isLoading: isLoadingSettings } = useQuery({
@@ -407,26 +407,37 @@ Use markdown formatting and emoji where appropriate. Consider the time of day ($
           console.log("AtAGlanceWidget: Real events data:", limitedEvents.length > 0 ? limitedEvents : "No events today");
           console.log("AtAGlanceWidget: Real tasks data:", limitedTasks.length > 0 ? limitedTasks : "No active tasks");
           
-          // Improve the prompt to make FloCat more personalized and conversational
-          const fullPrompt = `You are FloCat, my personal AI assistant cat. Talk TO ME directly about my day using a ${communicationStyle} tone. 
-          
-Refer to specific tasks from my task list and prioritize what I should focus on. Give practical, specific advice.
+          // Create a more conversational, assistant-like prompt with real data
+          const fullPrompt = `You are FloCat, my personal AI assistant cat. Talk directly TO ME about my day and priorities.
 
-## IMPORTANT - THIS IS MY REAL DATA:
-My name: ${userName}
+## IMPORTANT - USE THIS REAL DATA IN YOUR RESPONSE:
+My name: ${userName || "User"}
 My actual tasks: ${JSON.stringify(limitedTasks)}
 My calendar events: ${JSON.stringify(limitedEvents)}
 Current time: ${new Date().toLocaleTimeString()}
 Current date: ${new Date().toLocaleDateString()}
-Weather: 72°F, Sunny in New York (use this exact weather)
+Weather: 72°F, Sunny in New York
 
-Make sure to:
-1. Begin by greeting me personally with a cat-like greeting (${communicationStyle} style)
-2. Mention the weather in my location and how it might affect my day
-3. Highlight 1-2 specific tasks I should prioritize by name
-4. End with an encouraging message using my name again
+Your response MUST:
+1. Start with a casual cat-like greeting ("Meow" or "Purr" incorporated naturally)
+2. Mention the current weather (72°F, Sunny) and briefly how it might affect my day
+3. Name and reference my specific tasks by their actual names from the data
+4. Recommend which specific task I should prioritize today with a brief explanation
+5. If I have an upcoming event, mention it by name with the time
+6. End with an encouraging message using my name
 
-Keep it conversational - like you're my personal assistant talking TO me directly.`;
+Response style:
+- Use a ${communicationStyle === 'professional' ? 'clear and efficient' : 
+                communicationStyle === 'friendly' ? 'warm and supportive' : 
+                communicationStyle === 'humorous' ? 'light and playful' : 'witty and quirky'} tone
+- Keep your message under 150 words total
+- Write in first person as if you're talking TO me directly
+- Use cat-themed imagery subtly in your phrasing
+- Format with Markdown including emoji where appropriate
+                
+DO NOT mention "AI" or that you're an AI assistant - just be my helpful cat assistant`;
+
+          console.log("AtAGlanceWidget: Using personalized prompt with FloCat conversational style");
           
           console.log("AtAGlanceWidget: Using upgraded prompt to ensure real data is used");
           
@@ -566,11 +577,44 @@ Have a purr-fect day!`;
   // and integrated it directly into the data fetching flow
 
   return (
-    <div className="p-4 border rounded-lg shadow-sm flex flex-col h-full justify-between">
-      <div className="text-lg flex-1 overflow-auto" dangerouslySetInnerHTML={{ __html: formattedHtml }}>
-        {/* Message will be rendered here by dangerouslySetInnerHTML */}
+    <div className="p-4 border rounded-lg shadow-sm flex flex-col h-full justify-between bg-gradient-to-b from-white to-slate-50">
+      <h3 className="font-medium text-md mb-2">Today: {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
+      
+      {loading ? (
+        <div className="flex items-center gap-2 animate-pulse">
+          <div className="rounded-full bg-teal-100 p-2">
+            <img src="/flocat-icon.png" alt="FloCat" className="w-8 h-8" />
+          </div>
+          <p className="text-gray-600">FloCat is thinking...</p>
+        </div>
+      ) : error ? (
+        <div className="text-red-500">
+          <p>Sorry, I had trouble connecting. Please try again later.</p>
+          <p className="text-sm mt-2">{error}</p>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-auto">
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-2 items-start">
+              <div className="rounded-full bg-teal-100 p-2 mt-1">
+                <img src="/flocat-icon.png" alt="FloCat" className="w-8 h-8" />
+              </div>
+              <div className="text-md prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: formattedHtml }} />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-200">
+        <p className="text-xs text-gray-500">72°F, Sunny in New York</p>
+        <button 
+          onClick={fetchData} 
+          className="text-xs text-teal-600 hover:text-teal-800 flex items-center gap-1"
+          disabled={loading}
+        >
+          {loading ? "Updating..." : "Refresh"}
+        </button>
       </div>
-      <p className="text-sm mt-2 self-end">- FloCat 😼</p>
     </div>
   );
 };
