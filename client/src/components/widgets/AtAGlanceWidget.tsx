@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, memo } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '../../hooks/useAuth';
 import { marked } from 'marked'; // Import marked
 // Initialize marked with GFM options and ensure it doesn't return promises
 marked.setOptions({
@@ -10,7 +10,7 @@ marked.setOptions({
 });
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz'; // Import formatInTimeZone and toZonedTime
 import { isSameDay } from 'date-fns'; // Import isSameDay from date-fns
-import useSWR from 'swr'; // Import useSWR
+import { useQuery } from "@tanstack/react-query";
 import type { UserSettings } from '../../types/app'; // Import UserSettings type
 import type { Note } from '../../types/app'; // Import shared Note type
 import type { Habit, HabitCompletion } from '../../types/habit-tracker'; // Import Habit types
@@ -36,8 +36,8 @@ interface Task {
 }
 
 const AtAGlanceWidget = () => {
-  const { data: session } = useSession();
-  const userName = session?.user?.name || "User";
+  const { user, isAuthenticated } = useAuth();
+  const userName = user?.name || "User";
 
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -51,12 +51,11 @@ const AtAGlanceWidget = () => {
   const [formattedHtml, setFormattedHtml] = useState<string>("FloCat is thinking...");
 
   // Fetch user settings
-  const fetcher = async (url: string) => {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  };
-  const { data: loadedSettings, error: settingsError } = useSWR<UserSettings>(session ? "/api/userSettings" : null, fetcher);
+  const { data: loadedSettings, isLoading: isLoadingSettings } = useQuery<UserSettings>({
+    queryKey: ['/api/user-settings'],
+    retry: 1,
+    enabled: isAuthenticated
+  });
 
   // State for calendar sources, initialized from settings
   const [calendarSources, setCalendarSources] = useState<any[]>([]);
@@ -468,8 +467,8 @@ Have a purr-fect day!`;
      }
    };
 
-   // Fetch data when session or loadedSettings changes
-   if (session && loadedSettings) { // Only fetch data if session and settings are loaded
+   // Fetch data when user or loadedSettings changes
+   if (isAuthenticated && loadedSettings) { // Only fetch data if authenticated and settings are loaded
      fetchData();
    }
    
@@ -477,18 +476,18 @@ Have a purr-fect day!`;
    return () => {
      isMounted = false;
    };
-  }, [session, loadedSettings, parseMarkdown]); // Include all dependencies
+  }, [user, isAuthenticated, loadedSettings, parseMarkdown]); // Include all dependencies
 
  let loadingMessage = "Planning your day...";
  if (loading) {
    // Determine a more specific loading message based on what's being fetched
    if (!loadedSettings) {
      loadingMessage = "Loading settings...";
-   } else if (session && loadedSettings && !upcomingEvents.length && !tasks.length && !notes.length && !meetings.length) {
+   } else if (isAuthenticated && loadedSettings && !upcomingEvents.length && !tasks.length && !notes.length && !meetings.length) {
       loadingMessage = "Gathering your day's information...";
-   } else if (session && loadedSettings && upcomingEvents.length > 0 && tasks.length === 0 && notes.length === 0 && meetings.length === 0) {
+   } else if (isAuthenticated && loadedSettings && upcomingEvents.length > 0 && tasks.length === 0 && notes.length === 0 && meetings.length === 0) {
        loadingMessage = "Checking for tasks, notes, and meetings...";
-   } else if (session && loadedSettings && upcomingEvents.length === 0 && tasks.length > 0 && notes.length === 0 && meetings.length === 0) {
+   } else if (isAuthenticated && loadedSettings && upcomingEvents.length === 0 && tasks.length > 0 && notes.length === 0 && meetings.length === 0) {
        loadingMessage = "Checking for events, notes, and meetings...";
    } else {
        loadingMessage = "Compiling your daily summary...";
