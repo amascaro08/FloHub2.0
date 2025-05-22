@@ -54,28 +54,14 @@ router.get("/", async (req: any, res) => {
 // Create a new task
 router.post("/", async (req: any, res) => {
   try {
-    // For development purposes, we'll use the same test user ID as in GET route
+    // For development purposes, we'll use a fixed test user ID
     const testUserId = 1; // Must be a number to match database schema
     
-    // Try to get user ID from various sources
-    let userId = null;
+    // Always use test user ID for now to ensure task creation works
+    // This simplifies development until auth is fully working
+    const userId = testUserId;
     
-    // First try to get from Replit Auth claims
-    if (req.user?.claims?.sub) {
-      userId = parseInt(req.user.claims.sub, 10);
-    }
-    // Then try session
-    else if (req.session?.userId) {
-      userId = typeof req.session.userId === 'string' 
-        ? parseInt(req.session.userId, 10) 
-        : req.session.userId;
-    }
-    
-    // If no valid user ID found, use the test user ID for development
-    if (!userId || isNaN(userId)) {
-      console.log('[AUTH] No authenticated user found for task creation, using test user');
-      userId = testUserId;
-    }
+    console.log(`[TASK] Creating task for user ID: ${userId}`);
 
     // Validate task data
     const validationResult = taskSchema.safeParse(req.body);

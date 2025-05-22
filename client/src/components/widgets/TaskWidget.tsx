@@ -98,12 +98,21 @@ function TaskWidget() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newTask)
-      }).then(res => res.json()),
+      }).then(res => {
+        if (!res.ok) {
+          console.error("Error creating task:", res.statusText);
+          return Promise.reject(new Error("Failed to create task"));
+        }
+        return res.json();
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       setInput("");
       setSelectedTags([]);
       setDueDate(new Date());
+    },
+    onError: (error) => {
+      console.error("Task creation failed:", error);
     }
   });
 

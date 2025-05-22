@@ -94,41 +94,42 @@ export class FirebaseTaskService implements TaskService {
       // Generate a Firebase ID
       const firebaseId = uuidv4();
       
-      // Create in PostgreSQL
+      // Create in PostgreSQL first
       const newTask = await storage.createTask({
         userId,
         ...task,
         firebaseId
       });
       
-      // Create in Firebase - need to convert userId to string for Firestore
-      const userIdStr = userIdToString(userId);
-      await firestore
-        .collection('users')
-        .doc(userIdStr)
-        .collection('tasks')
-        .doc(firebaseId)
-        .set({
-          text: task.text,
-          done: task.done ?? false,
-          dueDate: task.dueDate ? new Date(task.dueDate) : null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          source: task.source || 'personal',
-          tags: task.tags || [],
-          priority: task.priority || 'medium',
-          notes: task.notes || null
-        });
+      // Try to create in Firebase, but don't fail the whole operation if it doesn't work
+      try {
+        // Create in Firebase - need to convert userId to string for Firestore
+        const userIdStr = userIdToString(userId);
+        await firestore
+          .collection('users')
+          .doc(userIdStr)
+          .collection('tasks')
+          .doc(firebaseId)
+          .set({
+            text: task.text,
+            done: task.done ?? false,
+            dueDate: task.dueDate ? new Date(task.dueDate) : null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            source: task.source || 'personal',
+            tags: task.tags || [],
+            priority: task.priority || 'medium',
+            notes: task.notes || null
+          });
+      } catch (firebaseError) {
+        console.error('Firebase storage error (task will still be created in PostgreSQL):', firebaseError);
+        // Continue with the operation even if Firebase fails
+      }
       
       return newTask;
     } catch (error) {
-      console.error('Error creating task:', error);
-      // If Firebase fails, at least return the PostgreSQL task
-      return storage.createTask({
-        userId,
-        ...task,
-        firebaseId: uuidv4()
-      });
+      console.error('Error creating task in PostgreSQL:', error);
+      throw error; // Let the router handle the error response
     }
   }
   
