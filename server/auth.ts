@@ -3,29 +3,19 @@ import { storage } from "./storage";
 
 // Authentication middleware
 export const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-  // Check both session and localStorage auth
-  const isSessionAuth = req.session?.userId;
-  const authHeader = req.headers.authorization;
-
-  if (!isSessionAuth && !authHeader) {
-    console.log('No auth found. Session:', req.session);
-    return res.status(401).json({ message: "Unauthorized" });
+  if (!req.session?.userId) {
+    console.log('No session found:', req.session);
+    return res.status(401).json({ message: "Unauthorized - No valid session" });
   }
 
-  if (isSessionAuth) {
-    req.user = { id: req.session.userId };
-  } else if (authHeader) {
-    // Parse Bearer token
-    const token = authHeader.split(' ')[1];
-    try {
-      // For demo, accept token as user ID
-      req.user = { id: token };
-    } catch (err) {
-      return res.status(401).json({ message: "Invalid token" });
-    }
-  }
-
+  // Set user info on request object
+  req.user = { id: req.session.userId };
   next();
+};
+
+// Helper to validate session
+export const validateSession = (req: Request): boolean => {
+  return !!req.session?.userId;
 };
 
 // Type augmentation for Express

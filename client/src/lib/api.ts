@@ -11,12 +11,15 @@ export const apiRequest = async (
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
   };
 
   if (data) {
     options.body = JSON.stringify(data);
   }
+
+  try {
 
   const response = await fetch(url, options);
 
