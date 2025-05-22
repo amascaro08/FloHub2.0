@@ -28,43 +28,114 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 // Widget types
 type WidgetType = 'tasks' | 'calendar' | 'chat' | 'overview' | 'notes' | 'habits';
 
-// Simplified demo widgets
+// Simplified demo widgets with real API integration
 const TaskWidget = () => {
-  const [tasks, setTasks] = useState([
-    { id: 1, text: "Finish project proposal", dueDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(), done: false, source: "personal", tags: ["work"] },
-    { id: 2, text: "Schedule team meeting", dueDate: new Date(new Date().setDate(new Date().getDate() + 3)).toISOString(), done: false, source: "work", tags: ["meeting"] },
-    { id: 3, text: "Send email to client", dueDate: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(), done: true, source: "personal", tags: ["client"] },
-  ]);
+  const [taskText, setTaskText] = useState("");
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
   
-  const [newTask, setNewTask] = useState("");
-  const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
-  
-  // Toggle task completion status
-  const toggleTaskDone = (id: number) => {
-    setTasks(tasks.map(task => 
-      task.id === id ? { ...task, done: !task.done } : task
-    ));
-  };
-  
-  // Add a new task
-  const addTask = () => {
-    if (!newTask.trim()) return;
-    
-    const newTaskObj = {
-      id: Math.max(0, ...tasks.map(t => t.id)) + 1,
-      text: newTask.trim(),
-      dueDate: new Date().toISOString(),
-      done: false,
-      source: "personal",
-      tags: []
+  // Fetch tasks from API
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch('/api/tasks', { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          setTasks(data);
+        }
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+      } finally {
+        setLoading(false);
+      }
     };
     
-    setTasks([...tasks, newTaskObj]);
-    setNewTask("");
+    fetchTasks();
+    // Set up interval to refresh tasks every 10 seconds
+    const interval = setInterval(fetchTasks, 10000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Add a new task
+  const handleAddTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!taskText.trim()) return;
+    
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          text: taskText.trim(),
+          done: false
+        })
+      });
+      
+      if (response.ok) {
+        const newTask = await response.json();
+        setTasks([...tasks, newTask]);
+        setTaskText("");
+      }
+    } catch (error) {
+      console.error("Error adding task:", error);
+    }
   };
   
+  // Toggle task completion
+  const toggleTaskCompletion = async (id: number) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    
+    try {
+      const response = await fetch(`/api/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ done: !task.done })
+      });
+      
+      if (response.ok) {
+        setTasks(tasks.map(t => 
+          t.id === id ? { ...t, done: !t.done } : t
+        ));
+      }
+    } catch (error) {
+      console.error("Error updating task:", error);
+    }
+  };
+  
+  // Delete a task
+  const deleteTask = async (id: number) => {
+    try {
+      const response = await fetch(`/api/tasks/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        setTasks(tasks.filter(t => t.id !== id));
+      }
+    } catch (error) {
+      console.error("Error deleting task:", error);
+    }
+  };
+  
+  // Get filtered tasks based on active filter
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      if (filter === "all") return true;
+      if (filter === "active") return !task.done;
+      if (filter === "completed") return task.done;
+      return true;
+    });
+  }, [tasks, filter]);
+  
   // Format date to readable format
-  const formatDate = (isoDate: string) => {
+  const formatDate = (isoDate: string | undefined) => {
+    if (!isoDate) return "";
+    
     const date = new Date(isoDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
