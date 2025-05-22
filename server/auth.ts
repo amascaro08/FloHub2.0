@@ -1,10 +1,11 @@
 import type { Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
 
-// Simplified authentication middleware
+// Authentication middleware
 export const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-  // In a real application, we would check for a valid session
-  // For now, we'll just allow all requests through for demo purposes
+  if (!req.session || !req.session.userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
   next();
 };
 
