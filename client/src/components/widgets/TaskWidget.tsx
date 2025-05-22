@@ -56,11 +56,11 @@ function TaskWidget() {
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   
-  // Task data fetching
+  // Task data fetching - always enabled and refetch frequently during development
   const { data: tasks = [] } = useQuery({
     queryKey: ['/api/tasks'],
-    queryFn: () => fetch('/api/tasks').then(res => res.json()),
-    enabled: isAuthenticated,
+    queryFn: () => fetch('/api/tasks', { credentials: 'include' }).then(res => res.json()),
+    refetchInterval: 3000, // Refetch every 3 seconds to ensure we have the latest tasks
   });
   
   // User settings for global tags

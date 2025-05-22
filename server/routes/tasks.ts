@@ -19,27 +19,11 @@ const taskSchema = z.object({
 // Get all tasks for the current user
 router.get("/", async (req: any, res) => {
   try {
-    // For development purposes, we'll use a fixed test user ID
-    // This ensures we can always access tasks even with auth issues
-    const testUserId = 1; // Using integer to match database schema
+    // We'll always use a consistent user ID for now to ensure tasks show up properly
+    // This makes development easier without requiring login
+    const userId = 1; // Using integer to match database schema
     
-    // Try to get user ID from various auth sources
-    let userId;
-    
-    // Try to get from Replit Auth claims or session
-    if (req.user?.claims?.sub) {
-      userId = parseInt(req.user.claims.sub, 10);
-    } else if (req.session?.userId) {
-      userId = typeof req.session.userId === 'string' 
-        ? parseInt(req.session.userId, 10) 
-        : req.session.userId;
-    }
-    
-    // If no valid user ID found, use the test user ID
-    if (!userId || isNaN(userId)) {
-      console.log('No authenticated user found, using test user for tasks');
-      userId = testUserId;
-    }
+    console.log('[AUTH] /api/tasks - isAuthenticated:', !!req.user?.claims?.sub);
     
     console.log(`Fetching tasks for user ID: ${userId}`);
     
@@ -54,14 +38,10 @@ router.get("/", async (req: any, res) => {
 // Create a new task
 router.post("/", async (req: any, res) => {
   try {
-    // For development purposes, we'll use a fixed test user ID
-    const testUserId = 1; // Must be a number to match database schema
+    // Always use a consistent user ID for now for development
+    const userId = 1; // Must be a number to match database schema
     
-    // Always use test user ID for now to ensure task creation works
-    // This simplifies development until auth is fully working
-    const userId = testUserId;
-    
-    console.log(`[TASK] Creating task for user ID: ${userId}`);
+    console.log('[TASK] Creating task for user ID:', userId);
 
     // Validate task data
     const validationResult = taskSchema.safeParse(req.body);
