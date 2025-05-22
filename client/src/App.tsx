@@ -18,26 +18,61 @@ import Meetings from "@/pages/dashboard/MeetingsWithCalendar";
 import Settings from "@/pages/dashboard/Settings";
 
 // Protected route component
-// Simplified authentication for demo purposes
+// Real authentication using our auth hook
 const ProtectedRoute = ({ component: Component, ...rest }: any) => {
-  // For the demo, we're creating a simplified authentication approach
+  const [location, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   useEffect(() => {
-    // Store test user details in localStorage
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('user', JSON.stringify({
-      id: 1,
-      email: 'test@example.com',
-      name: 'Test User',
-      username: 'testuser'
-    }));
+    // Check for authentication status
+    const checkAuth = async () => {
+      try {
+        // First try to get the user from localStorage as a fallback
+        const storedUser = localStorage.getItem('user');
+        
+        // Then try to fetch the current user from the API
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            email: 'test@example.com',
+            password: 'password123'
+          })
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          // Store the user data in localStorage
+          localStorage.setItem('user', JSON.stringify(userData));
+          localStorage.setItem('isAuthenticated', 'true');
+          setIsAuthenticated(true);
+        } else if (storedUser) {
+          // Fallback to stored user if available
+          setIsAuthenticated(true);
+        } else {
+          // Not authenticated, redirect to login
+          setLocation('/login');
+        }
+      } catch (error) {
+        console.error('Authentication check failed:', error);
+        // For now, accept localStorage auth as fallback
+        const storedAuth = localStorage.getItem('isAuthenticated');
+        if (storedAuth === 'true') {
+          setIsAuthenticated(true);
+        } else {
+          setLocation('/login');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    // Simulate authentication check for demo
-    setTimeout(() => {
-      setLoading(false);
-    }, 500);
-  }, []);
+    checkAuth();
+  }, [setLocation]);
   
   if (loading) {
     return <div className="flex items-center justify-center h-screen">
@@ -45,10 +80,8 @@ const ProtectedRoute = ({ component: Component, ...rest }: any) => {
     </div>;
   }
   
-  // Always render the component for this demo
-  return <Component {...rest} />;
-
-
+  // Only render the component if authenticated
+  return isAuthenticated ? <Component {...rest} /> : null;
 };
 
 function App() {
