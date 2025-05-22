@@ -364,7 +364,7 @@ function TaskWidget() {
       </form>
       
       {/* Task List */}
-      <div className="space-y-2 overflow-y-auto" style={{ maxHeight: "calc(100% - 180px)" }}>
+      <div className="space-y-2 overflow-y-auto" style={{ maxHeight: "calc(100% - 240px)" }}>
         {filteredTasks.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             No tasks yet. Add your first task above!
