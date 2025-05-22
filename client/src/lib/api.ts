@@ -27,3 +27,22 @@ export const apiRequest = async (
 
   return await response.json();
 };
+
+export async function fetchTasks() {
+  // Get stored user ID for auth
+  const user = localStorage.getItem('user');
+  const userId = user ? JSON.parse(user).id : null;
+
+  const response = await fetch('/api/tasks', {
+    headers: {
+      'Authorization': `Bearer ${userId}`,
+      'Content-Type': 'application/json'
+    },
+    credentials: 'include'
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch tasks');
+  }
+  return response.json();
+}

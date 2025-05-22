@@ -13,10 +13,14 @@ export function useAuth() {
     queryKey: ["/api/auth/me"],
     queryFn: async () => {
       try {
+        const storedUser = localStorage.getItem('user');
+        const userId = storedUser ? JSON.parse(storedUser).id : null;
+
         const response = await fetch('/api/auth/me', {
           credentials: 'include',
           headers: {
             'Accept': 'application/json',
+            'Authorization': `Bearer ${userId}`
           }
         });
         

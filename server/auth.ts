@@ -3,13 +3,28 @@ import { storage } from "./storage";
 
 // Authentication middleware
 export const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-  if (!req.session?.userId) {
-    console.log('No session or userId found:', req.session);
+  // Check both session and localStorage auth
+  const isSessionAuth = req.session?.userId;
+  const authHeader = req.headers.authorization;
+
+  if (!isSessionAuth && !authHeader) {
+    console.log('No auth found. Session:', req.session);
     return res.status(401).json({ message: "Unauthorized" });
   }
-  
-  // Add user info to request for downstream use
-  req.user = { id: req.session.userId };
+
+  if (isSessionAuth) {
+    req.user = { id: req.session.userId };
+  } else if (authHeader) {
+    // Parse Bearer token
+    const token = authHeader.split(' ')[1];
+    try {
+      // For demo, accept token as user ID
+      req.user = { id: token };
+    } catch (err) {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+  }
+
   next();
 };
 
