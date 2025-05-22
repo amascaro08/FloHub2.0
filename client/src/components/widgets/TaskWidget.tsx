@@ -93,22 +93,32 @@ function TaskWidget() {
 
   // Mutations
   const createTaskMutation = useMutation({
-    mutationFn: (newTask: Omit<Task, 'id' | 'createdAt'>) => 
-      fetch('/api/tasks', {
+    mutationFn: (newTask: Omit<Task, 'id' | 'createdAt'>) => {
+      console.log("Submitting task:", newTask);
+      return fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTask)
+        body: JSON.stringify(newTask),
+        credentials: 'include' // Include cookies for authentication
       }).then(res => {
         if (!res.ok) {
-          console.error("Error creating task:", res.statusText);
-          return Promise.reject(new Error("Failed to create task"));
+          console.error("Error creating task:", res.status, res.statusText);
+          return res.text().then(text => {
+            console.error("Error response:", text);
+            throw new Error("Failed to create task: " + text);
+          });
         }
         return res.json();
-      }),
-    onSuccess: () => {
+      });
+    },
+    onSuccess: (data) => {
+      console.log("Task created successfully:", data);
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       setInput("");
       setSelectedTags([]);
+      setTaskSource("personal");
+      setPriority("medium");
+      setNotes("");
       setDueDate(new Date());
     },
     onError: (error) => {
