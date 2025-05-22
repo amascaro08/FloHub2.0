@@ -174,7 +174,9 @@ function TaskWidget() {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-    if (!user) return;
+    
+    // Don't require user to be logged in for testing
+    // if (!user) return;
 
     const newTask = {
       text: input,
@@ -186,6 +188,10 @@ function TaskWidget() {
       notes
     };
 
+    // Prevent double submissions
+    if (createTaskMutation.isPending) return;
+    
+    console.log("Creating task:", newTask);
     createTaskMutation.mutate(newTask);
   };
 
