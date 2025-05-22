@@ -61,6 +61,7 @@ function TaskWidget() {
     queryKey: ['/api/tasks'],
     queryFn: () => fetch('/api/tasks', { credentials: 'include' }).then(res => res.json()),
     refetchInterval: 3000, // Refetch every 3 seconds to ensure we have the latest tasks
+    staleTime: 2000, // Consider data fresh for 2 seconds to reduce flickering
   });
   
   // User settings for global tags
@@ -389,7 +390,7 @@ function TaskWidget() {
       </form>
       
       {/* Task List */}
-      <div className="space-y-2 overflow-y-auto" style={{ maxHeight: "calc(100% - 240px)" }}>
+      <div className="space-y-3 overflow-y-auto" style={{ maxHeight: "calc(100% - 240px)" }}>
         {filteredTasks.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             No tasks yet. Add your first task above!
@@ -399,8 +400,8 @@ function TaskWidget() {
             <div
               key={task.id}
               className={cn(
-                "flex items-start gap-2 p-2 rounded hover:bg-muted transition-colors",
-                task.done && "opacity-60"
+                "flex items-start gap-3 p-3 rounded-lg border shadow-sm hover:shadow-md transition-all",
+                task.done ? "bg-muted/50 border-muted" : "bg-card"
               )}
             >
               <Checkbox
@@ -410,31 +411,38 @@ function TaskWidget() {
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                  <p className={cn("break-words", task.done && "line-through text-muted-foreground")}>
-                    {task.text}
-                  </p>
+                  <div>
+                    <p className={cn("font-medium break-words", task.done && "line-through text-muted-foreground")}>
+                      {task.text}
+                    </p>
+                    {task.notes && (
+                      <p className="text-sm text-muted-foreground mt-1 break-words">
+                        {task.notes}
+                      </p>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <Button
                       size="icon"
                       variant="ghost"
                       onClick={() => handleEdit(task)}
-                      className="h-7 w-7"
+                      className="h-8 w-8"
                     >
-                      <Pencil className="h-3.5 w-3.5" />
+                      <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
                       size="icon"
                       variant="ghost"
                       onClick={() => deleteTaskMutation.mutate(task.id)}
-                      className="h-7 w-7 text-destructive"
+                      className="h-8 w-8 text-destructive hover:bg-destructive/10"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
                 
                 {/* Task metadata */}
-                <div className="text-xs flex flex-wrap gap-x-2 gap-y-1 mt-1 text-muted-foreground">
+                <div className="text-xs flex flex-wrap gap-x-2 gap-y-1 mt-2">
                   {task.dueDate && (
                     <span className="flex items-center">
                       <CalendarIcon className="mr-1 h-3 w-3" />
