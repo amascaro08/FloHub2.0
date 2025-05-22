@@ -1,21 +1,21 @@
 import { useState, useEffect } from "react";
 import { Switch, Route, useLocation } from "wouter";
-import NotFound from "@/pages/not-found";
-import Home from "@/pages/Home";
-import Register from "@/pages/Register";
-import AdminUpdates from "@/pages/AdminUpdates";
-import Updates from "@/pages/Updates";
-import Dashboard from "@/pages/Dashboard";
-import Login from "@/pages/Login";
-import PrivacyPolicy from "@/pages/PrivacyPolicy";
-import TermsOfService from "@/pages/TermsOfService";
+import NotFound from "./pages/not-found";
+import Home from "./pages/Home";
+import Register from "./pages/Register";
+import AdminUpdates from "./pages/AdminUpdates";
+import Updates from "./pages/Updates";
+import Dashboard from "./pages/Dashboard";
+import Login from "./pages/Login";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 
 // Dashboard Application Pages
-import Journal from "@/pages/dashboard/Journal";
-import Tasks from "@/pages/dashboard/Tasks";
-import Notes from "@/pages/dashboard/Notes";
-import Meetings from "@/pages/dashboard/MeetingsWithCalendar";
-import Settings from "@/pages/dashboard/Settings";
+import Journal from "./pages/dashboard/Journal";
+import Tasks from "./pages/dashboard/Tasks";
+import Notes from "./pages/dashboard/Notes";
+import Meetings from "./pages/dashboard/MeetingsWithCalendar";
+import Settings from "./pages/dashboard/Settings";
 
 // Protected route component
 // Real authentication using our auth hook
