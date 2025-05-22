@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../routes/auth";  // Use consistent auth middleware
+import { isAuthenticated } from "../replitAuth";  // Use secure Replit Auth
 import { taskService } from "../services/taskService";
 import { storage } from "../storage";
 import OpenAI from "openai";
@@ -12,7 +12,7 @@ const openai = new OpenAI({
 const router = Router();
 
 // Get comprehensive context for FloCat
-router.get("/api/assistant/context", requireAuth, async (req: any, res) => {
+router.get("/api/assistant/context", isAuthenticated, async (req: any, res) => {
   try {
     const userId = req.user?.claims?.sub || "";
     if (!userId) {

@@ -1,29 +1,14 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import session from 'express-session';
-import connectPg from 'connect-pg-simple';
+import { setupAuth } from "./replitAuth";
 import { pool } from './db';
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Set up session handling with PostgreSQL
-const PgSession = connectPg(session);
-app.use(session({
-  store: new PgSession({
-    pool,
-    tableName: 'sessions'
-  }),
-  secret: process.env.SESSION_SECRET || 'flohub-secret',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { 
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 1 week
-  }
-}));
+// Set up Replit Auth (this will handle session setup internally)
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -56,6 +41,18 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Set up Replit Auth before routes
+  await setupAuth(app);
+  
+  // Add authentication debugging middleware
+  app.use((req: any, res: Response, next: NextFunction) => {
+    // Log authentication status for debugging
+    if (req.path.startsWith('/api/')) {
+      console.log(`[AUTH] ${req.path} - isAuthenticated: ${req.isAuthenticated?.() || false}`);
+    }
+    next();
+  });
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

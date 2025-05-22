@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../routes/auth";  // Use the consistent auth middleware
+import { isAuthenticated } from "../replitAuth";  // Use the secure Replit Auth
 import { taskService } from "../services/taskService";
 import { z } from "zod";
 
@@ -17,7 +17,7 @@ const taskSchema = z.object({
 });
 
 // Get all tasks for the current user
-router.get("/", requireAuth, async (req: any, res) => {
+router.get("/", isAuthenticated, async (req: any, res) => {
   try {
     // Get user ID from session
     const userId = req.session.userId;
@@ -31,7 +31,7 @@ router.get("/", requireAuth, async (req: any, res) => {
 });
 
 // Create a new task
-router.post("/", requireAuth, async (req: any, res) => {
+router.post("/", isAuthenticated, async (req: any, res) => {
   try {
     const userId = req.user?.claims?.sub || "";
     if (!userId) {
@@ -66,7 +66,7 @@ router.post("/", requireAuth, async (req: any, res) => {
 });
 
 // Update a task
-router.put("/:id", requireAuth, async (req: any, res) => {
+router.put("/:id", isAuthenticated, async (req: any, res) => {
   try {
     const userId = req.user?.claims?.sub || "";
     if (!userId) {
@@ -113,7 +113,7 @@ router.put("/:id", requireAuth, async (req: any, res) => {
 });
 
 // Delete a task
-router.delete("/:id", requireAuth, async (req: any, res) => {
+router.delete("/:id", isAuthenticated, async (req: any, res) => {
   try {
     const userId = req.user?.claims?.sub || "";
     if (!userId) {
@@ -139,7 +139,7 @@ router.delete("/:id", requireAuth, async (req: any, res) => {
 });
 
 // Toggle task completion status
-router.post("/:id/toggle", requireAuth, async (req: any, res) => {
+router.post("/:id/toggle", isAuthenticated, async (req: any, res) => {
   try {
     const userId = req.user?.claims?.sub || "";
     if (!userId) {
