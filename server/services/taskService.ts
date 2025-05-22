@@ -155,7 +155,7 @@ export class FirebaseTaskService implements TaskService {
       // Update in Firebase if firebaseId exists
       if (task.firebaseId) {
         // Convert to string for Firestore
-        const userIdStr = userId.toString();
+        const userIdStr = userIdToString(userId);
         await firestore
           .collection('users')
           .doc(userIdStr)
@@ -194,7 +194,7 @@ export class FirebaseTaskService implements TaskService {
       // Delete from Firebase if firebaseId exists
       if (task.firebaseId) {
         // Convert to string for Firestore
-        const userIdStr = userId.toString();
+        const userIdStr = userIdToString(userId);
         await firestore
           .collection('users')
           .doc(userIdStr)
