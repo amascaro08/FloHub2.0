@@ -112,6 +112,8 @@ export default function TasksPage() {
       tags: newTask.tags || []
     };
     
+    console.log("Creating new task from Tasks page:", taskData);
+    
     // Call API to create task
     try {
       const response = await fetch('/api/tasks', {
@@ -119,12 +121,18 @@ export default function TasksPage() {
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include', // Include cookies for auth
         body: JSON.stringify(taskData)
       });
       
       if (!response.ok) {
-        throw new Error('Failed to create task');
+        const errorText = await response.text();
+        console.error("Task creation error:", response.status, errorText);
+        throw new Error(`Failed to create task: ${errorText}`);
       }
+      
+      const result = await response.json();
+      console.log("Task created successfully:", result);
       
       // Refresh tasks after creation
       fetchTasks();
