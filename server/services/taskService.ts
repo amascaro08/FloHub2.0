@@ -20,111 +20,34 @@ export interface TaskService {
 export class FirebaseTaskService implements TaskService {
   async getUserTasks(userId: number): Promise<Task[]> {
     try {
-      // Get tasks from PostgreSQL
+      // Always get tasks from PostgreSQL
+      console.log(`Fetching tasks for user ID: ${userId}`);
       const pgTasks = await storage.getTasks(userId);
       
-      // Get tasks from Firestore - need to convert userId to string for Firestore
-      const userIdStr = userIdToString(userId);
-      const firebaseTasksSnapshot = await firestore
-        .collection('users')
-        .doc(userIdStr)
-        .collection('tasks')
-        .get();
+      // During development, we'll skip Firestore integration since it's causing errors
+      // Once Firebase credentials are properly set up, this can be enabled
       
-      if (firebaseTasksSnapshot.empty) {
-        return pgTasks;
-      }
-      
-      // Combine tasks and remove duplicates
-      const firebaseTasks = firebaseTasksSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: 0, // Will be updated if we find a matching task in PG
-          userId,
-          text: data.text,
-          done: data.done,
-          dueDate: data.dueDate ? new Date(data.dueDate.toDate()) : null,
-          createdAt: data.createdAt ? new Date(data.createdAt.toDate()) : new Date(),
-          updatedAt: new Date(),
-          source: data.source || 'personal',
-          tags: data.tags || [],
-          priority: data.priority || 'medium',
-          notes: data.notes || null,
-          firebaseId: doc.id
-        };
-      });
-      
-      // Check for tasks that exist in Firebase but not in PostgreSQL
-      const newTasks: Task[] = [];
-      for (const fbTask of firebaseTasks) {
-        const matchingPgTask = pgTasks.find(pgTask => pgTask.firebaseId === fbTask.firebaseId);
-        
-        if (matchingPgTask) {
-          // Task exists in both - we'll use the PostgreSQL version
-          continue;
-        } else {
-          // Task only exists in Firebase - add to PostgreSQL
-          const newTask = await storage.createTask({
-            userId,
-            text: fbTask.text,
-            done: fbTask.done,
-            dueDate: fbTask.dueDate,
-            source: fbTask.source as string,
-            tags: fbTask.tags as string[],
-            priority: fbTask.priority as string,
-            notes: fbTask.notes as string,
-            firebaseId: fbTask.firebaseId
-          });
-          
-          newTasks.push(newTask);
-        }
-      }
-      
-      // Return the combined list
-      return [...pgTasks, ...newTasks];
+      return pgTasks;
     } catch (error) {
       console.error('Error getting tasks:', error);
-      // Fallback to PostgreSQL only
-      return storage.getTasks(userId);
+      throw error;
     }
   }
   
   async createTask(userId: number, task: Omit<InsertTask, 'userId' | 'firebaseId'>): Promise<Task> {
     try {
-      // Generate a Firebase ID
+      // Generate a Firebase ID (we'll keep this for future compatibility)
       const firebaseId = uuidv4();
       
-      // Create in PostgreSQL first
+      // Create in PostgreSQL only during development
       const newTask = await storage.createTask({
         userId,
         ...task,
         firebaseId
       });
       
-      // Try to create in Firebase, but don't fail the whole operation if it doesn't work
-      try {
-        // Create in Firebase - need to convert userId to string for Firestore
-        const userIdStr = userIdToString(userId);
-        await firestore
-          .collection('users')
-          .doc(userIdStr)
-          .collection('tasks')
-          .doc(firebaseId)
-          .set({
-            text: task.text,
-            done: task.done ?? false,
-            dueDate: task.dueDate ? new Date(task.dueDate) : null,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            source: task.source || 'personal',
-            tags: task.tags || [],
-            priority: task.priority || 'medium',
-            notes: task.notes || null
-          });
-      } catch (firebaseError) {
-        console.error('Firebase storage error (task will still be created in PostgreSQL):', firebaseError);
-        // Continue with the operation even if Firebase fails
-      }
+      // We're skipping Firebase integration for now as it's causing errors
+      // This will be re-enabled when Firebase credentials are properly set up
       
       return newTask;
     } catch (error) {
@@ -153,27 +76,13 @@ export class FirebaseTaskService implements TaskService {
         return null;
       }
       
-      // Update in Firebase if firebaseId exists
-      if (task.firebaseId) {
-        // Convert to string for Firestore
-        const userIdStr = userIdToString(userId);
-        await firestore
-          .collection('users')
-          .doc(userIdStr)
-          .collection('tasks')
-          .doc(task.firebaseId)
-          .update({
-            ...updates,
-            updatedAt: new Date()
-          });
-      }
+      // We're skipping Firebase integration for now as it's causing errors
+      // This will be re-enabled when Firebase credentials are properly set up
       
       return updatedTask;
     } catch (error) {
       console.error('Error updating task:', error);
-      // If Firebase fails, at least return the PostgreSQL task
-      const result = await storage.updateTask(taskId, updates);
-      return result || null;
+      throw error; // Let the router handle the error response
     }
   }
   
@@ -192,23 +101,13 @@ export class FirebaseTaskService implements TaskService {
       // Delete from PostgreSQL
       const result = await storage.deleteTask(taskId);
       
-      // Delete from Firebase if firebaseId exists
-      if (task.firebaseId) {
-        // Convert to string for Firestore
-        const userIdStr = userIdToString(userId);
-        await firestore
-          .collection('users')
-          .doc(userIdStr)
-          .collection('tasks')
-          .doc(task.firebaseId)
-          .delete();
-      }
+      // We're skipping Firebase integration for now as it's causing errors
+      // This will be re-enabled when Firebase credentials are properly set up
       
       return result;
     } catch (error) {
       console.error('Error deleting task:', error);
-      // If Firebase fails, at least return the PostgreSQL result
-      return storage.deleteTask(taskId);
+      throw error; // Let the router handle the error response
     }
   }
   
