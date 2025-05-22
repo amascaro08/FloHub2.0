@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { isAuthenticated } from "../replitAuth";
+import { requireAuth } from "../routes/auth";  // Use the consistent auth middleware
 import { taskService } from "../services/taskService";
 import { z } from "zod";
 
@@ -17,16 +17,10 @@ const taskSchema = z.object({
 });
 
 // Get all tasks for the current user
-router.get("/", isAuthenticated, async (req: any, res) => {
-  if (!req.session || !req.session.userId) {
-    return res.status(401).json({ error: "Not authenticated" });
-  }
+router.get("/", requireAuth, async (req: any, res) => {
   try {
     // Get user ID from session
     const userId = req.session.userId;
-    if (!userId) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
 
     const tasks = await taskService.getUserTasks(userId);
     return res.json(tasks);
@@ -37,7 +31,7 @@ router.get("/", isAuthenticated, async (req: any, res) => {
 });
 
 // Create a new task
-router.post("/", isAuthenticated, async (req: any, res) => {
+router.post("/", requireAuth, async (req: any, res) => {
   try {
     const userId = req.user?.claims?.sub || "";
     if (!userId) {
@@ -72,7 +66,7 @@ router.post("/", isAuthenticated, async (req: any, res) => {
 });
 
 // Update a task
-router.put("/:id", isAuthenticated, async (req: any, res) => {
+router.put("/:id", requireAuth, async (req: any, res) => {
   try {
     const userId = req.user?.claims?.sub || "";
     if (!userId) {
@@ -119,7 +113,7 @@ router.put("/:id", isAuthenticated, async (req: any, res) => {
 });
 
 // Delete a task
-router.delete("/:id", isAuthenticated, async (req: any, res) => {
+router.delete("/:id", requireAuth, async (req: any, res) => {
   try {
     const userId = req.user?.claims?.sub || "";
     if (!userId) {
@@ -145,7 +139,7 @@ router.delete("/:id", isAuthenticated, async (req: any, res) => {
 });
 
 // Toggle task completion status
-router.post("/:id/toggle", isAuthenticated, async (req: any, res) => {
+router.post("/:id/toggle", requireAuth, async (req: any, res) => {
   try {
     const userId = req.user?.claims?.sub || "";
     if (!userId) {
