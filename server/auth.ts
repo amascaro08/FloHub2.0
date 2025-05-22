@@ -3,11 +3,26 @@ import { storage } from "./storage";
 
 // Authentication middleware
 export const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
-  if (!req.session || !req.session.userId) {
+  if (!req.session?.userId) {
+    console.log('No session or userId found:', req.session);
     return res.status(401).json({ message: "Unauthorized" });
   }
+  
+  // Add user info to request for downstream use
+  req.user = { id: req.session.userId };
   next();
 };
+
+// Type augmentation for Express
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string | number;
+      };
+    }
+  }
+}
 
 // Google OAuth configuration
 export const googleOAuthConfig = {

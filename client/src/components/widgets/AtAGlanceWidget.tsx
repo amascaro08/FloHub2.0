@@ -5,10 +5,14 @@ import { apiRequest } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 
 const AtAGlanceWidget = () => {
-  const { session } = useAuth();
+  const { session, isAuthenticated } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  if (!isAuthenticated) {
+    return <div className="p-4">Please log in to view your tasks</div>;
+  }
   useEffect(() => {
     const fetchTasks = async () => {
       if (!session) return;
