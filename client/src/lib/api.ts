@@ -8,6 +8,7 @@ export const apiRequest = async (
 ) => {
   const options: RequestInit = {
     method,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },

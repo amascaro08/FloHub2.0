@@ -1,8 +1,36 @@
 'use client'
 
 import React, { useState, useEffect, memo } from 'react';
+import { apiRequest } from '../../lib/api';
+import { useAuth } from '../../hooks/useAuth';
 
 const AtAGlanceWidget = () => {
+  const { session } = useAuth();
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    const fetchTasks = async () => {
+      if (!session) return;
+      
+      try {
+        const tasksData = await apiRequest('/api/tasks');
+        setTasks(tasksData);
+      } catch (err) {
+        console.error('Error fetching tasks:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, [session]);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error loading tasks</div>;
+  if (!session) return <div>Please log in to view tasks</div>;
+
   return (
     <div className="h-full flex flex-col">
       <div className="mb-2">
