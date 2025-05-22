@@ -18,10 +18,11 @@ export class FirebaseTaskService implements TaskService {
       // Get tasks from PostgreSQL
       const pgTasks = await storage.getTasks(userId);
       
-      // Get tasks from Firestore
+      // Get tasks from Firestore - need to convert userId to string for Firestore
+      const userIdStr = userId.toString();
       const firebaseTasksSnapshot = await firestore
         .collection('users')
-        .doc(userId)
+        .doc(userIdStr)
         .collection('tasks')
         .get();
       
@@ -83,7 +84,7 @@ export class FirebaseTaskService implements TaskService {
     }
   }
   
-  async createTask(userId: string, task: Omit<InsertTask, 'userId' | 'firebaseId'>): Promise<Task> {
+  async createTask(userId: number, task: Omit<InsertTask, 'userId' | 'firebaseId'>): Promise<Task> {
     try {
       // Generate a Firebase ID
       const firebaseId = uuidv4();
@@ -95,10 +96,11 @@ export class FirebaseTaskService implements TaskService {
         firebaseId
       });
       
-      // Create in Firebase
+      // Create in Firebase - need to convert userId to string for Firestore
+      const userIdStr = userId.toString();
       await firestore
         .collection('users')
-        .doc(userId)
+        .doc(userIdStr)
         .collection('tasks')
         .doc(firebaseId)
         .set({
@@ -125,12 +127,15 @@ export class FirebaseTaskService implements TaskService {
     }
   }
   
-  async updateTask(taskId: number, userId: string, updates: Partial<Task>): Promise<Task | null> {
+  async updateTask(taskId: number, userId: number, updates: Partial<Task>): Promise<Task | null> {
     try {
       // Get the task to update
       const task = await storage.getTask(taskId);
       
-      if (!task || task.userId !== userId) {
+      // Convert stored userId to number for comparison if needed
+      const taskUserId = typeof task?.userId === 'string' ? parseInt(task.userId, 10) : task?.userId;
+      
+      if (!task || taskUserId !== userId) {
         return null;
       }
       
@@ -144,9 +149,11 @@ export class FirebaseTaskService implements TaskService {
       
       // Update in Firebase if firebaseId exists
       if (task.firebaseId) {
+        // Convert to string for Firestore
+        const userIdStr = userId.toString();
         await firestore
           .collection('users')
-          .doc(userId)
+          .doc(userIdStr)
           .collection('tasks')
           .doc(task.firebaseId)
           .update({
@@ -164,12 +171,15 @@ export class FirebaseTaskService implements TaskService {
     }
   }
   
-  async deleteTask(taskId: number, userId: string): Promise<boolean> {
+  async deleteTask(taskId: number, userId: number): Promise<boolean> {
     try {
       // Get the task to delete
       const task = await storage.getTask(taskId);
       
-      if (!task || task.userId !== userId) {
+      // Convert stored userId to number for comparison if needed
+      const taskUserId = typeof task?.userId === 'string' ? parseInt(task.userId, 10) : task?.userId;
+      
+      if (!task || taskUserId !== userId) {
         return false;
       }
       
@@ -178,9 +188,11 @@ export class FirebaseTaskService implements TaskService {
       
       // Delete from Firebase if firebaseId exists
       if (task.firebaseId) {
+        // Convert to string for Firestore
+        const userIdStr = userId.toString();
         await firestore
           .collection('users')
-          .doc(userId)
+          .doc(userIdStr)
           .collection('tasks')
           .doc(task.firebaseId)
           .delete();
@@ -194,12 +206,15 @@ export class FirebaseTaskService implements TaskService {
     }
   }
   
-  async toggleTaskCompletion(taskId: number, userId: string): Promise<Task | null> {
+  async toggleTaskCompletion(taskId: number, userId: number): Promise<Task | null> {
     try {
       // Get the task
       const task = await storage.getTask(taskId);
       
-      if (!task || task.userId !== userId) {
+      // Convert stored userId to number for comparison if needed
+      const taskUserId = typeof task?.userId === 'string' ? parseInt(task.userId, 10) : task?.userId;
+      
+      if (!task || taskUserId !== userId) {
         return null;
       }
       
