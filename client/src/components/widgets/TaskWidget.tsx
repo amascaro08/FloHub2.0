@@ -444,42 +444,52 @@ function TaskWidget() {
                 {/* Task metadata */}
                 <div className="text-xs flex flex-wrap gap-x-2 gap-y-1 mt-2">
                   {task.dueDate && (
-                    <span className="flex items-center">
+                    <span className="flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
                       <CalendarIcon className="mr-1 h-3 w-3" />
-                      {format(new Date(task.dueDate), "MMM d")}
+                      {format(new Date(task.dueDate), "MMM d, yyyy")}
                     </span>
                   )}
                   
                   {task.source && (
                     <span className={cn(
-                      "px-1.5 py-0.5 rounded-sm",
+                      "px-2 py-1 rounded-full flex items-center",
                       task.source === "work" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"
                     )}>
-                      {task.source}
+                      {task.source === "work" ? 
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /><path d="M3 9h18" /></svg> : 
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                      }
+                      {task.source.charAt(0).toUpperCase() + task.source.slice(1)}
                     </span>
                   )}
                   
                   {task.priority && (
                     <span className={cn(
-                      "px-1.5 py-0.5 rounded-sm",
+                      "px-2 py-1 rounded-full flex items-center",
                       task.priority === "high" ? "bg-red-100 text-red-800" : 
                       task.priority === "medium" ? "bg-amber-100 text-amber-800" : 
-                      "bg-gray-100 text-gray-800"
+                      "bg-green-100 text-green-800"
                     )}>
-                      {task.priority}
+                      {task.priority === "high" ? 
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg> : 
+                        task.priority === "medium" ? 
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /></svg> : 
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15 12 9" /><path d="M12 9 6 15" /></svg>
+                      }
+                      {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
                     </span>
                   )}
                 </div>
                 
                 {/* Task tags */}
                 {task.tags && task.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
+                  <div className="flex flex-wrap gap-2 mt-2">
                     {task.tags.map((tag: string) => (
                       <span 
                         key={tag} 
-                        className="inline-flex items-center text-xs px-1.5 py-0.5 rounded-sm bg-purple-100 text-purple-800"
+                        className="inline-flex items-center text-xs px-2 py-1 rounded-full bg-teal-100 text-teal-800"
                       >
-                        <Tag className="h-2.5 w-2.5 mr-1" />
+                        <Tag className="h-3 w-3 mr-1" />
                         {tag}
                       </span>
                     ))}
