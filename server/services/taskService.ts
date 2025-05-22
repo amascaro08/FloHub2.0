@@ -4,6 +4,11 @@ import { firestore } from '../firebase';
 import { InsertTask, Task } from '@shared/schema';
 import { v4 as uuidv4 } from 'uuid';
 
+// Helper function to convert user ID to string for Firestore
+const userIdToString = (userId: number): string => {
+  return userId.toString();
+};
+
 export interface TaskService {
   getUserTasks(userId: number): Promise<Task[]>;
   createTask(userId: number, task: Omit<InsertTask, 'userId' | 'firebaseId'>): Promise<Task>;
@@ -19,7 +24,7 @@ export class FirebaseTaskService implements TaskService {
       const pgTasks = await storage.getTasks(userId);
       
       // Get tasks from Firestore - need to convert userId to string for Firestore
-      const userIdStr = userId.toString();
+      const userIdStr = userIdToString(userId);
       const firebaseTasksSnapshot = await firestore
         .collection('users')
         .doc(userIdStr)
@@ -97,7 +102,7 @@ export class FirebaseTaskService implements TaskService {
       });
       
       // Create in Firebase - need to convert userId to string for Firestore
-      const userIdStr = userId.toString();
+      const userIdStr = userIdToString(userId);
       await firestore
         .collection('users')
         .doc(userIdStr)

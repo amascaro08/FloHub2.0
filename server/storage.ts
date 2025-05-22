@@ -50,7 +50,7 @@ export interface IStorage {
   deleteUpdate(id: number): Promise<boolean>;
   
   // Task operations
-  getTasks(userId: string): Promise<Task[]>;
+  getTasks(userId: number): Promise<Task[]>;
   getTask(id: number): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: number, taskData: Partial<InsertTask>): Promise<Task | undefined>;
@@ -266,7 +266,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Task operations
-  async getTasks(userId: string): Promise<Task[]> {
+  async getTasks(userId: number): Promise<Task[]> {
     return await db
       .select()
       .from(tasks)
