@@ -21,13 +21,22 @@ router.get("/", async (req: any, res) => {
   try {
     // For development purposes, we'll use a fixed test user ID
     // This ensures we can always access tasks even with auth issues
-    const testUserId = "1";
+    const testUserId = 1; // Using integer to match database schema
     
-    // First try to get from session/user claims
-    let userId = req.user?.claims?.sub || req.session?.userId;
+    // Try to get user ID from various auth sources
+    let userId;
     
-    // If no user ID found from auth, use the test user ID
-    if (!userId) {
+    // Try to get from Replit Auth claims or session
+    if (req.user?.claims?.sub) {
+      userId = parseInt(req.user.claims.sub, 10);
+    } else if (req.session?.userId) {
+      userId = typeof req.session.userId === 'string' 
+        ? parseInt(req.session.userId, 10) 
+        : req.session.userId;
+    }
+    
+    // If no valid user ID found, use the test user ID
+    if (!userId || isNaN(userId)) {
       console.log('No authenticated user found, using test user for tasks');
       userId = testUserId;
     }
@@ -45,8 +54,14 @@ router.get("/", async (req: any, res) => {
 // Create a new task
 router.post("/", isAuthenticated, async (req: any, res) => {
   try {
-    const userId = req.user?.claims?.sub || "";
-    if (!userId) {
+    let userId = null;
+    
+    // Convert userId to a number to match database schema
+    if (req.user?.claims?.sub) {
+      userId = parseInt(req.user.claims.sub, 10);
+    }
+    
+    if (!userId || isNaN(userId)) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
@@ -80,8 +95,14 @@ router.post("/", isAuthenticated, async (req: any, res) => {
 // Update a task
 router.put("/:id", isAuthenticated, async (req: any, res) => {
   try {
-    const userId = req.user?.claims?.sub || "";
-    if (!userId) {
+    let userId = null;
+    
+    // Convert userId to a number to match database schema
+    if (req.user?.claims?.sub) {
+      userId = parseInt(req.user.claims.sub, 10);
+    }
+    
+    if (!userId || isNaN(userId)) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
@@ -127,8 +148,14 @@ router.put("/:id", isAuthenticated, async (req: any, res) => {
 // Delete a task
 router.delete("/:id", isAuthenticated, async (req: any, res) => {
   try {
-    const userId = req.user?.claims?.sub || "";
-    if (!userId) {
+    let userId = null;
+    
+    // Convert userId to a number to match database schema
+    if (req.user?.claims?.sub) {
+      userId = parseInt(req.user.claims.sub, 10);
+    }
+    
+    if (!userId || isNaN(userId)) {
       return res.status(401).json({ error: "Not authenticated" });
     }
 

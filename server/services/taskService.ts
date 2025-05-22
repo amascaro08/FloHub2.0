@@ -5,15 +5,15 @@ import { InsertTask, Task } from '@shared/schema';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface TaskService {
-  getUserTasks(userId: string): Promise<Task[]>;
-  createTask(userId: string, task: Omit<InsertTask, 'userId' | 'firebaseId'>): Promise<Task>;
-  updateTask(taskId: number, userId: string, updates: Partial<Task>): Promise<Task | null>;
-  deleteTask(taskId: number, userId: string): Promise<boolean>;
-  toggleTaskCompletion(taskId: number, userId: string): Promise<Task | null>;
+  getUserTasks(userId: number): Promise<Task[]>;
+  createTask(userId: number, task: Omit<InsertTask, 'userId' | 'firebaseId'>): Promise<Task>;
+  updateTask(taskId: number, userId: number, updates: Partial<Task>): Promise<Task | null>;
+  deleteTask(taskId: number, userId: number): Promise<boolean>;
+  toggleTaskCompletion(taskId: number, userId: number): Promise<Task | null>;
 }
 
 export class FirebaseTaskService implements TaskService {
-  async getUserTasks(userId: string): Promise<Task[]> {
+  async getUserTasks(userId: number): Promise<Task[]> {
     try {
       // Get tasks from PostgreSQL
       const pgTasks = await storage.getTasks(userId);
